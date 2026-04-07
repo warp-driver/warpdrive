@@ -11,4 +11,4 @@ and this project adheres to [Semantic Versioning].
 
 ## [v2.8.0]
 
-* Hard forked from https://github.com/Lay3rLabs/WAVS
+* Snapshot taken from [WAVS](https://github.com/Lay3rLabs/WAVS)
