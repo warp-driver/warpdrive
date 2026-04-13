@@ -1,18 +1,18 @@
 # Component Development Flow
 
-Build, test, and deploy a new WAVS WASM component from scratch.
+Build, test, and deploy a new WarpDrive WASM component from scratch.
 
 ---
 
 ## Checklist
 
-- [ ] **Step 1** — `wavs:wavs_get_wit_interface` — Read WIT definitions to understand available APIs before writing code.
-- [ ] **Step 2** — `wavs:wavs_scaffold_component` — Generate project skeleton (`Cargo.toml` + `src/lib.rs`).
+- [ ] **Step 1** — `warp-drive:warpdrive_get_wit_interface` — Read WIT definitions to understand available APIs before writing code.
+- [ ] **Step 2** — `warp-drive:warpdrive_scaffold_component` — Generate project skeleton (`Cargo.toml` + `src/lib.rs`).
 - [ ] **Step 3** — Implement logic in `src/lib.rs` using the patterns below.
-- [ ] **Step 4** — `wavs:wavs_build_component` — Compile; read stderr and fix errors; repeat until exit code 0.
-- [ ] **Step 5** — `wavs:wavs_upload_component` — Upload `.wasm`; save the returned digest (raw 64-char hex, no `sha256:` prefix).
-- [ ] **Step 6** — `wavs:wavs_deploy_dev_service` (no on-chain contract) **or** follow [`deployment.md`](deployment.md) for a real deployment.
-- [ ] **Step 7** — `wavs:wavs_simulate_trigger` — Verify output.
+- [ ] **Step 4** — `warp-drive:warpdrive_build_component` — Compile; read stderr and fix errors; repeat until exit code 0.
+- [ ] **Step 5** — `warp-drive:warpdrive_upload_component` — Upload `.wasm`; save the returned digest (raw 64-char hex, no `sha256:` prefix).
+- [ ] **Step 6** — `warp-drive:warpdrive_deploy_dev_service` (no on-chain contract) **or** follow [`deployment.md`](deployment.md) for a real deployment.
+- [ ] **Step 7** — `warp-drive:warpdrive_simulate_trigger` — Verify output.
 
 ---
 
@@ -166,7 +166,7 @@ serde_json = "1"
 
 ## Build Output Paths
 
-After `wavs_build_component` (release mode):
+After `warpdrive_build_component` (release mode):
 ```
 target/wasm32-wasip1/release/{package_name_with_underscores}.wasm
 ```
@@ -176,24 +176,24 @@ After `just wasi-build-native {component-name}` (from repo root):
 examples/build/components/{component-name}.wasm
 ```
 
-Use the **absolute path** when calling `wavs_upload_component`.
+Use the **absolute path** when calling `warpdrive_upload_component`.
 
 ---
 
 ## Debugging
 
-**Build errors** (read `stderr` from `wavs_build_component`):
+**Build errors** (read `stderr` from `warpdrive_build_component`):
 - `cannot find type` / `unresolved import` — check `example-helpers` path; try `use example_helpers::prelude::*`
 - `the trait bound is not satisfied` — `encode_trigger_output` needs `&[u8]` or `AsRef<[u8]>`
 - `does not implement Guest` — ensure `export_layer_trigger_world!(Component)` is present
 
-**Runtime errors** (from `wavs_simulate_trigger`):
+**Runtime errors** (from `warpdrive_simulate_trigger`):
 - Error message comes directly from your `?` or `return Err(...)` calls
 - Add `host::log(host::LogLevel::Debug, &format!("data: {:?}", data))` and re-simulate
 
 **Missing config vars** — component returns `"config var X not found"`:
 - Service definition must include the key in its `config` map
-- Verify with `wavs_get_service`
+- Verify with `warpdrive_get_service`
 
 **Wrong trigger type** — `"unsupported trigger data type"`:
 - The `match` must cover the trigger type configured in the service definition

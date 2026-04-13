@@ -1,6 +1,6 @@
 [package]
 name = "warpdrive-gui-shared"
-description = "WAVS gui shared"
+description = "WarpDrive gui shared"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true

@@ -176,12 +176,12 @@ export function ServiceEditorPage() {
         setDeployStatus((s) => ({ ...s, setUri: 'done' }));
       }
 
-      // Step 3: Remove old service from WAVS
+      // Step 3: Remove old service from WarpDrive
       setDeployStatus((s) => ({ ...s, remove: 'in_progress' }));
       await removeServiceCmd(manager);
       setDeployStatus((s) => ({ ...s, remove: 'done' }));
 
-      // Step 4: Re-add service to WAVS
+      // Step 4: Re-add service to WarpDrive
       setDeployStatus((s) => ({ ...s, register: 'in_progress' }));
       await addServiceCmd(manager);
       const servicesData = await getServices();
@@ -289,12 +289,12 @@ export function ServiceEditorPage() {
         </div>
 
         <div className="flex items-center justify-between py-2 border-b border-charcoal-light">
-          <span className="text-beige-warm text-sm">3. Remove old service from WAVS</span>
+          <span className="text-beige-warm text-sm">3. Remove old service from WarpDrive</span>
           <StatusBadge status={deployStatus.remove} />
         </div>
 
         <div className="flex items-center justify-between py-2">
-          <span className="text-beige-warm text-sm">4. Re-register with WAVS</span>
+          <span className="text-beige-warm text-sm">4. Re-register with WarpDrive</span>
           <StatusBadge status={deployStatus.register} />
         </div>
 

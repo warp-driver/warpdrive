@@ -30,17 +30,17 @@ export function OwnerActionsMenu({ registryKey }: OwnerActionsMenuProps) {
 
   const refreshRegistry = async (knownAddresses?: Address[]) => {
     const publicClient = getPublicClient(rpcUrl, chainId);
-    const [info, operators] = await Promise.all([
+    const [info, vectors] = await Promise.all([
       connectToRegistry(publicClient, registryAddress),
       fetchOperators(publicClient, registryAddress, undefined, knownAddresses),
     ]);
     updateRegistryInfo(key, info);
-    updateRegistryOperators(key, operators);
+    updateRegistryOperators(key, vectors);
   };
 
   const options: MenuOption[] = [
     {
-      label: 'Register Operator',
+      label: 'Register Vector',
       onClick: () =>
         Modal.open(
           <RegisterOperatorModal
@@ -137,7 +137,7 @@ function RegisterOperatorModal({
 
   const handleSubmit = async () => {
     if (!isAddress(operatorAddress)) {
-      Toast.error('Please enter a valid operator address');
+      Toast.error('Please enter a valid vector address');
       return;
     }
     const weight = BigInt(operatorWeight);
@@ -153,9 +153,9 @@ function RegisterOperatorModal({
       await registerOperator(publicClient, walletClient, registryAddress, operatorAddress as Address, weight);
       await onSuccess([operatorAddress as Address]);
       Modal.close();
-      Toast.info('Operator registered successfully');
+      Toast.info('Vector registered successfully');
     } catch (err) {
-      Toast.error(`Failed to register operator: ${err}`);
+      Toast.error(`Failed to register vector: ${err}`);
     } finally {
       setLoading(false);
     }
@@ -163,9 +163,9 @@ function RegisterOperatorModal({
 
   return (
     <div className="flex flex-col gap-4 p-6 min-w-[400px]">
-      <h3 className="text-lg font-semibold text-beige-light">Register Operator</h3>
+      <h3 className="text-lg font-semibold text-beige-light">Register Vector</h3>
       <div className="grid grid-cols-2 gap-3">
-        <TextInput placeholder="Operator address (0x...)" value={operatorAddress} onChange={setOperatorAddress} />
+        <TextInput placeholder="Vector address (0x...)" value={operatorAddress} onChange={setOperatorAddress} />
         <TextInput kind="number" placeholder="Weight" value={operatorWeight} onChange={setOperatorWeight} />
       </div>
       {derivedAddresses.length > 0 && (

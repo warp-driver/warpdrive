@@ -1,5 +1,5 @@
-/// Returns the main WAVS WIT interface definitions.
-/// Used by `wavs_get_wit_interface` to give AI assistants full knowledge of
+/// Returns the main WarpDrive WIT interface definitions.
+/// Used by `warpdrive_get_wit_interface` to give AI assistants full knowledge of
 /// available WASM APIs (HTTP, KV, sockets, TLS, host functions, etc.).
 pub fn get_wit_interface() -> String {
     let operator = include_str!("../../../wit-definitions/operator/wit/operator.wit");
@@ -9,7 +9,7 @@ pub fn get_wit_interface() -> String {
     let chain = include_str!("../../../wit-definitions/types/wit/chain.wit");
 
     format!(
-        "# WAVS WIT Interface Definitions\n\n\
+        "# WarpDrive WIT Interface Definitions\n\n\
          ## operator.wit (main world — implement this)\n\
          ```wit\n{operator}\n```\n\n\
          ## types/core.wit\n\
@@ -26,7 +26,7 @@ pub fn get_wit_interface() -> String {
 /// Generate a scaffold WASM component project.
 /// Returns a formatted string containing the Cargo.toml and lib.rs for the component.
 pub fn scaffold_component(name: &str, trigger_type: &str, description: Option<&str>) -> String {
-    let desc = description.unwrap_or("A WAVS WASM component");
+    let desc = description.unwrap_or("A WarpDrive WASM component");
     let cargo_toml = generate_cargo_toml(name);
     let lib_rs = generate_lib_rs(name, trigger_type, desc);
 
@@ -42,8 +42,8 @@ pub fn scaffold_component(name: &str, trigger_type: &str, description: Option<&s
          2. Write the files above\n\
          3. Add the crate to the workspace in the root `Cargo.toml`\n\
          4. Build: `cargo component build --release -p {name}`\n\
-         5. Upload: use `wavs_upload_component` with the compiled `.wasm` path\n\
-         6. Deploy: use `wavs_deploy_service` with the service manager address"
+         5. Upload: use `warpdrive_upload_component` with the compiled `.wasm` path\n\
+         6. Deploy: use `warpdrive_deploy_service` with the service manager address"
     )
 }
 

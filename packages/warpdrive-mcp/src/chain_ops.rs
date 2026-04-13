@@ -24,7 +24,7 @@ sol! {
     #[allow(missing_docs)]
     #[sol(rpc)]
     interface IPOAStakeRegistry {
-        function registerOperator(address operator, uint256 weight) external;
+        function registerOperator(address vector, uint256 weight) external;
         function updateOperatorSigningKey(address newSigningKey, bytes signingKeySignature) external;
     }
 }
@@ -128,7 +128,7 @@ pub async fn deploy_poa_service_manager(credential: &Credential, rpc_url: &str) 
                 "-e",
                 "DEPLOY_ENV=LOCAL",
                 &container_id,
-                "/wavs/scripts/cli.sh",
+                "/warpdrive/scripts/cli.sh",
                 "deploy",
             ])
             .stdout(Stdio::null())
@@ -172,7 +172,7 @@ pub async fn deploy_poa_service_manager(credential: &Credential, rpc_url: &str) 
     Ok(deploy.addresses.poa_stake_registry)
 }
 
-/// Derive the EVM address for the WAVS signing key at the given HD index (default: 0).
+/// Derive the EVM address for the WarpDrive signing key at the given HD index (default: 0).
 /// Does not require network access.
 pub fn get_signing_address(credential: &Credential, hd_index: Option<u32>) -> Result<String> {
     let signer = make_signer(credential, Some(hd_index.unwrap_or(0)))?;
@@ -199,14 +199,14 @@ pub fn decode_revert_selector(err_str: &str) -> Option<&'static str> {
     }
 }
 
-/// Register the signing key as an operator on a POAStakeRegistry contract.
+/// Register the signing key as an vector on a POAStakeRegistry contract.
 ///
 /// `owner_credential` calls `registerOperator` using HD index 0 of `signing_mnemonic` as the
-/// operator identity. `signing_key_hd_index` selects which HD-derived key becomes the *signing
-/// key* (the key WAVS actually uses when submitting envelopes for the service). Pass the HD index
+/// vector identity. `signing_key_hd_index` selects which HD-derived key becomes the *signing
+/// key* (the key WarpDrive actually uses when submitting envelopes for the service). Pass the HD index
 /// returned by `POST /services/signer` so the on-chain registry matches what the node signs with.
 ///
-/// Returns `(operator_address, register_tx, signing_key_tx)`.
+/// Returns `(vector_address, register_tx, signing_key_tx)`.
 pub async fn register_operator(
     service_manager: &ServiceManager,
     owner_credential: &Credential,
@@ -225,14 +225,14 @@ pub async fn register_operator(
     let owner_config = EvmSigningClientConfig::new(endpoint.clone(), owner_credential.clone());
     let owner_client = EvmSigningClient::new(owner_config).await?;
 
-    // HD index 0 is the stable operator identity — the on-chain address that owns the operator
+    // HD index 0 is the stable vector identity — the on-chain address that owns the vector
     // registration and is allowed to call updateOperatorSigningKey.
-    let operator_config =
+    let vector_config =
         EvmSigningClientConfig::new(endpoint.clone(), signing_mnemonic.clone()).with_hd_index(0);
-    let operator_client = EvmSigningClient::new(operator_config).await?;
+    let operator_client = EvmSigningClient::new(vector_config).await?;
     let operator_addr: Address = operator_client.address();
 
-    // The actual signing key is the service-specific HD index that WAVS uses to sign envelopes.
+    // The actual signing key is the service-specific HD index that WarpDrive uses to sign envelopes.
     let signing_key_config = EvmSigningClientConfig::new(endpoint, signing_mnemonic.clone())
         .with_hd_index(signing_key_hd_index);
     let signing_key_client = EvmSigningClient::new(signing_key_config).await?;
@@ -255,7 +255,7 @@ pub async fn register_operator(
                 Err(e) => {
                     let msg = e.to_string();
                     if msg.contains("AlreadyRegistered") || msg.contains("0x42ee68b5") {
-                        break 'retry "skipped (operator already registered, proceeding to set signing key)".to_string();
+                        break 'retry "skipped (vector already registered, proceeding to set signing key)".to_string();
                     }
                     if (msg.contains("nonce") || msg.contains("replacement transaction"))
                         && attempt < 2
@@ -280,7 +280,7 @@ pub async fn register_operator(
     };
 
     // The signature proves that the new signing key's holder consents to being registered.
-    // The contract computes: messageHash = keccak256(abi.encode(operator)) where operator = msg.sender
+    // The contract computes: messageHash = keccak256(abi.encode(vector)) where vector = msg.sender
     // (the HD index 0 caller), then validates that newSigningKey signed this hash.
     let encoded: Vec<u8> = (operator_addr,).abi_encode();
     let message_hash = keccak256(&encoded);
@@ -291,7 +291,7 @@ pub async fn register_operator(
         .context("sign message hash")?;
     let sig_bytes = Bytes::copy_from_slice(sig.as_bytes().as_ref());
 
-    // updateOperatorSigningKey is called by the operator (HD index 0) to register the new key.
+    // updateOperatorSigningKey is called by the vector (HD index 0) to register the new key.
     let registry_as_operator =
         IPOAStakeRegistryInstance::new(contract_address, operator_client.provider.clone());
     let signing_key_receipt = registry_as_operator
@@ -306,7 +306,7 @@ pub async fn register_operator(
             anyhow::anyhow!(
                 "updateOperatorSigningKey reverted{selector_hint} \
                  [signing key HD index {signing_key_hd_index} / address {signing_key_addr}, \
-                 operator {operator_addr}]: {msg}"
+                 vector {operator_addr}]: {msg}"
             )
         })?
         .get_receipt()

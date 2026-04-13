@@ -225,7 +225,7 @@ export function Logs() {
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center flex-1 gap-2">
           <span className="text-tan-muted text-sm">No logs yet</span>
-          <span className="text-tan-muted/60 text-xs">Log output from WAVS will appear here</span>
+          <span className="text-tan-muted/60 text-xs">Log output from WarpDrive will appear here</span>
         </div>
       ) : (
         <div className="relative flex-1 min-h-0">

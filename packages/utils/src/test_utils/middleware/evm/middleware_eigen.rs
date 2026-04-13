@@ -52,7 +52,7 @@ impl EigenlayerMiddleware {
                     &format!("{}:/root/.nodes", self.nodes_dir.path().display()),
                     "-v",
                     &format!(
-                        "{}:/wavs/contracts/deployments",
+                        "{}:/warpdrive/contracts/deployments",
                         self.config_dir.path().display()
                     ),
                     EVM_EIGENLAYER_MIDDLEWARE_IMAGE,
@@ -100,7 +100,7 @@ impl EigenlayerMiddleware {
                     "-e",
                     &format!("DEPLOY_FILE_MOCK={filename}"),
                     &container_id,
-                    "/wavs/scripts/cli.sh",
+                    "/warpdrive/scripts/cli.sh",
                     "-m",
                     "mock",
                     "deploy",
@@ -192,7 +192,7 @@ impl EigenlayerMiddleware {
                     "-e",
                     &format!("CONFIGURE_FILE={}", filename),
                     container_id,
-                    "/wavs/scripts/cli.sh",
+                    "/warpdrive/scripts/cli.sh",
                     "-m",
                     "mock",
                     "configure",
@@ -229,13 +229,13 @@ impl EigenlayerMiddleware {
                     "-e",
                     &format!("RPC_URL={}", service_manager.rpc_url),
                     "-e",
-                    &format!("WAVS_SERVICE_MANAGER_ADDRESS={}", service_manager.address),
+                    &format!("WARPDRIVE_SERVICE_MANAGER_ADDRESS={}", service_manager.address),
                     "-e",
                     &format!("FUNDED_KEY={}", service_manager.deployer_key_hex),
                     "-e",
                     &format!("SERVICE_URI={}", service_uri),
                     container_id,
-                    "/wavs/scripts/cli.sh",
+                    "/warpdrive/scripts/cli.sh",
                     "set_service_uri",
                 ])
                 .stdout(Stdio::null())

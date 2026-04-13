@@ -23,7 +23,7 @@ export function ServicesLayout() {
   const location = useLocation();
   const params = useParams();
 
-  // Load saved registries + WAVS services on mount
+  // Load saved registries + WarpDrive services on mount
   useEffect(() => {
     const init = async () => {
       try {
@@ -33,7 +33,7 @@ export function ServicesLayout() {
           getChainConfigs(),
         ]);
 
-        // Merge cached services for any address WAVS didn't load
+        // Merge cached services for any address WarpDrive didn't load
         const allServices: Service[] = [...servicesData];
         const wavsAddrs = new Set(
           servicesData.map(s => getServiceAddress(s.manager).toLowerCase())
@@ -52,7 +52,7 @@ export function ServicesLayout() {
 
           const publicClient = getPublicClient(saved.rpc_url, saved.chain_id);
           const userAddress = await getAddress();
-          const [info, operators] = await Promise.all([
+          const [info, vectors] = await Promise.all([
             connectToRegistry(publicClient, saved.address as Address),
             fetchOperators(publicClient, saved.address as Address),
           ]);
@@ -63,7 +63,7 @@ export function ServicesLayout() {
             rpcUrl: saved.rpc_url,
             address: saved.address as Address,
             info,
-            operators,
+            vectors,
             isOwner: info.owner.toLowerCase() === userAddress.toLowerCase(),
           });
         }
@@ -95,7 +95,7 @@ export function ServicesLayout() {
           try {
             const publicClient = getPublicClient(rpcUrl, chainId);
             const userAddress = await getAddress();
-            const [info, operators] = await Promise.all([
+            const [info, vectors] = await Promise.all([
               connectToRegistry(publicClient, address),
               fetchOperators(publicClient, address),
             ]);
@@ -105,7 +105,7 @@ export function ServicesLayout() {
               rpcUrl,
               address,
               info,
-              operators,
+              vectors,
               isOwner: info.owner.toLowerCase() === userAddress.toLowerCase(),
             });
           } catch {

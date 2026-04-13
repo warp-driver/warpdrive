@@ -9,7 +9,7 @@ members = [
     "packages/types",
     "packages/utils",
     "packages/version-pins",
-    "packages/wavs",
+    "packages/warpdrive",
     "examples/components/cosmos-query",
     "examples/components/chain-trigger-lookup",
     "examples/components/echo-data",
@@ -281,11 +281,11 @@ awsm_web = {version = "0.45.0", default-features = false, features = ["dom", "fi
 
 # local
 utils = { path = "packages/utils" }
-warpdrive = { path = "packages/wavs" }
+warpdrive = { path = "packages/warpdrive" }
 warpdrive-engine = { path = "packages/engine" }
 warpdrive-types = { path = "packages/types" }
 warpdrive-cli = { path = "packages/cli" }
-warpdrive-benchmark-common = { path = "packages/wavs/benches/common" }
+warpdrive-benchmark-common = { path = "packages/warpdrive/benches/common" }
 example-helpers = { path = "examples/components/_helpers" }
 example-types = { path = "examples/components/_types" }
 cw-warpdrive-mock-api = { path = "examples/contracts/cosmwasm/mock/api" }

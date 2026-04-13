@@ -12,7 +12,7 @@ import { existsSync } from 'fs';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const args = process.argv.slice(2);
-if (args.length === 0 && process.env.WAVS_SKIP_SETUP !== '1') {
+if (args.length === 0 && process.env.WARPDRIVE_SKIP_SETUP !== '1') {
   const { default: runSetup } = await import('./setup.mjs');
   await runSetup();
   process.exit(0);

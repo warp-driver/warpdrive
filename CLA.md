@@ -1,7 +1,7 @@
 CONTRIBUTOR LICENSE AGREEMENT
 
 This Contributor License Agreement ("CLA") must be accepted by each Contributor
-to WAVS (”the Project”), indicating agreement with the license terms below. BY
+to WarpDrive (”the Project”), indicating agreement with the license terms below. BY
 clicking on ACCEPT, You accept and agree to the following terms and conditions
 for Your Contributions (present and future) that you submit to the Project. Except
 for the license granted herein to the Layer Labs Ltd. (“the Company”) and

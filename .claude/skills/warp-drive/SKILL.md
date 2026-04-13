@@ -5,13 +5,13 @@ description: >
   compute for Stellar/Soroban) components and services using the wavs MCP server.
   Use when the user wants to build a WASM component, deploy a new service, update
   an existing service, or manage service lifecycle. Triggers on: warp-drive, wavs,
-  wasm component, AVS, service manager, deploy service, scaffold component, Vectr,
+  wasm component, Circuit, service manager, deploy service, scaffold component, Vectr,
   circuit.
 ---
 
-# WAVS Developer Guide
+# WarpDrive Developer Guide
 
-WAVS runs off-chain computation as sandboxed WebAssembly (WASI) components triggered by on-chain events (EVM/Cosmos contract events, cron, block intervals, or manual inputs); execution results are submitted back on-chain through a ServiceManager contract.
+WarpDrive runs off-chain computation as sandboxed WebAssembly (WASI) components triggered by on-chain events (EVM/Cosmos contract events, cron, block intervals, or manual inputs); execution results are submitted back on-chain through a ServiceManager contract.
 
 ---
 
@@ -24,24 +24,24 @@ The `wavs:` MCP tools below require `warpdrive-mcp` to be running and registered
 npx @warpdrive/mcp@latest
 ```
 Interactive wizard: installs the binary, prompts for URL + token + credentials,
-writes `~/.claude.json` and `~/.wavs/wavs.toml`, installs skill files.
+writes `~/.claude.json` and `~/.warpdrive/warpdrive.toml`, installs skill files.
 
-**Using the WAVS desktop app**
+**Using the WarpDrive desktop app**
 The app auto-starts `warpdrive-mcp`. Use the "Register with Claude Code" button in
 Settings → MCP Server to register for any project path without leaving the app.
 
-**WAVS repo users**
+**WarpDrive repo users**
 ```bash
 just setup-claude-mcp [/path/to/project]
 ```
 
 **CLI / manual setup**
 ```bash
-# 1. Start a WAVS node
-just start-wavs-dev
+# 1. Start a WarpDrive node
+just start-warpdrive-dev
 
 # 2. Run warpdrive-mcp (in a separate terminal)
-./target/release/warpdrive-mcp --wavs-url http://localhost:8000 --token <token>
+./target/release/warpdrive-mcp --warpdrive-url http://localhost:8000 --token <token>
 
 # 3. Register with Claude Code
 npx @warpdrive/mcp@latest
@@ -70,7 +70,7 @@ When in doubt, start with **component-dev** — it ends with a deployment step.
 | **Read** | `get_node_info`, `get_health`, `list_services`, `get_service` | None |
 | **Write** | `deploy_service`, `delete_service` | `--token` |
 | **Dev** | `upload_component`, `save_service`, `simulate_trigger`, `deploy_dev_service`, `query_kv` | Dev endpoints enabled |
-| **Chain-write** | `set_service_uri`, `deploy_service_manager`, `deploy_poa_service_manager`, `register_operator` | `WAVS_MCP_CHAIN_CREDENTIAL` env var |
+| **Chain-write** | `set_service_uri`, `deploy_service_manager`, `deploy_poa_service_manager`, `register_operator` | `WARPDRIVE_MCP_CHAIN_CREDENTIAL` env var |
 | **Local** | `get_wit_interface`, `scaffold_component`, `build_component` | None |
 
 Full tool reference: [`reference/mcp-tools.md`](reference/mcp-tools.md)
@@ -79,17 +79,17 @@ Full tool reference: [`reference/mcp-tools.md`](reference/mcp-tools.md)
 
 ## Key Configuration
 
-For on-chain operations, credentials are read from `~/.wavs/wavs.toml` (the WAVS home config):
+For on-chain operations, credentials are read from `~/.warpdrive/warpdrive.toml` (the WarpDrive home config):
 
 ```toml
-[wavs]
+[warpdrive]
 mcp_chain_credential = "0x<private-key>"
 signing_mnemonic = "word1 word2 ... word12"
 ```
 
-The WAVS app "Register with Claude" button and `just setup-claude-mcp` write this file automatically.
+The WarpDrive app "Register with Claude" button and `just setup-claude-mcp` write this file automatically.
 
-Dev endpoints must be enabled in `wavs.toml` under `[wavs]`:
+Dev endpoints must be enabled in `warpdrive.toml` under `[warpdrive]`:
 ```toml
 dev_endpoints_enabled = true   # Required for upload, save, simulate, deploy_dev
 ```

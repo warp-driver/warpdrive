@@ -19,7 +19,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 function banner() {
   console.log('');
-  console.log('  WAVS MCP Setup Wizard');
+  console.log('  WarpDrive MCP Setup Wizard');
   console.log('  ─────────────────────');
   console.log('  Sets up warpdrive-mcp for Claude Code and/or Claude Desktop');
   console.log('');
@@ -57,13 +57,13 @@ function findGlobalBinary() {
   return null;
 }
 
-/** Parse --wavs-url and --token from any running warpdrive-mcp process. */
+/** Parse --warpdrive-url and --token from any running warpdrive-mcp process. */
 function detectRunningProcess() {
   try {
     const out = execSync('ps aux', { encoding: 'utf8', timeout: 5000 });
     for (const line of out.split('\n')) {
       if (!line.includes('warpdrive-mcp') || line.includes('grep')) continue;
-      const urlM = line.match(/--wavs-url\s+(\S+)/);
+      const urlM = line.match(/--warpdrive-url\s+(\S+)/);
       const tokM = line.match(/--token\s+(\S+)/);
       if (urlM || tokM) {
         return { url: urlM?.[1] ?? null, token: tokM?.[1] ?? null };
@@ -133,9 +133,9 @@ function upsertTomlKey(content, section, key, value) {
   return lines.join('\n') + sep + `[${section}]\n${newAssignment}\n`;
 }
 
-/** Read mcp_chain_credential and signing_mnemonic from ~/.wavs/wavs.toml. */
+/** Read mcp_chain_credential and signing_mnemonic from ~/.warpdrive/warpdrive.toml. */
 function readWavsToml() {
-  const tomlPath = path.join(os.homedir(), '.wavs', 'wavs.toml');
+  const tomlPath = path.join(os.homedir(), '.wavs', 'warpdrive.toml');
   if (!existsSync(tomlPath)) return { cred: null, mnem: null };
   try {
     const content = readFileSync(tomlPath, 'utf8');
@@ -153,9 +153,9 @@ function readWavsToml() {
   }
 }
 
-/** Write credentials to ~/.wavs/wavs.toml. */
+/** Write credentials to ~/.warpdrive/warpdrive.toml. */
 function writeWavsToml(cred, mnem) {
-  const tomlPath = path.join(os.homedir(), '.wavs', 'wavs.toml');
+  const tomlPath = path.join(os.homedir(), '.wavs', 'warpdrive.toml');
   mkdirSync(path.dirname(tomlPath), { recursive: true });
   let content = existsSync(tomlPath) ? readFileSync(tomlPath, 'utf8') : '';
   if (cred) content = upsertTomlKey(content, 'wavs', 'mcp_chain_credential', cred);
@@ -175,12 +175,12 @@ function writeClaudeJson(projectPath, command, args, global_) {
 
   if (global_) {
     config.mcpServers = config.mcpServers || {};
-    config.mcpServers.wavs = entry;
+    config.mcpServers.warp-drive = entry;
   } else {
     config.projects = config.projects || {};
     config.projects[projectPath] = config.projects[projectPath] || {};
     config.projects[projectPath].mcpServers = config.projects[projectPath].mcpServers || {};
-    config.projects[projectPath].mcpServers.wavs = entry;
+    config.projects[projectPath].mcpServers.warp-drive = entry;
   }
 
   const tmp = claudeJson + '.tmp';
@@ -198,7 +198,7 @@ function writeDesktopConfig(command, args) {
   }
 
   config.mcpServers = config.mcpServers || {};
-  config.mcpServers.wavs = { command, args };
+  config.mcpServers.warp-drive = { command, args };
 
   const tmp = configPath + '.tmp';
   writeFileSync(tmp, JSON.stringify(config, null, 2) + '\n');
@@ -308,7 +308,7 @@ export default async function main() {
     console.log('');
 
     // 7. Credentials
-    console.log('  Checking ~/.wavs/wavs.toml for chain credentials ...');
+    console.log('  Checking ~/.warpdrive/warpdrive.toml for chain credentials ...');
     const { cred: existingCred, mnem: existingMnem } = readWavsToml();
     let cred = existingCred;
     let mnem = existingMnem;
@@ -331,13 +331,13 @@ export default async function main() {
     }
     console.log('');
 
-    // 8. Write ~/.wavs/wavs.toml
+    // 8. Write ~/.warpdrive/warpdrive.toml
     if (cred || mnem) {
       writeWavsToml(cred || null, mnem || null);
-      console.log('  Credentials written to ~/.wavs/wavs.toml');
+      console.log('  Credentials written to ~/.warpdrive/warpdrive.toml');
     }
 
-    const mcpArgs = ['--wavs-url', url, '--token', token];
+    const mcpArgs = ['--warpdrive-url', url, '--token', token];
 
     // 9. Claude Code
     if (forCode) {

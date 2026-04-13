@@ -11,7 +11,7 @@ use super::config::Configs;
 
 #[derive(Clone)]
 pub struct Clients {
-    /// HTTP clients for each WAVS operator instance (one per port)
+    /// HTTP clients for each WarpDrive vector instance (one per port)
     pub http_clients: Vec<HttpClient>,
     pub cli_ctx: Arc<warpdrive_cli::context::CliContext>,
     pub evm_clients: Arc<HashMap<ChainKey, EvmSigningClient>>,
@@ -20,10 +20,10 @@ pub struct Clients {
 
 impl Clients {
     pub async fn new(configs: &Configs) -> Self {
-        // Create HTTP clients for each WAVS instance
-        let mut http_clients = Vec::with_capacity(configs.num_operators());
-        for (operator_index, wavs_config) in configs.wavs_configs.iter().enumerate() {
-            let port = wavs_config.port;
+        // Create HTTP clients for each WarpDrive instance
+        let mut http_clients = Vec::with_capacity(configs.num_vectors());
+        for (vector_index, warpdrive_config) in configs.warpdrive_configs.iter().enumerate() {
+            let port = warpdrive_config.port;
             let endpoint = format!("http://127.0.0.1:{}", port);
             let http_client = HttpClient::new(endpoint);
 
@@ -34,8 +34,8 @@ impl Clients {
                         Ok(_) => break,
                         Err(_) => {
                             tracing::info!(
-                                "Waiting for WAVS instance {} (port {}) to start...",
-                                operator_index,
+                                "Waiting for WarpDrive instance {} (port {}) to start...",
+                                vector_index,
                                 port
                             );
                             tokio::time::sleep(Duration::from_millis(100)).await;

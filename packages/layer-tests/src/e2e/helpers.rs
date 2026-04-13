@@ -7,7 +7,7 @@ use layer_climb::pool::SigningClientPoolManager;
 use layer_climb::prelude::CosmosAddr;
 use std::{collections::BTreeMap, num::NonZero, sync::Arc, time::Duration};
 use utils::evm_client::AnyNonceManager;
-use utils::{config::WAVS_ENV_PREFIX, evm_client::EvmSigningClient, filesystem::workspace_path};
+use utils::{config::WARPDRIVE_ENV_PREFIX, evm_client::EvmSigningClient, filesystem::workspace_path};
 use uuid::Uuid;
 use warpdrive_cli::clients::HttpClient;
 
@@ -117,12 +117,12 @@ fn deploy_component(
     // Set env_keys to the actual prefixed env var names that will be read by the component
     component.env_keys = env_vars
         .keys()
-        .map(|k| format!("{}_{}", WAVS_ENV_PREFIX, k))
+        .map(|k| format!("{}_{}", WARPDRIVE_ENV_PREFIX, k))
         .collect();
 
     for (k, v) in env_vars.iter() {
         // NOTE: we should avoid collisions here
-        std::env::set_var(format!("{}_{}", WAVS_ENV_PREFIX, k), v);
+        std::env::set_var(format!("{}_{}", WARPDRIVE_ENV_PREFIX, k), v);
     }
 
     component
@@ -734,7 +734,7 @@ pub async fn wait_for_hypercore_streams_to_finalize(
 
 /// Wait for hypercore mesh to form by checking the test client's peer connection count directly.
 ///
-/// This is used in multi-operator tests to ensure all operators have discovered each other
+/// This is used in multi-vector tests to ensure all vectors have discovered each other
 /// via hyperswarm before proceeding with test execution.
 pub async fn wait_for_hypercore_mesh_ready(
     hypercore_client: &std::sync::Arc<crate::e2e::handles::hypercore::HypercoreTestClient>,

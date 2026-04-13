@@ -76,9 +76,9 @@ export function Health() {
         </div>
       </div>
 
-      {/* WAVS Node Status */}
+      {/* WarpDrive Node Status */}
       <div className="p-6 rounded-lg bg-charcoal-medium border border-charcoal-light">
-        <h2 className="text-xl font-semibold text-beige-light mb-4">WAVS Node</h2>
+        <h2 className="text-xl font-semibold text-beige-light mb-4">WarpDrive Node</h2>
         <div className="flex items-center gap-3">
           <StatusIndicator status={nodeStatus} />
           <span className="text-beige-warm">

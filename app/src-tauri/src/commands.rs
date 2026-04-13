@@ -23,15 +23,15 @@ const KEYCHAIN_ACCOUNT: &str = "mnemonic";
 use warpdrive::health::HealthStatus;
 
 use crate::state::{
-    LogBufferState, McpServerState, MnemonicCacheState, SettingsState, WavsConfigState,
+    LogBufferState, McpServerState, MnemonicCacheState, SettingsState, WarpdriveConfigState,
     WavsInstance, WavsInstanceState,
 };
 
 #[tauri::command(rename_all = "snake_case")]
-pub async fn cmd_set_wavs_home(
+pub async fn cmd_set_warpdrive_home(
     app: AppHandle,
     settings: State<'_, SettingsState>,
-    wavs_config: State<'_, WavsConfigState>,
+    warpdrive_config: State<'_, WarpdriveConfigState>,
 ) -> AppResult<DirectoryChooserResponse> {
     // Open native directory picker
     let directory = app.dialog().file().blocking_pick_folder();
@@ -39,11 +39,11 @@ pub async fn cmd_set_wavs_home(
     match directory {
         Some(dir) => {
             let path = dir.into_path().map_err(|e| AppError::Io(e.to_string()))?;
-            wavs_config.reload(path.clone()).await?;
+            warpdrive_config.reload(path.clone()).await?;
 
             settings
                 .update(&app, |s| {
-                    s.wavs_home = Some(path.clone());
+                    s.warpdrive_home = Some(path.clone());
                 })
                 .await?;
 
@@ -89,19 +89,19 @@ pub async fn cmd_restart(app: AppHandle) {
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub async fn cmd_start_wavs(
+pub async fn cmd_start_warpdrive(
     app: AppHandle,
     settings: State<'_, SettingsState>,
-    wavs_config: State<'_, WavsConfigState>,
+    warpdrive_config: State<'_, WarpdriveConfigState>,
     wavs_instance: State<'_, WavsInstanceState>,
     mnemonic_cache: State<'_, MnemonicCacheState>,
     mcp_state: State<'_, McpServerState>,
     log_buffer_state: State<'_, LogBufferState>,
 ) -> AppResult<()> {
-    let mut config = match wavs_config.get_cloned() {
+    let mut config = match warpdrive_config.get_cloned() {
         Some(cfg) => cfg,
         None => {
-            return Err(AppError::WavsConfig("missing".to_string()));
+            return Err(AppError::WarpdriveConfig("missing".to_string()));
         }
     };
 
@@ -110,7 +110,7 @@ pub async fn cmd_start_wavs(
         config.signing_mnemonic = Some(credential);
     }
 
-    // Inject WAVS_ENV_* variables from settings into the process environment
+    // Inject WARPDRIVE_ENV_* variables from settings into the process environment
     for (key, value) in &settings.get_cloned().env_vars {
         std::env::set_var(key, value);
     }
@@ -170,8 +170,8 @@ pub async fn cmd_start_wavs(
     let metrics = Metrics::new(meter);
 
     let dispatcher = Arc::new(
-        Dispatcher::new(&config, metrics.wavs, app.clone())
-            .map_err(|e| AppError::WavsConfig(e.to_string()))?,
+        Dispatcher::new(&config, metrics.warpdrive, app.clone())
+            .map_err(|e| AppError::WarpdriveConfig(e.to_string()))?,
     );
 
     // Restore saved services from the settings cache using the correct HD index from the
@@ -221,24 +221,24 @@ pub async fn cmd_start_wavs(
     // Auto-start MCP server if configured
     if saved_settings.mcp_auto_start && !mcp_state.is_running() {
         if let Some(bin) = find_mcp_binary() {
-            let wavs_url = match wavs_config.get_cloned() {
+            let warpdrive_url = match warpdrive_config.get_cloned() {
                 Some(config) => format!("http://{}:{}", config.host, config.port),
                 None => "http://localhost:8000".to_string(),
             };
             let mut cmd = std::process::Command::new(&bin);
-            cmd.arg("--wavs-url").arg(&wavs_url);
+            cmd.arg("--warpdrive-url").arg(&warpdrive_url);
             if let Some(token) = &saved_settings.mcp_token {
                 cmd.arg("--token").arg(token);
             }
             // Inject chain credentials as env vars so warpdrive-mcp doesn't need to read
-            // wavs.toml from the project directory (which may be a git repo).
-            if let Some(wavs_home) = &saved_settings.wavs_home {
-                let (cred, mnem) = read_wavs_home_credentials(wavs_home);
+            // warpdrive.toml from the project directory (which may be a git repo).
+            if let Some(warpdrive_home) = &saved_settings.warpdrive_home {
+                let (cred, mnem) = read_warpdrive_home_credentials(warpdrive_home);
                 if let Some(c) = cred {
-                    cmd.env("WAVS_MCP_CHAIN_CREDENTIAL", c);
+                    cmd.env("WARPDRIVE_MCP_CHAIN_CREDENTIAL", c);
                 }
                 if let Some(m) = mnem {
-                    cmd.env("WAVS_SIGNING_MNEMONIC", m);
+                    cmd.env("WARPDRIVE_SIGNING_MNEMONIC", m);
                 }
             }
             cmd.stdin(std::process::Stdio::piped());
@@ -267,9 +267,9 @@ pub async fn cmd_start_wavs(
 
 #[tauri::command(rename_all = "snake_case")]
 pub async fn cmd_get_chain_configs(
-    wavs_config: State<'_, WavsConfigState>,
+    warpdrive_config: State<'_, WarpdriveConfigState>,
 ) -> AppResult<ChainConfigs> {
-    Ok(wavs_config.chain_configs())
+    Ok(warpdrive_config.chain_configs())
 }
 
 #[tauri::command(rename_all = "snake_case")]
@@ -333,17 +333,17 @@ pub async fn cmd_remove_service(
 
 #[tauri::command(rename_all = "snake_case")]
 pub async fn cmd_save_service_to_node(
-    wavs_config: State<'_, WavsConfigState>,
+    warpdrive_config: State<'_, WarpdriveConfigState>,
     service_json: String,
 ) -> AppResult<String> {
-    let wavs_url = match wavs_config.get_cloned() {
+    let warpdrive_url = match warpdrive_config.get_cloned() {
         Some(config) => format!("http://{}:{}", config.host, config.port),
         None => "http://localhost:8000".to_string(),
     };
 
     let client = reqwest::Client::new();
     let resp = client
-        .post(format!("{}/dev/services", wavs_url))
+        .post(format!("{}/dev/services", warpdrive_url))
         .header("Content-Type", "application/json")
         .body(service_json)
         .send()
@@ -364,7 +364,7 @@ pub async fn cmd_save_service_to_node(
         .await
         .map_err(|e| AppError::Service(format!("Failed to parse save response: {}", e)))?;
 
-    Ok(format!("{}/dev/services/{}", wavs_url, save_resp.hash))
+    Ok(format!("{}/dev/services/{}", warpdrive_url, save_resp.hash))
 }
 
 /// Load mnemonic from OS keyring and populate the cache.
@@ -433,52 +433,52 @@ pub fn cmd_delete_mnemonic(cache: State<'_, MnemonicCacheState>) -> AppResult<()
 
 #[tauri::command(rename_all = "snake_case")]
 pub async fn cmd_read_wavs_toml(settings: State<'_, SettingsState>) -> AppResult<String> {
-    let wavs_home = settings
+    let warpdrive_home = settings
         .get_cloned()
-        .wavs_home
-        .ok_or_else(|| AppError::WavsConfig("wavs_home not set".to_string()))?;
+        .warpdrive_home
+        .ok_or_else(|| AppError::WarpdriveConfig("warpdrive_home not set".to_string()))?;
 
-    let path = wavs_home.join("wavs.toml");
+    let path = warpdrive_home.join("warpdrive.toml");
     tokio::fs::read_to_string(&path)
         .await
-        .map_err(|e| AppError::Io(format!("Failed to read wavs.toml: {}", e)))
+        .map_err(|e| AppError::Io(format!("Failed to read warpdrive.toml: {}", e)))
 }
 
 #[tauri::command(rename_all = "snake_case")]
 pub async fn cmd_write_wavs_toml(
     settings: State<'_, SettingsState>,
-    wavs_config: State<'_, WavsConfigState>,
+    warpdrive_config: State<'_, WarpdriveConfigState>,
     content: String,
 ) -> AppResult<()> {
     // Validate TOML syntax
     content
         .parse::<toml::Table>()
-        .map_err(|e| AppError::WavsConfig(format!("Invalid TOML: {}", e)))?;
+        .map_err(|e| AppError::WarpdriveConfig(format!("Invalid TOML: {}", e)))?;
 
-    let wavs_home = settings
+    let warpdrive_home = settings
         .get_cloned()
-        .wavs_home
-        .ok_or_else(|| AppError::WavsConfig("wavs_home not set".to_string()))?;
+        .warpdrive_home
+        .ok_or_else(|| AppError::WarpdriveConfig("warpdrive_home not set".to_string()))?;
 
-    let path = wavs_home.join("wavs.toml");
+    let path = warpdrive_home.join("warpdrive.toml");
     tokio::fs::write(&path, &content)
         .await
-        .map_err(|e| AppError::Io(format!("Failed to write wavs.toml: {}", e)))?;
+        .map_err(|e| AppError::Io(format!("Failed to write warpdrive.toml: {}", e)))?;
 
     // Reload config to pick up changes
-    wavs_config.reload(wavs_home).await?;
+    warpdrive_config.reload(warpdrive_home).await?;
 
     Ok(())
 }
 
 #[tauri::command(rename_all = "snake_case")]
 pub async fn cmd_get_health_status(
-    wavs_config: State<'_, WavsConfigState>,
+    warpdrive_config: State<'_, WarpdriveConfigState>,
 ) -> AppResult<HealthStatus> {
-    let config = match wavs_config.get_cloned() {
+    let config = match warpdrive_config.get_cloned() {
         Some(cfg) => cfg,
         None => {
-            return Err(AppError::WavsConfig("WAVS config not loaded".to_string()));
+            return Err(AppError::WarpdriveConfig("WarpDrive config not loaded".to_string()));
         }
     };
 
@@ -490,11 +490,11 @@ pub async fn cmd_get_health_status(
         .timeout(std::time::Duration::from_secs(5))
         .send()
         .await
-        .map_err(|e| AppError::HealthCheck(format!("Failed to connect to WAVS node: {}", e)))?;
+        .map_err(|e| AppError::HealthCheck(format!("Failed to connect to WarpDrive node: {}", e)))?;
 
     if !response.status().is_success() {
         return Err(AppError::HealthCheck(format!(
-            "WAVS node returned error status: {}",
+            "WarpDrive node returned error status: {}",
             response.status()
         )));
     }
@@ -709,8 +709,8 @@ pub fn cmd_get_mcp_binary_path() -> Option<String> {
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub fn cmd_get_wavs_url(wavs_config: State<'_, WavsConfigState>) -> String {
-    match wavs_config.get_cloned() {
+pub fn cmd_get_warpdrive_url(warpdrive_config: State<'_, WarpdriveConfigState>) -> String {
+    match warpdrive_config.get_cloned() {
         Some(config) => format!("http://{}:{}", config.host, config.port),
         None => "http://localhost:8000".to_string(),
     }
@@ -720,7 +720,7 @@ pub fn cmd_get_wavs_url(wavs_config: State<'_, WavsConfigState>) -> String {
 pub async fn cmd_start_mcp_server(
     app: AppHandle,
     settings: State<'_, SettingsState>,
-    wavs_config: State<'_, WavsConfigState>,
+    warpdrive_config: State<'_, WarpdriveConfigState>,
     mcp_state: State<'_, McpServerState>,
 ) -> AppResult<()> {
     if mcp_state.is_running() {
@@ -728,7 +728,7 @@ pub async fn cmd_start_mcp_server(
     }
 
     let s = settings.get_cloned();
-    let wavs_url = match wavs_config.get_cloned() {
+    let warpdrive_url = match warpdrive_config.get_cloned() {
         Some(config) => format!("http://{}:{}", config.host, config.port),
         None => "http://localhost:8000".to_string(),
     };
@@ -740,7 +740,7 @@ pub async fn cmd_start_mcp_server(
     })?;
 
     let mut cmd = std::process::Command::new(&bin);
-    cmd.arg("--wavs-url").arg(&wavs_url);
+    cmd.arg("--warpdrive-url").arg(&warpdrive_url);
     if let Some(token) = &s.mcp_token {
         cmd.arg("--token").arg(token);
     }
@@ -817,7 +817,7 @@ pub async fn cmd_save_env_vars(
     settings: State<'_, SettingsState>,
     env_vars: HashMap<String, String>,
 ) -> AppResult<()> {
-    // Apply to process environment immediately so running WAVS picks them up
+    // Apply to process environment immediately so running WarpDrive picks them up
     for (key, value) in &env_vars {
         std::env::set_var(key, value);
     }
@@ -831,12 +831,12 @@ pub async fn cmd_save_env_vars(
 // --- Register with Claude Code ---
 
 /// Write warpdrive-mcp entry for `project_path` into ~/.claude.json.
-/// Only writes command + args — credentials are stored in ~/.wavs/wavs.toml instead
+/// Only writes command + args — credentials are stored in ~/.warpdrive/warpdrive.toml instead
 /// so they work with all MCP clients, not just Claude Code.
 fn register_claude_mcp_json(
     project_path: &str,
     binary: &std::path::Path,
-    wavs_url: &str,
+    warpdrive_url: &str,
     token: Option<&str>,
 ) -> anyhow::Result<()> {
     let home = std::env::var("HOME").map_err(|_| anyhow::anyhow!("HOME env var not set"))?;
@@ -850,8 +850,8 @@ fn register_claude_mcp_json(
     };
 
     let mut args = vec![
-        serde_json::Value::String("--wavs-url".to_string()),
-        serde_json::Value::String(wavs_url.to_string()),
+        serde_json::Value::String("--warpdrive-url".to_string()),
+        serde_json::Value::String(warpdrive_url.to_string()),
     ];
     if let Some(t) = token {
         args.push(serde_json::Value::String("--token".to_string()));
@@ -879,7 +879,7 @@ fn register_claude_mcp_json(
         .entry("mcpServers")
         .or_insert(serde_json::json!({}));
 
-    config["projects"][project_path]["mcpServers"]["wavs"] = entry;
+    config["projects"][project_path]["mcpServers"]["warp-drive"] = entry;
 
     // Write atomically via a temp file in the same directory
     let parent = claude_json.parent().unwrap();
@@ -897,11 +897,11 @@ fn register_claude_mcp_json(
     Ok(())
 }
 
-/// Read mcp_chain_credential and signing_mnemonic from a WAVS home wavs.toml.
+/// Read mcp_chain_credential and signing_mnemonic from a WarpDrive home warpdrive.toml.
 /// Checks both the new `mcp_chain_credential` key and the legacy `chain_write_credential`
 /// key so that projects that haven't yet been migrated still work.
-fn read_wavs_home_credentials(wavs_home: &std::path::Path) -> (Option<String>, Option<String>) {
-    let toml_path = wavs_home.join("wavs.toml");
+fn read_warpdrive_home_credentials(warpdrive_home: &std::path::Path) -> (Option<String>, Option<String>) {
+    let toml_path = warpdrive_home.join("warpdrive.toml");
     if !toml_path.exists() {
         return (None, None);
     }
@@ -913,7 +913,7 @@ fn read_wavs_home_credentials(wavs_home: &std::path::Path) -> (Option<String>, O
         Ok(t) => t,
         Err(_) => return (None, None),
     };
-    let wavs_section = match table.get("wavs").and_then(|v| v.as_table()) {
+    let wavs_section = match table.get("warpdrive").and_then(|v| v.as_table()) {
         Some(t) => t,
         None => return (None, None),
     };
@@ -930,9 +930,9 @@ fn read_wavs_home_credentials(wavs_home: &std::path::Path) -> (Option<String>, O
     (cred, mnem)
 }
 
-/// Write mcp_chain_credential and/or signing_mnemonic to ~/.wavs/wavs.toml.
+/// Write mcp_chain_credential and/or signing_mnemonic to ~/.warpdrive/warpdrive.toml.
 /// Creates the directory and file if they don't exist. Upserts values in the
-/// [wavs] section, preserving all other keys and sections.
+/// [warpdrive] section, preserving all other keys and sections.
 fn write_global_wavs_credentials(
     mcp_chain_credential: Option<&str>,
     signing_mnemonic: Option<&str>,
@@ -944,7 +944,7 @@ fn write_global_wavs_credentials(
     let wavs_dir = std::path::Path::new(&home).join(".wavs");
     std::fs::create_dir_all(&wavs_dir)?;
 
-    let toml_path = wavs_dir.join("wavs.toml");
+    let toml_path = wavs_dir.join("warpdrive.toml");
     let mut table: toml::Table = if toml_path.exists() {
         let content = std::fs::read_to_string(&toml_path)?;
         content.parse().unwrap_or_default()
@@ -954,11 +954,11 @@ fn write_global_wavs_credentials(
 
     {
         let wavs_section = table
-            .entry("wavs")
+            .entry("warpdrive")
             .or_insert_with(|| toml::Value::Table(toml::Table::new()));
         let wavs_table = wavs_section
             .as_table_mut()
-            .ok_or_else(|| anyhow::anyhow!("[wavs] is not a table in ~/.wavs/wavs.toml"))?;
+            .ok_or_else(|| anyhow::anyhow!("[warpdrive] is not a table in ~/.warpdrive/warpdrive.toml"))?;
         if let Some(cred) = mcp_chain_credential {
             wavs_table.insert(
                 "mcp_chain_credential".to_string(),
@@ -977,7 +977,7 @@ fn write_global_wavs_credentials(
         .map_err(|e| anyhow::anyhow!("Failed to serialize TOML: {}", e))?;
 
     // Write atomically via a temp file
-    let tmp_path = wavs_dir.join(format!(".wavs.toml.tmp.{}", std::process::id()));
+    let tmp_path = wavs_dir.join(format!(".warpdrive.toml.tmp.{}", std::process::id()));
     {
         use std::io::Write;
         let mut f = std::fs::File::create(&tmp_path)?;
@@ -991,7 +991,7 @@ fn write_global_wavs_credentials(
 #[tauri::command(rename_all = "snake_case")]
 pub async fn cmd_register_claude_mcp(
     project_path: String,
-    wavs_config: State<'_, WavsConfigState>,
+    warpdrive_config: State<'_, WarpdriveConfigState>,
     settings: State<'_, SettingsState>,
 ) -> AppResult<String> {
     let binary = find_mcp_binary().ok_or_else(|| {
@@ -1000,7 +1000,7 @@ pub async fn cmd_register_claude_mcp(
         )
     })?;
 
-    let wavs_url = match wavs_config.get_cloned() {
+    let warpdrive_url = match warpdrive_config.get_cloned() {
         Some(c) => format!("http://{}:{}", c.host, c.port),
         None => "http://localhost:8000".to_string(),
     };
@@ -1008,18 +1008,18 @@ pub async fn cmd_register_claude_mcp(
     let s = settings.get_cloned();
     let token = s.mcp_token.as_deref();
 
-    // Read credentials from the project wavs.toml
+    // Read credentials from the project warpdrive.toml
     let (cred, mnem) = s
-        .wavs_home
+        .warpdrive_home
         .as_deref()
-        .map(read_wavs_home_credentials)
+        .map(read_warpdrive_home_credentials)
         .unwrap_or((None, None));
 
     // Write ~/.claude.json (command + args only, no credentials)
-    register_claude_mcp_json(&project_path, &binary, &wavs_url, token)
+    register_claude_mcp_json(&project_path, &binary, &warpdrive_url, token)
         .map_err(|e| AppError::Io(e.to_string()))?;
 
-    // Write credentials to ~/.wavs/wavs.toml (universal, all MCP clients)
+    // Write credentials to ~/.warpdrive/warpdrive.toml (universal, all MCP clients)
     write_global_wavs_credentials(cred.as_deref(), mnem.as_deref())
         .map_err(|e| AppError::Io(e.to_string()))?;
 
@@ -1044,12 +1044,12 @@ pub struct FsEntry {
 
 #[tauri::command(rename_all = "snake_case")]
 pub async fn cmd_list_kv_entries(
-    wavs_config: State<'_, WavsConfigState>,
+    warpdrive_config: State<'_, WarpdriveConfigState>,
     service_id: String,
 ) -> AppResult<Vec<KvEntry>> {
-    let config = match wavs_config.get_cloned() {
+    let config = match warpdrive_config.get_cloned() {
         Some(cfg) => cfg,
-        None => return Err(AppError::WavsConfig("WAVS config not loaded".to_string())),
+        None => return Err(AppError::WarpdriveConfig("WarpDrive config not loaded".to_string())),
     };
     let url = format!(
         "http://{}:{}/dev/kv/{}",
@@ -1076,13 +1076,13 @@ pub async fn cmd_list_kv_entries(
 
 #[tauri::command(rename_all = "snake_case")]
 pub async fn cmd_list_fs_entries(
-    wavs_config: State<'_, WavsConfigState>,
+    warpdrive_config: State<'_, WarpdriveConfigState>,
     service_id: String,
     path: String,
 ) -> AppResult<Vec<FsEntry>> {
-    let config = match wavs_config.get_cloned() {
+    let config = match warpdrive_config.get_cloned() {
         Some(cfg) => cfg,
-        None => return Err(AppError::WavsConfig("WAVS config not loaded".to_string())),
+        None => return Err(AppError::WarpdriveConfig("WarpDrive config not loaded".to_string())),
     };
     let url = if path.is_empty() {
         format!(
@@ -1122,13 +1122,13 @@ pub async fn cmd_list_fs_entries(
 
 #[tauri::command(rename_all = "snake_case")]
 pub async fn cmd_read_fs_file(
-    wavs_config: State<'_, WavsConfigState>,
+    warpdrive_config: State<'_, WarpdriveConfigState>,
     service_id: String,
     path: String,
 ) -> AppResult<Vec<u8>> {
-    let config = match wavs_config.get_cloned() {
+    let config = match warpdrive_config.get_cloned() {
         Some(cfg) => cfg,
-        None => return Err(AppError::WavsConfig("WAVS config not loaded".to_string())),
+        None => return Err(AppError::WarpdriveConfig("WarpDrive config not loaded".to_string())),
     };
     let url = format!(
         "http://{}:{}/dev/fs/{}/{}",

@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use derive_enum_all_values::AllValues;
 use serde::{Deserialize, Serialize};
 
-use super::components::{AggregatorComponent, ComponentName, OperatorComponent};
+use super::components::{AggregatorComponent, ComponentName, VectorComponent};
 
 #[derive(Clone, Debug, Default)]
 pub struct TestMatrix {
@@ -132,7 +132,7 @@ impl TestMatrix {
                 .contains(&CrossChainService::CosmosToEvmEchoData)
     }
 
-    pub fn multi_operator_enabled(&self) -> bool {
+    pub fn multi_vector_enabled(&self) -> bool {
         self.evm.contains(&EvmService::MultiOperator)
     }
 }
@@ -140,69 +140,69 @@ impl TestMatrix {
 impl From<EvmService> for Vec<ComponentName> {
     fn from(service: EvmService) -> Self {
         match service {
-            EvmService::ChainTriggerLookup => vec![ComponentName::Operator(
-                OperatorComponent::ChainTriggerLookup,
+            EvmService::ChainTriggerLookup => vec![ComponentName::Vector(
+                VectorComponent::ChainTriggerLookup,
             )],
             EvmService::CosmosQuery => {
-                vec![ComponentName::Operator(OperatorComponent::CosmosQuery)]
+                vec![ComponentName::Vector(VectorComponent::CosmosQuery)]
             }
-            EvmService::EchoData => vec![ComponentName::Operator(OperatorComponent::EchoData)],
+            EvmService::EchoData => vec![ComponentName::Vector(VectorComponent::EchoData)],
             EvmService::AtprotoEchoData => {
-                vec![ComponentName::Operator(OperatorComponent::EchoData)]
+                vec![ComponentName::Vector(VectorComponent::EchoData)]
             }
             // #[cfg(feature = "hypercore-tests")]
             // EvmService::HypercoreEchoData => {
-            //     vec![ComponentName::Operator(OperatorComponent::EchoData)]
+            //     vec![ComponentName::Vector(VectorComponent::EchoData)]
             // }
             EvmService::ChangeWorkflow => vec![
-                ComponentName::Operator(OperatorComponent::Square),
-                ComponentName::Operator(OperatorComponent::EchoData),
+                ComponentName::Vector(VectorComponent::Square),
+                ComponentName::Vector(VectorComponent::EchoData),
             ],
             EvmService::EchoDataSecondaryChain => {
-                vec![ComponentName::Operator(OperatorComponent::EchoData)]
+                vec![ComponentName::Vector(VectorComponent::EchoData)]
             }
-            EvmService::KvStore => vec![ComponentName::Operator(OperatorComponent::KvStore)],
+            EvmService::KvStore => vec![ComponentName::Vector(VectorComponent::KvStore)],
             EvmService::Permissions => {
-                vec![ComponentName::Operator(OperatorComponent::Permissions)]
+                vec![ComponentName::Vector(VectorComponent::Permissions)]
             }
-            EvmService::Square => vec![ComponentName::Operator(OperatorComponent::Square)],
+            EvmService::Square => vec![ComponentName::Vector(VectorComponent::Square)],
             EvmService::MultiWorkflow => vec![
-                ComponentName::Operator(OperatorComponent::Square),
-                ComponentName::Operator(OperatorComponent::EchoData),
+                ComponentName::Vector(VectorComponent::Square),
+                ComponentName::Vector(VectorComponent::EchoData),
             ],
-            EvmService::MultiTrigger => vec![ComponentName::Operator(OperatorComponent::EchoData)],
+            EvmService::MultiTrigger => vec![ComponentName::Vector(VectorComponent::EchoData)],
             EvmService::TriggerBackpressure => {
-                vec![ComponentName::Operator(OperatorComponent::EchoData)]
+                vec![ComponentName::Vector(VectorComponent::EchoData)]
             }
-            EvmService::BlockInterval => vec![ComponentName::Operator(
-                OperatorComponent::EchoBlockInterval,
+            EvmService::BlockInterval => vec![ComponentName::Vector(
+                VectorComponent::EchoBlockInterval,
             )],
-            EvmService::BlockIntervalStartStop => vec![ComponentName::Operator(
-                OperatorComponent::EchoBlockInterval,
+            EvmService::BlockIntervalStartStop => vec![ComponentName::Vector(
+                VectorComponent::EchoBlockInterval,
             )],
             EvmService::CronInterval => {
-                vec![ComponentName::Operator(OperatorComponent::EchoCronInterval)]
+                vec![ComponentName::Vector(VectorComponent::EchoCronInterval)]
             }
             EvmService::EmptyToEchoData => {
-                vec![ComponentName::Operator(OperatorComponent::EchoData)]
+                vec![ComponentName::Vector(VectorComponent::EchoData)]
             }
             EvmService::SimpleAggregator => {
-                vec![ComponentName::Operator(OperatorComponent::EchoData)]
+                vec![ComponentName::Vector(VectorComponent::EchoData)]
             }
             EvmService::TimerAggregator => {
-                vec![ComponentName::Operator(OperatorComponent::EchoData)]
+                vec![ComponentName::Vector(VectorComponent::EchoData)]
             }
             EvmService::TimerAggregatorReorg => {
-                vec![ComponentName::Operator(OperatorComponent::EchoData)]
+                vec![ComponentName::Vector(VectorComponent::EchoData)]
             }
             EvmService::GasPrice => {
                 vec![
-                    ComponentName::Operator(OperatorComponent::EchoData),
+                    ComponentName::Vector(VectorComponent::EchoData),
                     ComponentName::Aggregator(AggregatorComponent::SimpleAggregator),
                 ]
             }
             EvmService::MultiOperator => {
-                vec![ComponentName::Operator(OperatorComponent::EchoData)]
+                vec![ComponentName::Vector(VectorComponent::EchoData)]
             }
         }
     }
@@ -211,25 +211,25 @@ impl From<EvmService> for Vec<ComponentName> {
 impl From<CosmosService> for Vec<ComponentName> {
     fn from(service: CosmosService) -> Self {
         match service {
-            CosmosService::ChainTriggerLookup => vec![ComponentName::Operator(
-                OperatorComponent::ChainTriggerLookup,
+            CosmosService::ChainTriggerLookup => vec![ComponentName::Vector(
+                VectorComponent::ChainTriggerLookup,
             )],
             CosmosService::CosmosQuery => {
-                vec![ComponentName::Operator(OperatorComponent::CosmosQuery)]
+                vec![ComponentName::Vector(VectorComponent::CosmosQuery)]
             }
-            CosmosService::EchoData => vec![ComponentName::Operator(OperatorComponent::EchoData)],
+            CosmosService::EchoData => vec![ComponentName::Vector(VectorComponent::EchoData)],
             CosmosService::Permissions => {
-                vec![ComponentName::Operator(OperatorComponent::Permissions)]
+                vec![ComponentName::Vector(VectorComponent::Permissions)]
             }
-            CosmosService::Square => vec![ComponentName::Operator(OperatorComponent::Square)],
-            CosmosService::BlockInterval => vec![ComponentName::Operator(
-                OperatorComponent::EchoBlockInterval,
+            CosmosService::Square => vec![ComponentName::Vector(VectorComponent::Square)],
+            CosmosService::BlockInterval => vec![ComponentName::Vector(
+                VectorComponent::EchoBlockInterval,
             )],
-            CosmosService::BlockIntervalStartStop => vec![ComponentName::Operator(
-                OperatorComponent::EchoBlockInterval,
+            CosmosService::BlockIntervalStartStop => vec![ComponentName::Vector(
+                VectorComponent::EchoBlockInterval,
             )],
             CosmosService::CronInterval => {
-                vec![ComponentName::Operator(OperatorComponent::EchoCronInterval)]
+                vec![ComponentName::Vector(VectorComponent::EchoCronInterval)]
             }
         }
     }
@@ -239,7 +239,7 @@ impl From<CrossChainService> for Vec<ComponentName> {
     fn from(service: CrossChainService) -> Self {
         match service {
             CrossChainService::CosmosToEvmEchoData => {
-                vec![ComponentName::Operator(OperatorComponent::EchoData)]
+                vec![ComponentName::Vector(VectorComponent::EchoData)]
             }
         }
     }

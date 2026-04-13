@@ -26,7 +26,7 @@ use std::{
     num::{NonZeroU32, NonZeroU64},
     path::{Path, PathBuf},
 };
-use utils::{config::WAVS_ENV_PREFIX, service::fetch_bytes, wkg::WkgClient};
+use utils::{config::WARPDRIVE_ENV_PREFIX, service::fetch_bytes, wkg::WkgClient};
 use uuid::Uuid;
 use warpdrive_types::{
     AggregatorBuilder, AllowedHostPermission, AnyChainConfig, AtProtoAction, ByteArray, ChainKey,
@@ -565,11 +565,11 @@ fn apply_component_command(component: &mut Component, command: ComponentCommand)
                     if key.is_empty() {
                         continue;
                     }
-                    if !key.starts_with(WAVS_ENV_PREFIX) {
+                    if !key.starts_with(WARPDRIVE_ENV_PREFIX) {
                         return Err(anyhow!(
                             "Environment variable '{}' must start with '{}'",
                             key,
-                            WAVS_ENV_PREFIX
+                            WARPDRIVE_ENV_PREFIX
                         ));
                     }
                     validated_env_keys.insert(key);

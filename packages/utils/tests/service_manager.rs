@@ -6,7 +6,7 @@ use utils::{
         anvil::safe_spawn_anvil,
         middleware::{
             evm::{EvmMiddleware, EvmMiddlewareType, MiddlewareServiceManagerConfig},
-            operator::AvsOperator,
+            vector::AvsOperator,
         },
         mock_service_manager::MockEvmServiceManager,
     },

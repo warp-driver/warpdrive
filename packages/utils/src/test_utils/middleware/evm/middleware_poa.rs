@@ -82,7 +82,7 @@ impl PoaMiddleware {
                     "-e",
                     "DEPLOY_ENV=LOCAL",
                     &container_id,
-                    "/wavs/scripts/cli.sh",
+                    "/warpdrive/scripts/cli.sh",
                     "deploy",
                 ])
                 .stdout(Stdio::null())
@@ -166,7 +166,7 @@ impl PoaMiddleware {
                         "-e",
                         &format!("POA_STAKER_REGISTRY_ADDRESS={}", service_manager.address),
                         container_id,
-                        "/wavs/scripts/cli.sh",
+                        "/warpdrive/scripts/cli.sh",
                         "owner_operation",
                         "registerOperator",
                         &format!("{:?}", operator),
@@ -208,7 +208,7 @@ impl PoaMiddleware {
                         "-e",
                         &format!("POA_STAKER_REGISTRY_ADDRESS={}", service_manager.address),
                         container_id,
-                        "/wavs/scripts/cli.sh",
+                        "/warpdrive/scripts/cli.sh",
                         "update_signing_key",
                     ])
                     .stdout(Stdio::inherit())
@@ -237,7 +237,7 @@ impl PoaMiddleware {
                     "-e",
                     &format!("POA_STAKER_REGISTRY_ADDRESS={}", service_manager.address),
                     container_id,
-                    "/wavs/scripts/cli.sh",
+                    "/warpdrive/scripts/cli.sh",
                     "owner_operation",
                     "updateQuorum",
                     &config.quorum_numerator.to_string(),

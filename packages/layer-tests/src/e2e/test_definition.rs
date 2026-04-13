@@ -11,7 +11,7 @@ use regex::Regex;
 use warpdrive_types::{ChainKey, Trigger, WorkflowId};
 
 use crate::e2e::components::{
-    AggregatorComponent, ComponentName, ComponentSources, OperatorComponent,
+    AggregatorComponent, ComponentName, ComponentSources, VectorComponent,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, PartialOrd, Ord)]
@@ -52,8 +52,8 @@ pub struct TestDefinition {
     /// Execution group (ascending priority)
     pub group: TestGroupId,
 
-    /// If true, this test requires multiple operators with 2/3 quorum
-    pub multi_operator: bool,
+    /// If true, this test requires multiple vectors with 2/3 quorum
+    pub multi_vector: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -292,7 +292,7 @@ impl TestBuilder {
                 service_manager_chain: None,
                 change_service: None,
                 group: TestGroupId::Default,
-                multi_operator: false,
+                multi_vector: false,
             },
         }
     }
@@ -309,9 +309,9 @@ impl TestBuilder {
         self
     }
 
-    /// Mark this test as requiring multiple operators with 2/3 quorum
-    pub fn with_multi_operator(mut self) -> Self {
-        self.definition.multi_operator = true;
+    /// Mark this test as requiring multiple vectors with 2/3 quorum
+    pub fn with_multi_vector(mut self) -> Self {
+        self.definition.multi_vector = true;
         self
     }
 
@@ -366,12 +366,12 @@ impl WorkflowBuilder {
         }
     }
 
-    /// Set the operator component to use
-    pub fn with_operator_component(mut self, component: OperatorComponent) -> Self {
+    /// Set the vector component to use
+    pub fn with_operator_component(mut self, component: VectorComponent) -> Self {
         if self.component.is_some() {
             panic!("Component already set");
         }
-        self.component = Some(ComponentDefinition::from(ComponentName::Operator(
+        self.component = Some(ComponentDefinition::from(ComponentName::Vector(
             component,
         )));
         self

@@ -1,5 +1,5 @@
 [default]
-log_level = ["info", "wavs=debug"]
+log_level = ["info", "warpdrive=debug"]
 
 [layer-tests]
 wavs_concurrency = true
@@ -10,12 +10,12 @@ p2p = "kademlia"              # "mdns" (local) or "kademlia" (remote)
 # Run all tests
 mode = "all"
 # mode = { "isolated" = [{ evm = "hypercore_echo_data" }] }
-# mode = { "isolated" = [{ evm = "echo_data" }, {evm = "multi_operator"}] }
-# mode = { "isolated" = [{ evm = "echo_data" }, {evm = "multi_operator"}] }
-# mode = { "isolated" = [{ evm = "multi_operator" }] }
+# mode = { "isolated" = [{ evm = "echo_data" }, {evm = "multi_vector"}] }
+# mode = { "isolated" = [{ evm = "echo_data" }, {evm = "multi_vector"}] }
+# mode = { "isolated" = [{ evm = "multi_vector" }] }
 # mode = {"isolated" = [
 #     {evm = "echo_data"},
-#     {evm = "multi_operator"},
+#     {evm = "multi_vector"},
 #     {cosmos = "permissions"},
 # ]}
 
@@ -28,7 +28,7 @@ mode = "all"
 # Run a few specific tests
 # mode = {"isolated" = [
 #     {evm = "echo_data"},
-#     {evm = "multi_operator"},
+#     {evm = "multi_vector"},
 #     {cosmos = "permissions"},
 # ]}
 

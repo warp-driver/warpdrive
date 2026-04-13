@@ -5,7 +5,7 @@ use utils::test_utils::{
     middleware::{
         cosmos::CosmosServiceManager,
         evm::{EvmMiddleware, MiddlewareServiceManagerConfig},
-        operator::AvsOperator,
+        vector::AvsOperator,
     },
     mock_service_manager::MockEvmServiceManager,
 };
@@ -61,7 +61,7 @@ impl ServiceManagers {
         evm_middleware: Option<EvmMiddleware>,
         cosmos_middlewares: CosmosMiddlewares,
     ) {
-        tracing::warn!("WAVS Concurrency: {}", self.configs.wavs_concurrency);
+        tracing::warn!("WarpDrive Concurrency: {}", self.configs.wavs_concurrency);
         tracing::warn!(
             "Middleware Concurrency: {}",
             self.configs.middleware_concurrency
@@ -73,7 +73,7 @@ impl ServiceManagers {
         self.set_initial_service_uris(registry, clients).await;
         tracing::warn!("Bootstrapping initial services...");
         self.deploy_initial_wavs_services(registry, clients).await;
-        tracing::warn!("Bootstrapping register operators...");
+        tracing::warn!("Bootstrapping register vectors...");
         self.register_operators(registry, clients).await;
     }
 
@@ -179,7 +179,7 @@ impl ServiceManagers {
                 manager: service_manager,
             };
 
-            // Save the service on WAVS endpoint (just a local test thing, real-world would be IPFS or similar)
+            // Save the service on WarpDrive endpoint (just a local test thing, real-world would be IPFS or similar)
             let service_url = DeployService::save_service(&clients.cli_ctx, &service)
                 .await
                 .unwrap();
@@ -219,11 +219,11 @@ impl ServiceManagers {
             let http_clients = clients.http_clients.clone();
 
             futures.push(async move {
-                tracing::info!("Deploying service {} on all WAVS instances", test.name);
+                tracing::info!("Deploying service {} on all WarpDrive instances", test.name);
 
-                // Deploy the service on ALL WAVS instances
+                // Deploy the service on ALL WarpDrive instances
                 for (idx, http_client) in http_clients.iter().enumerate() {
-                    tracing::info!("Deploying service {} on WAVS instance {}", test.name, idx);
+                    tracing::info!("Deploying service {} on WarpDrive instance {}", test.name, idx);
                     http_client
                         .create_service(service_manager.clone(), None)
                         .await
@@ -243,23 +243,23 @@ impl ServiceManagers {
     }
 
     pub async fn register_operators(&self, registry: &TestRegistry, clients: &Clients) {
-        use crate::e2e::config::MULTI_OPERATOR_COUNT;
+        use crate::e2e::config::MULTI_VECTOR_COUNT;
 
         let mut futures = Vec::new();
 
         for (test_index, test) in registry.list_all().enumerate() {
             let service_manager = self.get_service_manager(&test.name);
 
-            // Register operators for all running WAVS instances since any of them
+            // Register vectors for all running WarpDrive instances since any of them
             // might execute aggregation and submit. Cap at the number of available
-            // instances (may be less than MULTI_OPERATOR_COUNT for isolated tests).
-            let num_operators = std::cmp::min(MULTI_OPERATOR_COUNT, clients.http_clients.len());
+            // instances (may be less than MULTI_VECTOR_COUNT for isolated tests).
+            let num_vectors = std::cmp::min(MULTI_VECTOR_COUNT, clients.http_clients.len());
 
-            // Collect all operators for this test
-            let mut avs_operators = Vec::with_capacity(num_operators);
+            // Collect all vectors for this test
+            let mut avs_operators = Vec::with_capacity(num_vectors);
 
-            for operator_offset in 0..num_operators {
-                // Reuse existing HTTP client for this WAVS instance
+            for operator_offset in 0..num_vectors {
+                // Reuse existing HTTP client for this WarpDrive instance
                 let http_client = &clients.http_clients[operator_offset];
 
                 let SignerResponse::Secp256k1 {
@@ -270,19 +270,19 @@ impl ServiceManagers {
                     .await
                     .unwrap();
 
-                // unique HD index per test and operator to avoid nonce collisions
+                // unique HD index per test and vector to avoid nonce collisions
                 let operator_hd_index =
-                    (test_index * MULTI_OPERATOR_COUNT + operator_offset) as u32;
-                let operator_mnemonic = &self.configs.mnemonics.operators[operator_offset];
+                    (test_index * MULTI_VECTOR_COUNT + operator_offset) as u32;
+                let operator_mnemonic = &self.configs.mnemonics.vectors[operator_offset];
                 let operator_signer = utils::evm_client::signing::make_signer(
                     operator_mnemonic,
                     Some(operator_hd_index),
                 )
                 .unwrap();
-                let operator_address = operator_signer.address();
+                let vector_address = operator_signer.address();
                 let operator_private_key = const_hex::encode(operator_signer.to_bytes());
 
-                // Get the signing key that this WAVS instance will use
+                // Get the signing key that this WarpDrive instance will use
                 let signing_signer = utils::evm_client::signing::make_signer(
                     operator_mnemonic,
                     Some(wavs_signer_hd_index),
@@ -294,12 +294,12 @@ impl ServiceManagers {
                 assert_eq!(
                     signing_address.to_string().to_lowercase(),
                     avs_signer_address.to_lowercase(),
-                    "Derived signing address doesn't match WAVS signer address for operator {}",
+                    "Derived signing address doesn't match WarpDrive signer address for vector {}",
                     operator_offset
                 );
 
                 let avs_operator = AvsOperator::with_keys(
-                    operator_address,
+                    vector_address,
                     signing_address,
                     operator_private_key,
                     signing_private_key,
@@ -309,10 +309,10 @@ impl ServiceManagers {
             }
 
             // Calculate required signatures for quorum
-            // Multi-operator: 2/3 quorum (requires multiple signatures)
-            // Single-operator: quorum of 1 (any single operator can submit)
-            let required_to_pass = if test.multi_operator {
-                ((num_operators as u64) * 2).div_ceil(3)
+            // Multi-vector: 2/3 quorum (requires multiple signatures)
+            // Single-vector: quorum of 1 (any single vector can submit)
+            let required_to_pass = if test.multi_vector {
+                ((num_vectors as u64) * 2).div_ceil(3)
             } else {
                 1
             };
@@ -324,16 +324,16 @@ impl ServiceManagers {
                         let config =
                             MiddlewareServiceManagerConfig::new(&avs_operators, required_to_pass);
                         manager.configure(&config).await.unwrap();
-                        // Validate that operators are properly registered before proceeding
+                        // Validate that vectors are properly registered before proceeding
                         manager
                             .validate_operator_registration(&config)
                             .await
                             .unwrap();
                     }
                     AnyServiceManagerInstance::Cosmos { manager, .. } => {
-                        // For Cosmos, register each operator individually
-                        for operator in avs_operators {
-                            manager.register_operator(operator.clone()).await.unwrap();
+                        // For Cosmos, register each vector individually
+                        for vector in avs_operators {
+                            manager.register_operator(vector.clone()).await.unwrap();
                         }
                     }
                 }
@@ -424,7 +424,7 @@ impl ServiceManagers {
 
                 // Directly add the service to ALL instances using the dev endpoint
                 // This bypasses on-chain event detection which may not work reliably
-                // across multiple WAVS instances in the test environment
+                // across multiple WarpDrive instances in the test environment
                 for (idx, http_client) in http_clients.iter().enumerate() {
                     tracing::info!(
                         "Directly adding service to instance {} for service {}",
@@ -457,7 +457,7 @@ impl ServiceManagers {
                     }
                 }
 
-                // Wait for service update on all WAVS instances (should be instant now)
+                // Wait for service update on all WarpDrive instances (should be instant now)
                 for (idx, http_client) in http_clients.iter().enumerate() {
                     tracing::info!(
                         "Waiting for service update on instance {} for service {}",
@@ -479,7 +479,7 @@ impl ServiceManagers {
                 let http_client = clients
                     .http_clients
                     .first()
-                    .expect("Expected at least one WAVS HTTP client");
+                    .expect("Expected at least one WarpDrive HTTP client");
                 match http_client.get_trigger_streams_info().await {
                     Ok(streams) => {
                         tracing::info!(

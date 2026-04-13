@@ -79,8 +79,8 @@ export function Header() {
       {/* Logo + health indicator */}
       <div className="flex items-center gap-3">
         <img
-          src="/wavs.png"
-          alt="WAVS"
+          src="/warpdrive.png"
+          alt="WarpDrive"
           className="h-8 drop-shadow-[0_0_8px_rgba(231,212,198,0.3)]"
         />
         {isSettingsComplete && <HealthIndicator />}

@@ -9,7 +9,7 @@ use std::sync::{Arc, RwLock};
 use warpdrive_types::AtProtoAction;
 
 use super::clients::Clients;
-use super::components::{AggregatorComponent, ComponentName, OperatorComponent};
+use super::components::{AggregatorComponent, ComponentName, VectorComponent};
 use super::config::CRON_INTERVAL_DATA;
 use super::matrix::{CosmosService, CrossChainService, EvmService, TestMatrix};
 use super::test_definition::{
@@ -241,7 +241,7 @@ impl TestRegistry {
                     registry.register_evm_gas_price_test(chain);
                 }
                 EvmService::MultiOperator => {
-                    registry.register_evm_multi_operator_test(chain);
+                    registry.register_evm_multi_vector_test(chain);
                 }
             }
         }
@@ -313,7 +313,7 @@ impl TestRegistry {
                 .add_workflow(
                     WorkflowId::new("echo_data").unwrap(),
                     WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::EchoData)
+                        .with_operator_component(VectorComponent::EchoData)
                         .with_aggregator_component(AggregatorComponent::SimpleAggregator)
                         .with_trigger(TriggerDefinition::NewEvmContract(
                             EvmTriggerDefinition::SimpleContractEvent {
@@ -337,7 +337,7 @@ impl TestRegistry {
                 .add_workflow(
                     WorkflowId::new("atproto_echo_data").unwrap(),
                     WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::EchoData)
+                        .with_operator_component(VectorComponent::EchoData)
                         .with_aggregator_component(AggregatorComponent::SimpleAggregator)
                         .with_trigger(TriggerDefinition::Existing(Trigger::AtProtoEvent {
                             collection: "app.bsky.feed.post".to_string(),
@@ -397,7 +397,7 @@ impl TestRegistry {
     //             .add_workflow(
     //                 WorkflowId::new("hypercore_echo_data").unwrap(),
     //                 WorkflowBuilder::new()
-    //                     .with_operator_component(OperatorComponent::EchoData)
+    //                     .with_operator_component(VectorComponent::EchoData)
     //                     .with_aggregator_component(AggregatorComponent::SimpleAggregator)
     //                     .with_trigger(TriggerDefinition::Existing(Trigger::HypercoreAppend {
     //                         feed_key,
@@ -424,7 +424,7 @@ impl TestRegistry {
                 .add_workflow(
                     WorkflowId::new("echo_data_secondary").unwrap(),
                     WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::EchoData)
+                        .with_operator_component(VectorComponent::EchoData)
                         .with_aggregator_component(AggregatorComponent::SimpleAggregator)
                         .with_trigger(TriggerDefinition::NewEvmContract(
                             EvmTriggerDefinition::SimpleContractEvent {
@@ -451,7 +451,7 @@ impl TestRegistry {
                 .with_change_service(ChangeServiceDefinition::AddWorkflow {
                     workflow_id: WorkflowId::new("echo_data").unwrap(),
                     workflow: WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::EchoData)
+                        .with_operator_component(VectorComponent::EchoData)
                         .with_trigger(TriggerDefinition::NewEvmContract(
                             EvmTriggerDefinition::SimpleContractEvent {
                                 chain: chain.clone(),
@@ -474,7 +474,7 @@ impl TestRegistry {
                 .add_workflow(
                     WorkflowId::new("simple_aggregator").unwrap(),
                     WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::EchoData)
+                        .with_operator_component(VectorComponent::EchoData)
                         .with_aggregator_component(AggregatorComponent::SimpleAggregator)
                         .with_trigger(TriggerDefinition::NewEvmContract(
                             EvmTriggerDefinition::SimpleContractEvent {
@@ -508,7 +508,7 @@ impl TestRegistry {
                 .add_workflow(
                     WorkflowId::new("timer_aggregator").unwrap(),
                     WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::EchoData)
+                        .with_operator_component(VectorComponent::EchoData)
                         .with_aggregator_component(AggregatorComponent::TimerAggregator)
                         .with_trigger(TriggerDefinition::NewEvmContract(
                             EvmTriggerDefinition::SimpleContractEvent {
@@ -547,7 +547,7 @@ impl TestRegistry {
                 .add_workflow(
                     WorkflowId::new("timer_aggregator_reorg").unwrap(),
                     WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::EchoData)
+                        .with_operator_component(VectorComponent::EchoData)
                         .with_aggregator_component(AggregatorComponent::TimerAggregator)
                         .with_trigger(TriggerDefinition::NewEvmContract(
                             EvmTriggerDefinition::SimpleContractEvent {
@@ -593,7 +593,7 @@ impl TestRegistry {
                 .add_workflow(
                     WorkflowId::new("gas_price_test").unwrap(),
                     WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::EchoData)
+                        .with_operator_component(VectorComponent::EchoData)
                         .with_aggregator_component(AggregatorComponent::SimpleAggregator)
                         .with_trigger(TriggerDefinition::NewEvmContract(
                             EvmTriggerDefinition::SimpleContractEvent {
@@ -631,7 +631,7 @@ impl TestRegistry {
                 .add_workflow(
                     WorkflowId::new("square").unwrap(),
                     WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::Square)
+                        .with_operator_component(VectorComponent::Square)
                         .with_aggregator_component(AggregatorComponent::SimpleAggregator)
                         .with_trigger(TriggerDefinition::NewEvmContract(
                             EvmTriggerDefinition::SimpleContractEvent {
@@ -655,7 +655,7 @@ impl TestRegistry {
                 .add_workflow(
                     WorkflowId::new("chain_trigger_lookup").unwrap(),
                     WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::ChainTriggerLookup)
+                        .with_operator_component(VectorComponent::ChainTriggerLookup)
                         .with_aggregator_component(AggregatorComponent::SimpleAggregator)
                         .with_trigger(TriggerDefinition::NewEvmContract(
                             EvmTriggerDefinition::SimpleContractEvent {
@@ -683,7 +683,7 @@ impl TestRegistry {
                 .add_workflow(
                     WorkflowId::new("cosmos_query").unwrap(),
                     WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::CosmosQuery)
+                        .with_operator_component(VectorComponent::CosmosQuery)
                         .with_aggregator_component(AggregatorComponent::SimpleAggregator)
                         .with_trigger(TriggerDefinition::NewEvmContract(
                             EvmTriggerDefinition::SimpleContractEvent {
@@ -713,7 +713,7 @@ impl TestRegistry {
                 .add_workflow(
                     WorkflowId::new("permissions").unwrap(),
                     WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::Permissions)
+                        .with_operator_component(VectorComponent::Permissions)
                         .with_aggregator_component(AggregatorComponent::SimpleAggregator)
                         .with_trigger(TriggerDefinition::NewEvmContract(
                             EvmTriggerDefinition::SimpleContractEvent {
@@ -739,7 +739,7 @@ impl TestRegistry {
                 .add_workflow(
                     WorkflowId::new("counter_first").unwrap(),
                     WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::KvStore)
+                        .with_operator_component(VectorComponent::KvStore)
                         .with_aggregator_component(AggregatorComponent::SimpleAggregator)
                         .with_trigger(TriggerDefinition::NewEvmContract(
                             EvmTriggerDefinition::SimpleContractEvent {
@@ -758,7 +758,7 @@ impl TestRegistry {
                 .add_workflow(
                     WorkflowId::new("counter_second").unwrap(),
                     WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::KvStore)
+                        .with_operator_component(VectorComponent::KvStore)
                         .with_aggregator_component(AggregatorComponent::SimpleAggregator)
                         .with_trigger(TriggerDefinition::NewEvmContract(
                             EvmTriggerDefinition::SimpleContractEvent {
@@ -787,7 +787,7 @@ impl TestRegistry {
                 .add_workflow(
                     WorkflowId::new("square_workflow").unwrap(),
                     WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::Square)
+                        .with_operator_component(VectorComponent::Square)
                         .with_aggregator_component(AggregatorComponent::SimpleAggregator)
                         .with_trigger(TriggerDefinition::NewEvmContract(
                             EvmTriggerDefinition::SimpleContractEvent {
@@ -802,7 +802,7 @@ impl TestRegistry {
                 .add_workflow(
                     WorkflowId::new("echo_workflow").unwrap(),
                     WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::EchoData)
+                        .with_operator_component(VectorComponent::EchoData)
                         .with_aggregator_component(AggregatorComponent::SimpleAggregator)
                         .with_trigger(TriggerDefinition::NewEvmContract(
                             EvmTriggerDefinition::SimpleContractEvent {
@@ -828,7 +828,7 @@ impl TestRegistry {
                 .add_workflow(
                     workflow_id.clone(),
                     WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::Square)
+                        .with_operator_component(VectorComponent::Square)
                         .with_aggregator_component(AggregatorComponent::SimpleAggregator)
                         .with_trigger(TriggerDefinition::NewEvmContract(
                             EvmTriggerDefinition::SimpleContractEvent {
@@ -844,7 +844,7 @@ impl TestRegistry {
                 )
                 .with_change_service(ChangeServiceDefinition::Component {
                     workflow_id,
-                    component: ComponentName::Operator(OperatorComponent::EchoData).into(),
+                    component: ComponentName::Vector(VectorComponent::EchoData).into(),
                 })
                 .with_service_manager_chain(chain)
                 .build(),
@@ -860,7 +860,7 @@ impl TestRegistry {
                 .add_workflow(
                     WorkflowId::new("evm_multi_trigger").unwrap(),
                     WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::EchoData)
+                        .with_operator_component(VectorComponent::EchoData)
                         .with_aggregator_component(AggregatorComponent::SimpleAggregator)
                         .with_trigger(TriggerDefinition::Existing(trigger.clone()))
                         .with_submit(SubmitDefinition::Aggregator(Self::simple_aggregator(chain)))
@@ -873,7 +873,7 @@ impl TestRegistry {
                 .add_workflow(
                     WorkflowId::new("evm_multi_trigger_2").unwrap(),
                     WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::EchoData)
+                        .with_operator_component(VectorComponent::EchoData)
                         .with_aggregator_component(AggregatorComponent::SimpleAggregator)
                         .with_trigger(TriggerDefinition::Existing(trigger))
                         .with_submit(SubmitDefinition::Aggregator(Self::simple_aggregator(chain)))
@@ -895,7 +895,7 @@ impl TestRegistry {
                 .add_workflow(
                     WorkflowId::new("trigger_backpressure").unwrap(),
                     WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::EchoData)
+                        .with_operator_component(VectorComponent::EchoData)
                         .with_aggregator_component(AggregatorComponent::SimpleAggregator)
                         .with_trigger(TriggerDefinition::NewEvmContract(
                             EvmTriggerDefinition::SimpleContractEvent {
@@ -923,7 +923,7 @@ impl TestRegistry {
                 .add_workflow(
                     WorkflowId::new("block_interval").unwrap(),
                     WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::EchoBlockInterval)
+                        .with_operator_component(VectorComponent::EchoBlockInterval)
                         .with_aggregator_component(AggregatorComponent::SimpleAggregator)
                         .with_trigger(TriggerDefinition::BlockInterval {
                             chain: chain.clone(),
@@ -951,7 +951,7 @@ impl TestRegistry {
                 .add_workflow(
                     WorkflowId::new("evm_block_interval_start_stop").unwrap(),
                     WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::EchoBlockInterval)
+                        .with_operator_component(VectorComponent::EchoBlockInterval)
                         .with_aggregator_component(AggregatorComponent::SimpleAggregator)
                         .with_trigger(TriggerDefinition::BlockInterval {
                             chain: chain.clone(),
@@ -977,7 +977,7 @@ impl TestRegistry {
                 .add_workflow(
                     WorkflowId::new("cron_interval").unwrap(),
                     WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::EchoCronInterval)
+                        .with_operator_component(VectorComponent::EchoCronInterval)
                         .with_aggregator_component(AggregatorComponent::SimpleAggregator)
                         .with_trigger(TriggerDefinition::Existing(Trigger::Cron {
                             schedule: "*/5 * * * * *".to_string(),
@@ -995,15 +995,15 @@ impl TestRegistry {
         )
     }
 
-    /// Multi-operator test (P2P mode configured via layer-tests.toml)
-    fn register_evm_multi_operator_test(&mut self, chain: &ChainKey) -> &mut Self {
+    /// Multi-vector test (P2P mode configured via layer-tests.toml)
+    fn register_evm_multi_vector_test(&mut self, chain: &ChainKey) -> &mut Self {
         self.register(
-            TestBuilder::new("evm_multi_operator")
-                .with_description("Tests multi-operator quorum (2/3) with P2P networking")
+            TestBuilder::new("evm_multi_vector")
+                .with_description("Tests multi-vector quorum (2/3) with P2P networking")
                 .add_workflow(
-                    WorkflowId::new("multi_operator_echo").unwrap(),
+                    WorkflowId::new("multi_vector_echo").unwrap(),
                     WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::EchoData)
+                        .with_operator_component(VectorComponent::EchoData)
                         .with_aggregator_component(AggregatorComponent::SimpleAggregator)
                         .with_trigger(TriggerDefinition::NewEvmContract(
                             EvmTriggerDefinition::SimpleContractEvent {
@@ -1011,14 +1011,14 @@ impl TestRegistry {
                             },
                         ))
                         .with_submit(SubmitDefinition::Aggregator(Self::simple_aggregator(chain)))
-                        .with_input_data(InputData::Text("multi-operator test".to_string()))
+                        .with_input_data(InputData::Text("multi-vector test".to_string()))
                         .with_expected_output(ExpectedOutput::Text(
-                            "multi-operator test".to_string(),
+                            "multi-vector test".to_string(),
                         ))
                         .build(),
                 )
                 .with_service_manager_chain(chain)
-                .with_multi_operator()
+                .with_multi_vector()
                 .with_group(TestGroupId::P2p)
                 .build(),
         )
@@ -1037,7 +1037,7 @@ impl TestRegistry {
                 .add_workflow(
                     WorkflowId::new("cosmos_echo_data").unwrap(),
                     WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::EchoData)
+                        .with_operator_component(VectorComponent::EchoData)
                         .with_trigger(TriggerDefinition::NewCosmosContract(
                             CosmosTriggerDefinition::SimpleContractEvent {
                                 chain: trigger_chain.clone(),
@@ -1067,7 +1067,7 @@ impl TestRegistry {
                 .add_workflow(
                     WorkflowId::new("cosmos_square").unwrap(),
                     WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::Square)
+                        .with_operator_component(VectorComponent::Square)
                         .with_aggregator_component(AggregatorComponent::SimpleAggregator)
                         .with_trigger(TriggerDefinition::NewCosmosContract(
                             CosmosTriggerDefinition::SimpleContractEvent {
@@ -1097,7 +1097,7 @@ impl TestRegistry {
                 .add_workflow(
                     WorkflowId::new("cosmos_chain_trigger_lookup").unwrap(),
                     WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::ChainTriggerLookup)
+                        .with_operator_component(VectorComponent::ChainTriggerLookup)
                         .with_aggregator_component(AggregatorComponent::SimpleAggregator)
                         .with_trigger(TriggerDefinition::NewCosmosContract(
                             CosmosTriggerDefinition::SimpleContractEvent {
@@ -1127,7 +1127,7 @@ impl TestRegistry {
                 .add_workflow(
                     WorkflowId::new("cosmos_cosmos_query").unwrap(),
                     WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::CosmosQuery)
+                        .with_operator_component(VectorComponent::CosmosQuery)
                         .with_aggregator_component(AggregatorComponent::SimpleAggregator)
                         .with_trigger(TriggerDefinition::NewCosmosContract(
                             CosmosTriggerDefinition::SimpleContractEvent {
@@ -1163,7 +1163,7 @@ impl TestRegistry {
                 .add_workflow(
                     WorkflowId::new("cosmos_permissions").unwrap(),
                     WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::Permissions)
+                        .with_operator_component(VectorComponent::Permissions)
                         .with_aggregator_component(AggregatorComponent::SimpleAggregator)
                         .with_trigger(TriggerDefinition::NewCosmosContract(
                             CosmosTriggerDefinition::SimpleContractEvent {
@@ -1195,7 +1195,7 @@ impl TestRegistry {
                 .add_workflow(
                     WorkflowId::new("cosmos_block_interval").unwrap(),
                     WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::EchoBlockInterval)
+                        .with_operator_component(VectorComponent::EchoBlockInterval)
                         .with_aggregator_component(AggregatorComponent::SimpleAggregator)
                         .with_trigger(TriggerDefinition::BlockInterval {
                             chain: trigger_chain.clone(),
@@ -1229,7 +1229,7 @@ impl TestRegistry {
                 .add_workflow(
                     WorkflowId::new("cosmos_block_interval_start_stop").unwrap(),
                     WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::EchoBlockInterval)
+                        .with_operator_component(VectorComponent::EchoBlockInterval)
                         .with_aggregator_component(AggregatorComponent::SimpleAggregator)
                         .with_trigger(TriggerDefinition::BlockInterval {
                             chain: trigger_chain.clone(),
@@ -1261,7 +1261,7 @@ impl TestRegistry {
                 .add_workflow(
                     WorkflowId::new("cosmos_cron_interval").unwrap(),
                     WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::EchoCronInterval)
+                        .with_operator_component(VectorComponent::EchoCronInterval)
                         .with_aggregator_component(AggregatorComponent::SimpleAggregator)
                         .with_trigger(TriggerDefinition::Existing(Trigger::Cron {
                             schedule: "*/5 * * * * *".to_string(),
@@ -1294,7 +1294,7 @@ impl TestRegistry {
                 .add_workflow(
                     WorkflowId::new("cross_chain_echo_data").unwrap(),
                     WorkflowBuilder::new()
-                        .with_operator_component(OperatorComponent::EchoData)
+                        .with_operator_component(VectorComponent::EchoData)
                         .with_trigger(TriggerDefinition::NewCosmosContract(
                             CosmosTriggerDefinition::SimpleContractEvent {
                                 chain: cosmos_chain.clone(),
@@ -1418,7 +1418,7 @@ impl ExpectedOutputCallback for PermissionsCallback {
 
         let digest = component_sources
             .lookup
-            .get(&ComponentName::Operator(OperatorComponent::Permissions))
+            .get(&ComponentName::Vector(VectorComponent::Permissions))
             .ok_or_else(|| anyhow::anyhow!("Failed to get digest for Permissions component"))?
             .digest()
             .to_string();

@@ -5,7 +5,7 @@ use std::{
 
 use alloy_primitives::FixedBytes;
 use anyhow::{Context, Result};
-use utils::{config::WAVS_ENV_PREFIX, storage::db::WavsDb};
+use utils::{config::WARPDRIVE_ENV_PREFIX, storage::db::WavsDb};
 use wasmtime::{component::Component as WasmtimeComponent, Config as WTConfig, Engine as WTEngine};
 use warpdrive_engine::{
     bindings::operator::world::host::LogLevel,
@@ -115,10 +115,10 @@ impl ExecComponent {
             .map_err(anyhow::Error::from)
             .context("Failed to create Wasmtime engine with the specified configuration")?;
 
-        // Automatically pick up all env vars with the WAVS_ENV_PREFIX
+        // Automatically pick up all env vars with the WARPDRIVE_ENV_PREFIX
         let env_keys = std::env::vars()
             .map(|(key, _)| key)
-            .filter(|key| key.starts_with(WAVS_ENV_PREFIX))
+            .filter(|key| key.starts_with(WARPDRIVE_ENV_PREFIX))
             .collect();
 
         let workflow = Workflow {
@@ -366,7 +366,7 @@ mod test {
         assert!(result.fuel_used > 0);
 
         // Set an env var and test it via envvar:<key> lookup
-        let var = format!("{}_MY_ENV_VAR", WAVS_ENV_PREFIX);
+        let var = format!("{}_MY_ENV_VAR", WARPDRIVE_ENV_PREFIX);
         std::env::set_var(&var, "env-value");
 
         let args = ExecComponentArgs {

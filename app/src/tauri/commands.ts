@@ -15,7 +15,7 @@ import type {
 } from '../types';
 
 export async function setWavsHome(): Promise<string | null> {
-  const resp = await invoke<DirectoryChooserResponse>('cmd_set_wavs_home');
+  const resp = await invoke<DirectoryChooserResponse>('cmd_set_warpdrive_home');
 
   if ('selected' in resp) {
     return resp.selected;
@@ -44,7 +44,7 @@ export async function restart(): Promise<void> {
 }
 
 export async function startWavs(): Promise<void> {
-  return invoke<void>('cmd_start_wavs');
+  return invoke<void>('cmd_start_warpdrive');
 }
 
 export async function getChainConfigs(): Promise<ChainConfigs> {
@@ -126,7 +126,7 @@ export async function getMcpBinaryPath(): Promise<string | null> {
 }
 
 export async function getWavsUrl(): Promise<string> {
-  return invoke<string>('cmd_get_wavs_url');
+  return invoke<string>('cmd_get_warpdrive_url');
 }
 
 export async function startMcpServer(): Promise<void> {

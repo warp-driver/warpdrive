@@ -159,7 +159,7 @@ url = "http://localhost:8090"
     /// (potentially an upstream contribution could alleviate this so a default is used).
     /// Then checks for a user provided version in case they want something other than the default
     /// latest value.
-    /// Finally, checks if the user provided an alternative registry other than WAVS default (currently wa.dev),
+    /// Finally, checks if the user provided an alternative registry other than WarpDrive default (currently wa.dev),
     /// before fetching the component from the registry.
     pub async fn fetch(&self, registry: &Registry) -> Result<Vec<u8>, WkgError> {
         // Get the client

@@ -1,12 +1,12 @@
-# WAVS APP
+# WarpDrive APP
 
-Goal: make it so easy to run a WAVS node so that anyone mildly technical can do it.
+Goal: make it so easy to run a WarpDrive node so that anyone mildly technical can do it.
 
 MVP Requirements:
 - [x] Wallet Support! Let's go with just porto.sh for now.
 - [x] Add UI for health
 - [x] Ability to create a POA contract onchain
-- [x] Add UI to edit wavs.toml file and managing chains
+- [x] Add UI to edit warpdrive.toml file and managing chains
 - [x] State management (persist services and registries)
 - [x] Ability to upload new components and manage services
 - [x] Easy way to test (deploy local PoA service, add a component, trigger)
@@ -38,18 +38,18 @@ MVP Requirements:
 - [ ] Improve skills and MCP installation DX. gsd shows how to install things globally.
 
 Clean up:
-- wavs.toml has unnecessary things in it, maybe those should be there and documented but commented out?
+- warpdrive.toml has unnecessary things in it, maybe those should be there and documented but commented out?
 
 Post MVP:
 - Stats (CPU, Memory, etc.)
 - Merge Trigger / Submissions into just "events" (which have triggers and sometimes submissions)
 - LLM Config (makes those LLMs available to WASM components)?
 - P2P Page
-- WAVS Service Registry
-- WAVS Trust Graph (Start building out proof of reputation system)
-- WAVS plus ZK sidecar
+- WarpDrive Service Registry
+- WarpDrive Trust Graph (Start building out proof of reputation system)
+- WarpDrive plus ZK sidecar
 - Commonware
-- Maybe consider making the MCP a WAVS Component?
+- Maybe consider making the MCP a WarpDrive Component?
 
 Minor bugs:
 - [ ] App restart is broken in dev mode

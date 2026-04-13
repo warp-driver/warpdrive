@@ -264,7 +264,7 @@ fn dev_err(status: reqwest::StatusCode, body: &str) -> anyhow::Error {
     if status.as_u16() == 404 {
         anyhow::anyhow!(
             "HTTP 404: {}. Dev endpoints may be disabled — set dev_endpoints_enabled = true \
-             in wavs.toml [wavs] section.",
+             in warpdrive.toml [warpdrive] section.",
             body
         )
     } else {

@@ -15,7 +15,7 @@ pub static SERVICE_MANAGER: LazyLock<warpdrive_types::ServiceManager> =
 pub static WORKFLOW_ID: LazyLock<WorkflowId> =
     LazyLock::new(|| WorkflowId::new("workflow").unwrap());
 
-pub static WAVS_COMPONENT_BYTES: LazyLock<Vec<u8>> = LazyLock::new(|| {
+pub static WARPDRIVE_COMPONENT_BYTES: LazyLock<Vec<u8>> = LazyLock::new(|| {
     let wavs_component_path = workspace_path()
         .join("examples")
         .join("build")
@@ -34,7 +34,7 @@ pub static AGGREGATOR_COMPONENT_BYTES: LazyLock<Vec<u8>> = LazyLock::new(|| {
 });
 
 pub fn create_service(sleep_ms: Option<u64>) -> Service {
-    let wavs_component_digest = ComponentDigest::hash(&*WAVS_COMPONENT_BYTES);
+    let wavs_component_digest = ComponentDigest::hash(&*WARPDRIVE_COMPONENT_BYTES);
 
     let aggregator_component_digest = ComponentDigest::hash(&*AGGREGATOR_COMPONENT_BYTES);
 

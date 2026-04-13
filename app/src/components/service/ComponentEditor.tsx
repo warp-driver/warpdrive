@@ -93,7 +93,7 @@ export function ComponentEditor({ component, onChange }: ComponentEditorProps) {
 
   const addEnvKey = () => {
     if (!newEnvKey) return;
-    const key = newEnvKey.startsWith('WAVS_ENV_') ? newEnvKey : `WAVS_ENV_${newEnvKey}`;
+    const key = newEnvKey.startsWith('WARPDRIVE_ENV_') ? newEnvKey : `WARPDRIVE_ENV_${newEnvKey}`;
     if (!component.envKeys.includes(key)) {
       update({ envKeys: [...component.envKeys, key] });
     }
@@ -247,7 +247,7 @@ export function ComponentEditor({ component, onChange }: ComponentEditorProps) {
           </div>
         ))}
         <div className="flex items-center gap-2">
-          <TextInput placeholder="e.g. MY_API_KEY (WAVS_ENV_ prefix auto-added)" value={newEnvKey} onChange={setNewEnvKey} className="flex-1" />
+          <TextInput placeholder="e.g. MY_API_KEY (WARPDRIVE_ENV_ prefix auto-added)" value={newEnvKey} onChange={setNewEnvKey} className="flex-1" />
           <button type="button" onClick={addEnvKey} className="text-sm text-purple-2 hover:text-purple-3 cursor-pointer">Add</button>
         </div>
       </div>

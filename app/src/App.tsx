@@ -66,7 +66,7 @@ function MainAppContent() {
 function AppContent() {
   const settings = useAppStore((state) => state.settings);
   const { hasMnemonic, checkMnemonic } = useWalletStore();
-  const [wavsStarted, setWavsStarted] = useState(false);
+  const [warpdriveStarted, setWarpdriveStarted] = useState(false);
   const [walletChecked, setWalletChecked] = useState(false);
 
   // Check for mnemonic in keychain on mount
@@ -80,14 +80,14 @@ function AppContent() {
 
   const setServices = useAppStore((state) => state.setServices);
 
-  // Start WAVS after wallet is set up and wavs_home is set
+  // Start WarpDrive after wallet is set up and warpdrive_home is set
   useEffect(() => {
     const startWavsIfReady = async () => {
-      if (hasMnemonic && settings.wavs_home && !wavsStarted) {
+      if (hasMnemonic && settings.warpdrive_home && !warpdriveStarted) {
         try {
           await startWavs();
-          setWavsStarted(true);
-          // Refresh services now that WAVS is running
+          setWarpdriveStarted(true);
+          // Refresh services now that WarpDrive is running
           try {
             const services = await getServices();
             setServices(await buildServiceMap(services));
@@ -95,14 +95,14 @@ function AppContent() {
             // Services may not be available yet
           }
         } catch (err) {
-          console.warn('Failed to start WAVS:', err);
+          console.warn('Failed to start WarpDrive:', err);
           // Still allow the app to function
-          setWavsStarted(true);
+          setWarpdriveStarted(true);
         }
       }
     };
     startWavsIfReady();
-  }, [hasMnemonic, settings.wavs_home, wavsStarted, setServices]);
+  }, [hasMnemonic, settings.warpdrive_home, warpdriveStarted, setServices]);
 
   // Wait for wallet check to complete
   if (!walletChecked) {
@@ -150,7 +150,7 @@ function App() {
           const services = await getServices();
           if (!cancelled) setServices(await buildServiceMap(services));
         } catch {
-          // WAVS may not be running yet -- services will load when it starts
+          // WarpDrive may not be running yet -- services will load when it starts
         }
 
         if (!cancelled) setInitialized(true);

@@ -13,7 +13,7 @@ use tempfile::TempDir;
 use tokio::process::Command;
 use warpdrive_types::{ChainConfigs, ChainKeyNamespace, CosmosChainConfig, CosmosChainConfigBuilder};
 
-use crate::test_utils::middleware::operator::AvsOperator;
+use crate::test_utils::middleware::vector::AvsOperator;
 
 const DOCKER_IMAGE: &str = "ghcr.io/lay3rlabs/cw-middleware:0.2.0-alpha.5";
 
@@ -80,7 +80,7 @@ impl CosmosMiddlewareInner {
         kind: CosmosMiddlewareKind,
         mnemonic: String,
     ) -> Result<Self> {
-        // Write a pseudo wavs.toml file to a temp dir for our network
+        // Write a pseudo warpdrive.toml file to a temp dir for our network
         let mut chain_configs = ChainConfigs::default();
 
         let chain_config_clone = chain_config.clone();
@@ -112,7 +112,7 @@ impl CosmosMiddlewareInner {
         };
 
         let config_dir = TempDir::new()?;
-        let config_path = config_dir.path().join("wavs.toml");
+        let config_path = config_dir.path().join("warpdrive.toml");
         std::fs::write(&config_path, toml::to_string(&config)?)?;
 
         let env_dir = TempDir::new()?;
@@ -126,7 +126,7 @@ impl CosmosMiddlewareInner {
                 .chains
                 .chain_keys(ChainKeyNamespace::COSMOS.parse()?)[0]
         )?;
-        writeln!(env_file, "WAVS_HOME=/wavs-home")?;
+        writeln!(env_file, "WARPDRIVE_HOME=/warpdrive-home")?;
         writeln!(env_file, "CLI_MNEMONIC={}", mnemonic)?;
 
         let key_signer = KeySigner::new_mnemonic_str(&mnemonic, None)?;
@@ -182,7 +182,7 @@ impl CosmosMiddlewareInner {
                     "--env-file",
                     self.env_path().as_str(),
                     "-v",
-                    &format!("{}:/wavs-home", self.config_dir.path().display()),
+                    &format!("{}:/warpdrive-home", self.config_dir.path().display()),
                     DOCKER_IMAGE,
                     "service-manager",
                     "set-service-uri",
@@ -211,7 +211,7 @@ impl CosmosMiddlewareInner {
     pub async fn register_operator(
         &self,
         service_manager_addr: CosmosAddr,
-        operator: AvsOperator,
+        vector: AvsOperator,
     ) -> Result<()> {
         match self.kind {
             CosmosMiddlewareKind::Mock => {
@@ -219,9 +219,9 @@ impl CosmosMiddlewareInner {
                     .contract_execute(
                         &service_manager_addr.into(),
                         &cw_warpdrive_mock_api::service_manager::ExecuteMsg::SetSigningKey {
-                            operator: operator.operator.into(),
-                            signing_key: operator.signer.into(),
-                            weight: operator.weight.into(),
+                            vector: vector.vector.into(),
+                            signing_key: vector.signer.into(),
+                            weight: vector.weight.into(),
                         },
                         vec![],
                         None,
@@ -249,7 +249,7 @@ impl CosmosMiddlewareInner {
                     "--env-file",
                     self.env_path().as_str(),
                     "-v",
-                    &format!("{}:/wavs-home", self.config_dir.path().display()),
+                    &format!("{}:/warpdrive-home", self.config_dir.path().display()),
                     "-v",
                     &format!("{}:/output", output_dir.path().display()),
                     DOCKER_IMAGE,
@@ -311,7 +311,7 @@ impl CosmosMiddlewareInner {
                     "--env-file",
                     self.env_path().as_str(),
                     "-v",
-                    &format!("{}:/wavs-home", self.config_dir.path().display()),
+                    &format!("{}:/warpdrive-home", self.config_dir.path().display()),
                     "-v",
                     &format!("{}:/output", output_dir.path().display()),
                     DOCKER_IMAGE,
@@ -371,10 +371,10 @@ impl CosmosServiceManager {
     }
 
     // intentionally thin, idea is to guard the lock
-    pub async fn register_operator(&self, operator: AvsOperator) -> Result<()> {
+    pub async fn register_operator(&self, vector: AvsOperator) -> Result<()> {
         let inner = self.middleware.lock().await;
         inner
-            .register_operator(self.address.clone(), operator)
+            .register_operator(self.address.clone(), vector)
             .await
     }
 }

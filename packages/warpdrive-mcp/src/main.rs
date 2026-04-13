@@ -10,52 +10,52 @@ use utils::config::ConfigFilePath;
 #[derive(Parser)]
 #[command(
     name = "warpdrive-mcp",
-    about = "WAVS MCP Server — exposes WAVS platform operations via Model Context Protocol"
+    about = "WarpDrive MCP Server — exposes WarpDrive platform operations via Model Context Protocol"
 )]
 struct Args {
-    /// URL of the WAVS node HTTP API
-    #[arg(long, env = "WAVS_URL", default_value = "http://localhost:8000")]
-    wavs_url: String,
+    /// URL of the WarpDrive node HTTP API
+    #[arg(long, env = "WARPDRIVE_URL", default_value = "http://localhost:8000")]
+    warpdrive_url: String,
 
     /// Bearer token for write operations (deploy, pause, resume)
-    #[arg(long, env = "WAVS_TOKEN")]
+    #[arg(long, env = "WARPDRIVE_TOKEN")]
     token: Option<String>,
 
     /// Credential (private key `0x…` or BIP39 mnemonic) for on-chain management transactions.
-    /// Required for: wavs_deploy_service_manager, wavs_deploy_poa_service_manager,
-    /// wavs_register_operator, wavs_set_service_uri.
-    /// Falls back to `mcp_chain_credential` in the [wavs] section of ~/.wavs/wavs.toml.
-    #[arg(long, env = "WAVS_MCP_CHAIN_CREDENTIAL")]
+    /// Required for: warpdrive_deploy_service_manager, warpdrive_deploy_poa_service_manager,
+    /// warpdrive_register_operator, warpdrive_set_service_uri.
+    /// Falls back to `mcp_chain_credential` in the [warpdrive] section of ~/.warpdrive/warpdrive.toml.
+    #[arg(long, env = "WARPDRIVE_MCP_CHAIN_CREDENTIAL")]
     mcp_chain_credential: Option<String>,
 
-    /// BIP39 mnemonic for the WAVS signing key.
-    /// Required (alongside --mcp-chain-credential) for: wavs_register_operator.
-    /// Falls back to `signing_mnemonic` in the [wavs] section of ~/.wavs/wavs.toml.
-    #[arg(long, env = "WAVS_SIGNING_MNEMONIC")]
+    /// BIP39 mnemonic for the WarpDrive signing key.
+    /// Required (alongside --mcp-chain-credential) for: warpdrive_register_operator.
+    /// Falls back to `signing_mnemonic` in the [warpdrive] section of ~/.warpdrive/warpdrive.toml.
+    #[arg(long, env = "WARPDRIVE_SIGNING_MNEMONIC")]
     signing_mnemonic: Option<String>,
 }
 
-/// Read a credential field from the [wavs] section of wavs.toml, searching only
-/// user-home paths (~/.wavs/wavs.toml, ~/.config/wavs/wavs.toml, etc.).
+/// Read a credential field from the [warpdrive] section of warpdrive.toml, searching only
+/// user-home paths (~/.warpdrive/warpdrive.toml, ~/.config/warpdrive/warpdrive.toml, etc.).
 ///
-/// Paths under `WAVS_HOME` env var or the process CWD are intentionally skipped.
-/// Project-local wavs.toml files may live inside git repositories and risk accidental
+/// Paths under `WARPDRIVE_HOME` env var or the process CWD are intentionally skipped.
+/// Project-local warpdrive.toml files may live inside git repositories and risk accidental
 /// commit of secrets. Only user-home and system paths are considered safe.
 fn read_credential_toml_field(field: &str) -> Option<String> {
     let cwd = std::env::current_dir().ok();
-    let wavs_home_env = std::env::var("WAVS_HOME")
+    let warpdrive_home_env = std::env::var("WARPDRIVE_HOME")
         .ok()
         .map(std::path::PathBuf::from);
 
-    for path in ConfigFilePath::new("wavs.toml", None).into_possible() {
+    for path in ConfigFilePath::new("warpdrive.toml", None).into_possible() {
         // Skip CWD-relative paths (project-local files)
         if let Some(ref cwd) = cwd {
             if path.starts_with(cwd) {
                 continue;
             }
         }
-        // Skip WAVS_HOME paths (also potentially project-local)
-        if let Some(ref home) = wavs_home_env {
+        // Skip WARPDRIVE_HOME paths (also potentially project-local)
+        if let Some(ref home) = warpdrive_home_env {
             if path.starts_with(home) {
                 continue;
             }
@@ -71,7 +71,7 @@ fn read_credential_toml_field(field: &str) -> Option<String> {
             continue;
         };
         if let Some(value) = doc
-            .get("wavs")
+            .get("warpdrive")
             .and_then(|v| v.get(field))
             .and_then(|v| v.as_str())
         {
@@ -91,8 +91,8 @@ async fn main() -> anyhow::Result<()> {
 
     let mut args = Args::parse();
 
-    // Fall back to user-home wavs.toml [wavs] section for credentials not set via CLI/env.
-    // CWD and WAVS_HOME paths are excluded to prevent loading secrets from project-local
+    // Fall back to user-home warpdrive.toml [warpdrive] section for credentials not set via CLI/env.
+    // CWD and WARPDRIVE_HOME paths are excluded to prevent loading secrets from project-local
     // files that may be committed to a git repository.
     if args.mcp_chain_credential.is_none() {
         args.mcp_chain_credential = read_credential_toml_field("mcp_chain_credential");
@@ -101,10 +101,10 @@ async fn main() -> anyhow::Result<()> {
         args.signing_mnemonic = read_credential_toml_field("signing_mnemonic");
     }
 
-    tracing::info!("Starting WAVS MCP server, connecting to {}", args.wavs_url);
+    tracing::info!("Starting WarpDrive MCP server, connecting to {}", args.warpdrive_url);
 
     let server = server::WavsMcpServer::new(
-        args.wavs_url,
+        args.warpdrive_url,
         args.token,
         args.mcp_chain_credential,
         args.signing_mnemonic,

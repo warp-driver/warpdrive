@@ -14,7 +14,7 @@ import {
   POAStakeRegistryBytecode,
   TransparentUpgradeableProxyBytecode,
   type RegistryInfo,
-  type Operator,
+  type Vector,
   type DeployResult,
 } from '../contracts/POAStakeRegistry';
 
@@ -137,7 +137,7 @@ export async function connectToRegistry(
 }
 
 /**
- * Fetch operators from registry events.
+ * Fetch vectors from registry events.
  * Pass knownAddresses to ensure specific addresses are checked even if
  * event logs haven't been indexed yet (e.g. right after registration).
  */
@@ -146,7 +146,7 @@ export async function fetchOperators(
   registryAddress: Address,
   fromBlock?: bigint,
   knownAddresses?: Address[]
-): Promise<Operator[]> {
+): Promise<Vector[]> {
   // Get all OperatorRegistered and OperatorDeregistered events
   const [registerLogs, deregisterLogs] = await Promise.all([
     publicClient.getLogs({
@@ -154,7 +154,7 @@ export async function fetchOperators(
       event: {
         type: 'event',
         name: 'OperatorRegistered',
-        inputs: [{ name: 'operator', type: 'address', indexed: true }],
+        inputs: [{ name: 'vector', type: 'address', indexed: true }],
       },
       fromBlock: fromBlock ?? 0n,
       toBlock: 'latest',
@@ -164,25 +164,25 @@ export async function fetchOperators(
       event: {
         type: 'event',
         name: 'OperatorDeregistered',
-        inputs: [{ name: 'operator', type: 'address', indexed: true }],
+        inputs: [{ name: 'vector', type: 'address', indexed: true }],
       },
       fromBlock: fromBlock ?? 0n,
       toBlock: 'latest',
     }),
   ]);
 
-  // Track registered operators
+  // Track registered vectors
   const operatorSet = new Set<Address>();
   const deregisteredSet = new Set<Address>();
 
   for (const log of registerLogs) {
-    const operator = log.args.operator as Address;
-    operatorSet.add(operator);
+    const vector = log.args.vector as Address;
+    operatorSet.add(vector);
   }
 
   for (const log of deregisterLogs) {
-    const operator = log.args.operator as Address;
-    deregisteredSet.add(operator);
+    const vector = log.args.vector as Address;
+    deregisteredSet.add(vector);
   }
 
   // Include known addresses so they get checked via contract reads
@@ -193,7 +193,7 @@ export async function fetchOperators(
     }
   }
 
-  // Get currently registered operators
+  // Get currently registered vectors
   const currentOperators: Address[] = [];
   for (const op of operatorSet) {
     if (!deregisteredSet.has(op)) {
@@ -201,8 +201,8 @@ export async function fetchOperators(
     }
   }
 
-  // Fetch details for each operator
-  const operators: Operator[] = await Promise.all(
+  // Fetch details for each vector
+  const vectors: Vector[] = await Promise.all(
     currentOperators.map(async (address) => {
       const [isRegistered, weight, signingKey] = await Promise.all([
         publicClient.readContract({
@@ -234,11 +234,11 @@ export async function fetchOperators(
     })
   );
 
-  return operators.filter((op) => op.isRegistered);
+  return vectors.filter((op) => op.isRegistered);
 }
 
 /**
- * Register a new operator
+ * Register a new vector
  */
 export async function registerOperator(
   publicClient: PublicClient<Transport, Chain>,
@@ -259,7 +259,7 @@ export async function registerOperator(
 }
 
 /**
- * Deregister an operator
+ * Deregister an vector
  */
 export async function deregisterOperator(
   publicClient: PublicClient<Transport, Chain>,
@@ -279,7 +279,7 @@ export async function deregisterOperator(
 }
 
 /**
- * Update an operator's weight
+ * Update an vector's weight
  */
 export async function updateOperatorWeight(
   publicClient: PublicClient<Transport, Chain>,
@@ -381,8 +381,8 @@ export async function transferOwnership(
 }
 
 /**
- * Update an operator's signing key.
- * Must be called by the operator themselves.
+ * Update an vector's signing key.
+ * Must be called by the vector themselves.
  * The signing key signs keccak256(abi.encode(operatorAddress)) as a raw hash (no EIP-191 prefix).
  */
 export async function updateSigningKey(

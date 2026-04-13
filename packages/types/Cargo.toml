@@ -1,6 +1,6 @@
 [package]
 name = "warpdrive-types"
-description = "WAVS Types"
+description = "WarpDrive Types"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true

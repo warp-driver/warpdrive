@@ -26,7 +26,7 @@ const REGISTRY_TABS = [
   { key: 'workflows', label: 'Workflows' },
   { key: 'components', label: 'Components' },
   { key: 'activity', label: 'Activity' },
-  { key: 'operators', label: 'Operators' },
+  { key: 'vectors', label: 'Vectors' },
   { key: 'storage', label: 'Storage' },
 ];
 
@@ -539,12 +539,12 @@ export function ServiceDetailPage() {
     try {
       const publicClient = getPublicClient(registry.rpcUrl, registry.chainId);
       const userAddress = await getAddress();
-      const [info, operators] = await Promise.all([
+      const [info, vectors] = await Promise.all([
         connectToRegistry(publicClient, registry.address),
         fetchOperators(publicClient, registry.address),
       ]);
       updateRegistryInfo(registryKey, info);
-      updateRegistryOperators(registryKey, operators);
+      updateRegistryOperators(registryKey, vectors);
       updateRegistryOwnership(registryKey, info.owner.toLowerCase() === userAddress.toLowerCase());
       await refreshServices();
     } catch (err) {
@@ -561,7 +561,7 @@ export function ServiceDetailPage() {
         message={
           registry
             ? 'Remove this registry from the app? Any running service will be stopped. The contract remains on-chain and can be re-added later.'
-            : 'Remove this service from WAVS? The component will stop executing.'
+            : 'Remove this service from WarpDrive? The component will stop executing.'
         }
         confirmLabel="Delete"
         confirmColor="red"
@@ -741,7 +741,7 @@ export function ServiceDetailPage() {
         {activeTab === 'activity' && !service && (
           <p className="text-tan-muted italic">Register a service to see its activity.</p>
         )}
-        {activeTab === 'operators' && registry && (
+        {activeTab === 'vectors' && registry && (
           <OperatorList registryKey={registryKey} />
         )}
         {activeTab === 'storage' && service && serviceHashId && (

@@ -91,7 +91,7 @@ function ServiceCard({
     ? `/services/${registry.chainId}/${registry.address}`
     : `/services/${encodeURIComponent(getServiceChain(service!.manager))}/${getServiceAddress(service!.manager)}`;
 
-  const operatorCount = registry?.operators.length ?? 0;
+  const operatorCount = registry?.vectors.length ?? 0;
   const isPaused = service?.status === 'paused';
 
   return (
@@ -155,13 +155,13 @@ function ServiceCard({
             </>
           )}
           {operatorCount > 0 && (() => {
-            const readyCount = registry!.operators.filter((op) => op.signingKey !== ZERO_ADDRESS).length;
+            const readyCount = registry!.vectors.filter((op) => op.signingKey !== ZERO_ADDRESS).length;
             const allReady = readyCount === operatorCount;
             return (
               <>
                 {registry?.info && <span>&middot;</span>}
                 <span className={allReady ? 'text-green-400' : 'text-yellow-400'}>
-                  {readyCount}/{operatorCount} operators ready
+                  {readyCount}/{operatorCount} vectors ready
                 </span>
               </>
             );
@@ -178,7 +178,7 @@ function ServiceCard({
         </span>
         {operatorCount > 0 && (
           <span>
-            {operatorCount} operator{operatorCount !== 1 ? 's' : ''}
+            {operatorCount} vector{operatorCount !== 1 ? 's' : ''}
           </span>
         )}
       </div>

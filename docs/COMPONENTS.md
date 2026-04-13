@@ -1,4 +1,4 @@
-# WAVS Components
+# WarpDrive Components
 
 ## WIT Definitions, Go Bindings, and wasi-utils
 
@@ -6,8 +6,8 @@
 
 The `wit-definitions/` directory contains the [WebAssembly Interface Type](https://component-model.bytecodealliance.org/design/wit.html) definitions that describe the component interfaces:
 
-- **`types/`** — shared types used across operator and aggregator interfaces (core types, chain configs, events, services)
-- **`operator/`** — the operator component world (trigger processing)
+- **`types/`** — shared types used across vector and aggregator interfaces (core types, chain configs, events, services)
+- **`vector/`** — the vector component world (trigger processing)
 - **`aggregator/`** — the aggregator component world (quorum handling and on-chain submission)
 - **`wasi-tls/`** — custom WASI TLS extension interface
 
@@ -15,7 +15,7 @@ WIT dependencies are managed with [`wkg`](https://github.com/bytecodealliance/wa
 
 ### Go Bindings
 
-The `wasi/go/` directory contains auto-generated Go bindings from the WIT definitions. These provide Go-language access to the WAVS WASI interfaces (types, operator trigger world, and standard WASI APIs for HTTP, sockets, clocks, filesystem, etc.).
+The `wasi/go/` directory contains auto-generated Go bindings from the WIT definitions. These provide Go-language access to the WarpDrive WASI interfaces (types, vector trigger world, and standard WASI APIs for HTTP, sockets, clocks, filesystem, etc.).
 
 Module path: `github.com/warp-driver/warpdrive/wasi/go`
 
@@ -49,11 +49,11 @@ WIT_DIR="./wit-definitions"
 rm -rf "$WIT_DIR" .temp-clone
 mkdir -p .temp-clone
 git -C .temp-clone clone --depth=1 --branch "$BRANCH" --single-branch https://github.com/warp-driver/warpdrive.git
-cp -R .temp-clone/WAVS/wit-definitions "$WIT_DIR"
+cp -R .temp-clone/WarpDrive/wit-definitions "$WIT_DIR"
 rm -rf .temp-clone
 
 # Fetch dependencies
-cd "$WIT_DIR/operator" && wkg wit fetch && cd -
+cd "$WIT_DIR/vector" && wkg wit fetch && cd -
 cd "$WIT_DIR/aggregator" && wkg wit fetch && cd -
 ```
 
@@ -61,17 +61,17 @@ Your Rust component crate then references the local WIT directory via `wit-bindg
 
 ---
 
-WAVS has two distinct component types that serve different roles in the execution pipeline. Both are compiled to WebAssembly using the [Component Model](https://component-model.bytecodealliance.org/) spec and run inside a Wasmtime WASI sandbox.
+WarpDrive has two distinct component types that serve different roles in the execution pipeline. Both are compiled to WebAssembly using the [Component Model](https://component-model.bytecodealliance.org/) spec and run inside a Wasmtime WASI sandbox.
 
 ---
 
-## Operator Components
+## Vector Components
 
-Operator components are the primary building block of a WAVS service. They execute in response to a trigger event and produce a signed payload that gets submitted to the aggregation pipeline.
+Vector components are the primary building block of a WarpDrive service. They execute in response to a trigger event and produce a signed payload that gets submitted to the aggregation pipeline.
 
 ### Interface
 
-Operator components implement the `Guest` trait generated from the operator WIT world:
+Vector components implement the `Guest` trait generated from the vector WIT world:
 
 ```rust
 impl Guest for Component {
@@ -96,17 +96,17 @@ export_layer_trigger_world!(Component);
 
 ### Internal Test Components
 
-The `examples/components/` directory contains components used for **internal testing only** — "examples" is a legacy name. Do not use them as a reference for building your own components: they rely on a shared `TriggerId` abstraction and common test infrastructure specific to this repo, which is not part of the core WAVS API and has historically caused confusion.
+The `examples/components/` directory contains components used for **internal testing only** — "examples" is a legacy name. Do not use them as a reference for building your own components: they rely on a shared `TriggerId` abstraction and common test infrastructure specific to this repo, which is not part of the core WarpDrive API and has historically caused confusion.
 
 ---
 
 ## Aggregator Components
 
-Aggregator components run **after** quorum is reached across multiple operator submissions. Rather than processing the raw trigger event, they receive the collected operator result and decide how (and when) to submit it on-chain.
+Aggregator components run **after** quorum is reached across multiple vector submissions. Rather than processing the raw trigger event, they receive the collected vector result and decide how (and when) to submit it on-chain.
 
 ### When They Run
 
-After the threshold of operators have signed and submitted a `WasmResponse` for a given event, the aggregator component is invoked via the `process_input` entry point. It can then either submit immediately or schedule a timer for deferred submission.
+After the threshold of vectors have signed and submitted a `WasmResponse` for a given event, the aggregator component is invoked via the `process_input` entry point. It can then either submit immediately or schedule a timer for deferred submission.
 
 ### Interface
 
@@ -131,7 +131,7 @@ impl Guest for Component {
 }
 ```
 
-All three entry points receive the same `AggregatorInput`, which bundles the original `TriggerAction` with the `WasmResponse` from the operator phase:
+All three entry points receive the same `AggregatorInput`, which bundles the original `TriggerAction` with the `WasmResponse` from the vector phase:
 
 ```rust
 struct AggregatorInput {
@@ -140,7 +140,7 @@ struct AggregatorInput {
 }
 ```
 
-When quorum is met, the aggregator component receives the full signed submission set, allowing it to validate or select among the collected operator signatures.
+When quorum is met, the aggregator component receives the full signed submission set, allowing it to validate or select among the collected vector signatures.
 
 ### Multiple Actions
 
@@ -176,17 +176,17 @@ export_aggregator_world!(Component);
 
 ### Internal Test Components
 
-As with operator components, the aggregator components under `examples/components/` (`simple-aggregator`, `timer-aggregator`) are for internal testing only. See the note above about not using them as a reference.
+As with vector components, the aggregator components under `examples/components/` (`simple-aggregator`, `timer-aggregator`) are for internal testing only. See the note above about not using them as a reference.
 
 ---
 
 ## The Submit Enum
 
-Each workflow in a service definition has a `submit` field that controls what happens after the operator component runs:
+Each workflow in a service definition has a `submit` field that controls what happens after the vector component runs:
 
 ```rust
 enum Submit {
-    /// Execute the operator component but make no on-chain submission.
+    /// Execute the vector component but make no on-chain submission.
     /// The typical use-case is stashing local state in WASI key-value storage
     /// or the filesystem. Also valid when the component posts to an external
     /// API and no on-chain confirmation is needed.
@@ -201,7 +201,7 @@ enum Submit {
 }
 ```
 
-`Submit::None` is valid whenever the operator component's output is self-contained and no service handler contract is needed.
+`Submit::None` is valid whenever the vector component's output is self-contained and no service handler contract is needed.
 
 `Submit::Aggregator` requires a deployed service handler contract on the target chain — see [CONTRACTS.md](CONTRACTS.md).
 
@@ -213,13 +213,13 @@ enum Submit {
 Trigger fires
      │
      ▼
-Operator component (export_layer_trigger_world!)
+Vector component (export_layer_trigger_world!)
   run(TriggerAction) → Vec<WasmResponse>
      │
      │  if submit = None: stop here, nothing posted on-chain
      │
      ▼  if submit = Aggregator:
-Signed by operator, broadcast via P2P
+Signed by vector, broadcast via P2P
      │
      ▼  quorum threshold reached
 Aggregator component (export_aggregator_world!)

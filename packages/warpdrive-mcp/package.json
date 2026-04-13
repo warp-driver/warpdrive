@@ -1,8 +1,8 @@
 {
   "name": "@warpdrive/mcp",
   "version": "2.0.0-rc.13",
-  "description": "WAVS MCP server — exposes WAVS operations to AI assistants via the Model Context Protocol",
-  "keywords": ["wavs", "mcp", "wasm", "avs"],
+  "description": "WarpDrive MCP server — exposes WarpDrive operations to AI assistants via the Model Context Protocol",
+  "keywords": ["warpdrive", "wavs", "mcp", "wasm", "avs", "circuit"],
   "license": "GPL-3.0-or-later",
   "repository": {
     "type": "git",

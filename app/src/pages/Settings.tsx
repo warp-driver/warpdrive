@@ -13,27 +13,27 @@ import { getChainConfigs } from '../tauri';
 
 const ENV_VAR_SUGGESTIONS = [
   // Open-source / local AI
-  { label: 'HuggingFace', key: 'WAVS_ENV_HUGGINGFACE_API_KEY'  },
-  { label: 'Ollama URL',  key: 'WAVS_ENV_OLLAMA_BASE_URL'      },
-  { label: 'LM Studio',   key: 'WAVS_ENV_LM_STUDIO_BASE_URL'   },
-  { label: 'Together AI', key: 'WAVS_ENV_TOGETHER_API_KEY'     },
-  { label: 'Groq',        key: 'WAVS_ENV_GROQ_API_KEY'         },
-  { label: 'Mistral',     key: 'WAVS_ENV_MISTRAL_API_KEY'      },
-  { label: 'Replicate',   key: 'WAVS_ENV_REPLICATE_API_TOKEN'  },
+  { label: 'HuggingFace', key: 'WARPDRIVE_ENV_HUGGINGFACE_API_KEY'  },
+  { label: 'Ollama URL',  key: 'WARPDRIVE_ENV_OLLAMA_BASE_URL'      },
+  { label: 'LM Studio',   key: 'WARPDRIVE_ENV_LM_STUDIO_BASE_URL'   },
+  { label: 'Together AI', key: 'WARPDRIVE_ENV_TOGETHER_API_KEY'     },
+  { label: 'Groq',        key: 'WARPDRIVE_ENV_GROQ_API_KEY'         },
+  { label: 'Mistral',     key: 'WARPDRIVE_ENV_MISTRAL_API_KEY'      },
+  { label: 'Replicate',   key: 'WARPDRIVE_ENV_REPLICATE_API_TOKEN'  },
   // Closed-source AI
-  { label: 'OpenAI',      key: 'WAVS_ENV_OPENAI_API_KEY'       },
-  { label: 'Anthropic',   key: 'WAVS_ENV_ANTHROPIC_API_KEY'    },
+  { label: 'OpenAI',      key: 'WARPDRIVE_ENV_OPENAI_API_KEY'       },
+  { label: 'Anthropic',   key: 'WARPDRIVE_ENV_ANTHROPIC_API_KEY'    },
   // Decentralized storage
-  { label: 'Pinata',      key: 'WAVS_ENV_PINATA_JWT'           },
-  { label: 'Web3.Storage', key: 'WAVS_ENV_WEB3_STORAGE_TOKEN' },
+  { label: 'Pinata',      key: 'WARPDRIVE_ENV_PINATA_JWT'           },
+  { label: 'Web3.Storage', key: 'WARPDRIVE_ENV_WEB3_STORAGE_TOKEN' },
   // Blockchain / data
-  { label: 'Etherscan',   key: 'WAVS_ENV_ETHERSCAN_API_KEY'    },
-  { label: 'Alchemy',     key: 'WAVS_ENV_ALCHEMY_API_KEY'      },
-  { label: 'Infura',      key: 'WAVS_ENV_INFURA_API_KEY'       },
-  { label: 'The Graph',   key: 'WAVS_ENV_THEGRAPH_API_KEY'     },
-  { label: 'CoinGecko',   key: 'WAVS_ENV_COINGECKO_API_KEY'    },
+  { label: 'Etherscan',   key: 'WARPDRIVE_ENV_ETHERSCAN_API_KEY'    },
+  { label: 'Alchemy',     key: 'WARPDRIVE_ENV_ALCHEMY_API_KEY'      },
+  { label: 'Infura',      key: 'WARPDRIVE_ENV_INFURA_API_KEY'       },
+  { label: 'The Graph',   key: 'WARPDRIVE_ENV_THEGRAPH_API_KEY'     },
+  { label: 'CoinGecko',   key: 'WARPDRIVE_ENV_COINGECKO_API_KEY'    },
   // General
-  { label: 'GitHub',      key: 'WAVS_ENV_GITHUB_TOKEN'         },
+  { label: 'GitHub',      key: 'WARPDRIVE_ENV_GITHUB_TOKEN'         },
 ];
 
 const KNOWN_CHAIN_NAMES: Record<number, string> = {
@@ -304,7 +304,7 @@ export function Settings() {
   };
 
   const loadToml = useCallback(async () => {
-    if (!settings.wavs_home) return;
+    if (!settings.warpdrive_home) return;
     setTomlLoading(true);
     setTomlError(null);
     setTomlSaveSuccess(false);
@@ -317,7 +317,7 @@ export function Settings() {
     } finally {
       setTomlLoading(false);
     }
-  }, [settings.wavs_home]);
+  }, [settings.warpdrive_home]);
 
   useEffect(() => {
     loadToml();
@@ -348,8 +348,8 @@ export function Settings() {
   const handleAddEnvVar = () => {
     let key = newEnvKey.trim();
     if (!key) return;
-    if (!key.startsWith('WAVS_ENV_')) {
-      key = `WAVS_ENV_${key}`;
+    if (!key.startsWith('WARPDRIVE_ENV_')) {
+      key = `WARPDRIVE_ENV_${key}`;
     }
     setEnvVars((prev) => ({ ...prev, [key]: newEnvValue }));
     setNewEnvKey('');
@@ -400,7 +400,7 @@ export function Settings() {
     try {
       const path = await setWavsHome();
       if (path) {
-        console.log('Changed wavs_home to', path);
+        console.log('Changed warpdrive_home to', path);
         setChanged(true);
       }
     } catch (err) {
@@ -584,17 +584,17 @@ export function Settings() {
         )}
       </div>
 
-      {/* WAVS Home Directory */}
+      {/* WarpDrive Home Directory */}
       <div className="flex flex-col gap-4 p-4 rounded-lg bg-charcoal-medium border border-charcoal-light">
         <h2 className="text-beige-light text-lg font-semibold">
-          WAVS Home Directory
+          WarpDrive Home Directory
         </h2>
         <div className="flex gap-3 items-center">
           <input
             type="text"
             readOnly
             placeholder="No directory selected"
-            value={settings.wavs_home ?? ''}
+            value={settings.warpdrive_home ?? ''}
             className="flex-1 px-4 py-3 rounded-md bg-charcoal-dark border border-charcoal-light text-beige-warm font-mono text-sm outline-none"
           />
           <Button text="Browse..." onClick={handleBrowse} />
@@ -602,12 +602,12 @@ export function Settings() {
       </div>
 
       {/* TOML Editor */}
-      {settings.wavs_home && (
+      {settings.warpdrive_home && (
         <div className="flex flex-col gap-4 p-4 rounded-lg bg-charcoal-medium border border-charcoal-light">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <h2 className="text-beige-light text-lg font-semibold">
-                Configuration (wavs.toml)
+                Configuration (warpdrive.toml)
               </h2>
               {hasUnsavedChanges && (
                 <span className="text-tan-muted text-sm italic">
@@ -655,7 +655,7 @@ export function Settings() {
       <div className="flex flex-col gap-4 p-4 rounded-lg bg-charcoal-medium border border-charcoal-light">
         <h2 className="text-beige-light text-lg font-semibold">Environment Variables</h2>
         <p className="text-tan-muted text-xs">
-          <span className="font-mono">WAVS_ENV_*</span> variables are passed to workflow components that declare them in their <span className="font-mono">env_keys</span> list.
+          <span className="font-mono">WARPDRIVE_ENV_*</span> variables are passed to workflow components that declare them in their <span className="font-mono">env_keys</span> list.
         </p>
 
         {/* Required by services */}
@@ -726,7 +726,7 @@ export function Settings() {
         <div className="flex items-center gap-2">
           <input
             type="text"
-            placeholder="Key (WAVS_ENV_ prefix added if missing)"
+            placeholder="Key (WARPDRIVE_ENV_ prefix added if missing)"
             value={newEnvKey}
             onChange={(e) => setNewEnvKey(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') handleAddEnvVar(); }}
@@ -791,7 +791,7 @@ export function Settings() {
         </div>
 
         <p className="text-tan-muted text-xs">
-          Exposes WAVS operations to AI assistants (Claude Desktop, Cursor, VS Code) via the Model Context Protocol.
+          Exposes WarpDrive operations to AI assistants (Claude Desktop, Cursor, VS Code) via the Model Context Protocol.
         </p>
 
         {/* Auto-start toggle */}
@@ -802,7 +802,7 @@ export function Settings() {
             onChange={(e) => setMcpAutoStart(e.target.checked)}
             className="w-4 h-4 accent-green-4"
           />
-          <span className="text-beige-warm text-sm">Auto-start when WAVS node starts</span>
+          <span className="text-beige-warm text-sm">Auto-start when WarpDrive node starts</span>
         </label>
 
         {/* Bearer token */}
@@ -840,9 +840,9 @@ export function Settings() {
           <pre className="text-xs font-mono text-beige-warm bg-charcoal-darkest rounded p-3 overflow-x-auto whitespace-pre-wrap">{
 `{
   "mcpServers": {
-    "wavs": {
+    "warp-drive": {
       "command": "${mcpBinaryPath ?? '/path/to/warpdrive-mcp'}",
-      "args": ["--wavs-url", "${wavsUrl}"${mcpToken.trim() ? `,\n               "--token", "${mcpToken.trim()}"` : ''}]
+      "args": ["--warpdrive-url", "${wavsUrl}"${mcpToken.trim() ? `,\n               "--token", "${mcpToken.trim()}"` : ''}]
     }
   }
 }`

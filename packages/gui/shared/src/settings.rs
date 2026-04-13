@@ -14,7 +14,7 @@ pub struct SavedRegistry {
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug)]
 pub struct Settings {
-    pub wavs_home: Option<PathBuf>,
+    pub warpdrive_home: Option<PathBuf>,
     #[serde(default)]
     pub saved_registries: Vec<SavedRegistry>,
     #[serde(default)]

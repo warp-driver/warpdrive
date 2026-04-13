@@ -65,7 +65,7 @@ pub enum ServiceError {
 /// Service validation is a runtime check, and depends on:
 ///
 /// 1. All service handlers on a given chain use the same service manager
-/// 2. All service managers on non-source chains properly mirror the operator set of the source
+/// 2. All service managers on non-source chains properly mirror the vector set of the source
 /// 3. All components are legitimate (e.g. can be downloaded, match the provided digest, execute as expected, etc.)
 #[cfg_attr(feature = "ts-bindings", derive(TS))]
 #[cfg_attr(feature = "ts-bindings", ts(export))]
@@ -200,7 +200,7 @@ pub struct Component {
     pub config: BTreeMap<String, String>,
 
     /// External env variable keys to be read from the system host on execute (i.e. API keys).
-    /// Must be prefixed with `WAVS_ENV_`.
+    /// Must be prefixed with `WARPDRIVE_ENV_`.
     pub env_keys: BTreeSet<String>,
 }
 
@@ -503,7 +503,7 @@ pub enum Submit {
     },
 }
 
-/// Defines the signature configuration for cryptographic operations in WAVS.
+/// Defines the signature configuration for cryptographic operations in WarpDrive.
 ///
 /// This struct separates the cryptographic algorithm from the message formatting
 /// to provide flexibility in signature schemes while maintaining compatibility
@@ -575,7 +575,7 @@ pub enum SignaturePrefix {
 pub enum ServiceStatus {
     Active,
     // Service is paused, no workflows will be executed
-    // however the service can still be queried for AVS Key etc.
+    // however the service can still be queried for Circuit Key etc.
     Paused,
 }
 

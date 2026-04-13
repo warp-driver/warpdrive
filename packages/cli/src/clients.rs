@@ -286,7 +286,7 @@ impl HttpClient {
         service: &Service,
         timeout: Option<Duration>,
     ) -> Result<()> {
-        // wait until WAVS sees the new service
+        // wait until WarpDrive sees the new service
         let service_hash = service.hash()?;
         tokio::time::timeout(timeout.unwrap_or(Duration::from_secs(30)), async {
             loop {

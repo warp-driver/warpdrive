@@ -27,8 +27,8 @@ pub static BLOCK_INTERVAL: NonZeroU32 = NonZeroU32::new(10).unwrap();
 pub struct Configs {
     pub matrix: TestMatrix,
     pub registry: bool,
-    /// WAVS configs - one per operator node
-    pub wavs_configs: Vec<warpdrive::config::Config>,
+    /// WarpDrive configs - one per vector node
+    pub warpdrive_configs: Vec<warpdrive::config::Config>,
     pub cli: warpdrive_cli::config::Config,
     pub cli_args: warpdrive_cli::args::CliArgs,
     pub chains: Arc<RwLock<ChainConfigs>>,
@@ -41,9 +41,9 @@ pub struct Configs {
 }
 
 impl Configs {
-    /// Number of operator nodes configured
-    pub fn num_operators(&self) -> usize {
-        self.wavs_configs.len()
+    /// Number of vector nodes configured
+    pub fn num_vectors(&self) -> usize {
+        self.warpdrive_configs.len()
     }
 }
 
@@ -51,32 +51,32 @@ impl Configs {
 pub struct TestMnemonics {
     pub cli: Credential,
     pub cli_cosmos: Credential,
-    /// Operator mnemonics - one per WAVS instance for multi-operator tests
-    /// For single-operator tests, only the first one is used
-    pub operators: Vec<Credential>,
+    /// Vector mnemonics - one per WarpDrive instance for multi-vector tests
+    /// For single-vector tests, only the first one is used
+    pub vectors: Vec<Credential>,
     pub aggregator_evm: Credential,
     pub aggregator_cosmos: Credential,
     pub cosmos_middleware: Vec<Credential>,
 }
 
 impl TestMnemonics {
-    pub fn new(num_operators: usize) -> Self {
+    pub fn new(num_vectors: usize) -> Self {
         // just some random mnemonics so they don't conflict with binaries, we'll fund it from the anvil wallet upon creation
 
-        // Pre-defined operator mnemonics for multi-operator tests
-        // Each operator needs a unique mnemonic to have a unique signing key
+        // Pre-defined vector mnemonics for multi-vector tests
+        // Each vector needs a unique mnemonic to have a unique signing key
         let operator_mnemonics = vec![
-            // Operator 0: 0x55a8F5cac28c2dA45aFA89c46e47CC4A445570AE
+            // Vector 0: 0x55a8F5cac28c2dA45aFA89c46e47CC4A445570AE
             "aspect mushroom fly cousin hobby body need dose blind siren shoe annual",
-            // Operator 1
+            // Vector 1
             "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
-            // Operator 2
+            // Vector 2
             "zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo wrong",
         ];
 
-        let operators: Vec<Credential> = operator_mnemonics
+        let vectors: Vec<Credential> = operator_mnemonics
             .into_iter()
-            .take(num_operators)
+            .take(num_vectors)
             .map(|m| Credential::new(m.to_string()))
             .collect();
 
@@ -90,7 +90,7 @@ impl TestMnemonics {
                 "arch forward congress comfort shove palace staff flat concert such double tooth brown buffalo cycle school change exhaust episode ball embody various enroll tenant"
                     .to_string(),
             ),
-            operators,
+            vectors,
             // 0xB1Ebb71428FF42F529708B5Afd2BA6Ad3432f38d
             aggregator_evm: Credential::new(
                 "brain medal write network foam renew muscle mirror rather daring bike uniform"
@@ -117,9 +117,9 @@ impl TestMnemonics {
             let mut mnemonics_to_fund: Vec<&Credential> =
                 vec![&self.cli, &self.aggregator_evm, &self.aggregator_cosmos];
 
-            // Add all operator mnemonics
-            for operator in &self.operators {
-                mnemonics_to_fund.push(operator);
+            // Add all vector mnemonics
+            for vector in &self.vectors {
+                mnemonics_to_fund.push(vector);
             }
 
             for mnemonic in mnemonics_to_fund {
@@ -143,25 +143,25 @@ impl TestMnemonics {
     }
 }
 
-/// Number of operators for multi-operator tests
-pub const MULTI_OPERATOR_COUNT: usize = 3;
-/// Default base port for WAVS HTTP servers
-pub const DEFAULT_WAVS_BASE_PORT: u32 = 8000;
-/// Default base port for WAVS P2P servers
+/// Number of vectors for multi-vector tests
+pub const MULTI_VECTOR_COUNT: usize = 3;
+/// Default base port for WarpDrive HTTP servers
+pub const DEFAULT_WARPDRIVE_BASE_PORT: u32 = 8000;
+/// Default base port for WarpDrive P2P servers
 pub const DEFAULT_P2P_BASE_PORT: u16 = 9000;
 
 impl From<TestConfig> for Configs {
     fn from(test_config: TestConfig) -> Self {
         let matrix: TestMatrix = test_config.mode.into();
 
-        // Determine number of operators based on test matrix
-        let num_operators = if matrix.multi_operator_enabled() {
-            MULTI_OPERATOR_COUNT
+        // Determine number of vectors based on test matrix
+        let num_vectors = if matrix.multi_vector_enabled() {
+            MULTI_VECTOR_COUNT
         } else {
             1
         };
 
-        let mut mnemonics = TestMnemonics::new(num_operators);
+        let mut mnemonics = TestMnemonics::new(num_vectors);
 
         let chain_configs = Arc::new(RwLock::new(ChainConfigs::default()));
 
@@ -227,10 +227,10 @@ impl From<TestConfig> for Configs {
             push_cosmos_chain();
         }
 
-        // Create WAVS configs for each operator
-        let mut wavs_configs = Vec::with_capacity(num_operators);
-        for operator_index in 0..num_operators {
-            let mut wavs_config: warpdrive::config::Config = ConfigBuilder::new(warpdrive::args::CliArgs {
+        // Create WarpDrive configs for each vector
+        let mut warpdrive_configs = Vec::with_capacity(num_vectors);
+        for vector_index in 0..num_vectors {
+            let mut warpdrive_config: warpdrive::config::Config = ConfigBuilder::new(warpdrive::args::CliArgs {
                 data: Some(tempfile::tempdir().unwrap().path().to_path_buf()),
                 home: Some(workspace_path()),
                 // deliberately point to a non-existing file
@@ -240,24 +240,24 @@ impl From<TestConfig> for Configs {
             .build()
             .unwrap();
 
-            wavs_config.chains = chain_configs.clone();
-            // Each operator gets its own signing mnemonic for unique signing keys
-            wavs_config.signing_mnemonic = Some(mnemonics.operators[operator_index].clone());
-            wavs_config.aggregator_cosmos_credential = Some(mnemonics.aggregator_cosmos.clone());
-            wavs_config.aggregator_evm_credential = Some(mnemonics.aggregator_evm.clone());
-            wavs_config.dev_endpoints_enabled = true;
-            wavs_config.port = DEFAULT_WAVS_BASE_PORT + operator_index as u32;
+            warpdrive_config.chains = chain_configs.clone();
+            // Each vector gets its own signing mnemonic for unique signing keys
+            warpdrive_config.signing_mnemonic = Some(mnemonics.vectors[vector_index].clone());
+            warpdrive_config.aggregator_cosmos_credential = Some(mnemonics.aggregator_cosmos.clone());
+            warpdrive_config.aggregator_evm_credential = Some(mnemonics.aggregator_evm.clone());
+            warpdrive_config.dev_endpoints_enabled = true;
+            warpdrive_config.port = DEFAULT_WARPDRIVE_BASE_PORT + vector_index as u32;
 
-            // Enable P2P for multi-operator tests
-            if num_operators > 1 {
+            // Enable P2P for multi-vector tests
+            if num_vectors > 1 {
                 match test_config.p2p {
                     TestP2pMode::Kademlia => {
                         // Remote mode: Kademlia DHT discovery
-                        // Operator 0 is the bootstrap server (empty bootstrap_nodes)
-                        // Operators 1+ will have bootstrap_nodes set at runtime after operator 0 starts
-                        wavs_config.p2p = P2pConfig::Remote {
-                            listen_port: DEFAULT_P2P_BASE_PORT + operator_index as u16,
-                            bootstrap_nodes: vec![], // Set at runtime for operators 1+
+                        // Vector 0 is the bootstrap server (empty bootstrap_nodes)
+                        // Vectors 1+ will have bootstrap_nodes set at runtime after vector 0 starts
+                        warpdrive_config.p2p = P2pConfig::Remote {
+                            listen_port: DEFAULT_P2P_BASE_PORT + vector_index as u16,
+                            bootstrap_nodes: vec![], // Set at runtime for vectors 1+
                             max_retry_duration_secs: None,
                             retry_interval_ms: None,
                             submission_ttl_secs: None,
@@ -272,8 +272,8 @@ impl From<TestConfig> for Configs {
                     }
                     TestP2pMode::Mdns => {
                         // Local mode: mDNS discovery
-                        wavs_config.p2p = P2pConfig::Local {
-                            listen_port: DEFAULT_P2P_BASE_PORT + operator_index as u16,
+                        warpdrive_config.p2p = P2pConfig::Local {
+                            listen_port: DEFAULT_P2P_BASE_PORT + vector_index as u16,
                             max_retry_duration_secs: None,
                             retry_interval_ms: None,
                             submission_ttl_secs: None,
@@ -288,7 +288,7 @@ impl From<TestConfig> for Configs {
                 }
             }
 
-            wavs_configs.push(wavs_config);
+            warpdrive_configs.push(warpdrive_config);
         }
 
         let cli_args = warpdrive_cli::args::CliArgs {
@@ -312,7 +312,7 @@ impl From<TestConfig> for Configs {
             registry: test_config.registry.unwrap_or(false),
             cli: cli_config,
             cli_args,
-            wavs_configs,
+            warpdrive_configs,
             chains: chain_configs,
             mnemonics,
             middleware_concurrency: test_config.middleware_concurrency,

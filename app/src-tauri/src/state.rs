@@ -76,11 +76,11 @@ impl SettingsState {
 }
 
 #[derive(Default)]
-pub struct WavsConfigState {
+pub struct WarpdriveConfigState {
     pub inner: std::sync::RwLock<Option<warpdrive::config::Config>>,
 }
 
-impl WavsConfigState {
+impl WarpdriveConfigState {
     pub async fn load_or_default(path: PathBuf) -> Self {
         match Self::_load_inner(path).await {
             Ok(config) => Self {
@@ -118,13 +118,13 @@ impl WavsConfigState {
         let mut args = warpdrive::args::CliArgs::default();
         args.home = Some(path.clone());
 
-        std::env::remove_var("WAVS_HOME");
-        std::env::remove_var("WAVS_DOTENV");
-        std::env::remove_var("WAVS_DATA");
+        std::env::remove_var("WARPDRIVE_HOME");
+        std::env::remove_var("WARPDRIVE_DOTENV");
+        std::env::remove_var("WARPDRIVE_DATA");
 
         let config: warpdrive::config::Config = ConfigBuilder::new(args)
             .build()
-            .map_err(|e| AppError::WavsConfig(e.to_string()))?;
+            .map_err(|e| AppError::WarpdriveConfig(e.to_string()))?;
 
         Ok(config)
     }

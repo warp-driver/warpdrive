@@ -18,7 +18,7 @@ pub struct ComponentSources {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum OperatorComponent {
+pub enum VectorComponent {
     ChainTriggerLookup,
     CosmosQuery,
     KvStore,
@@ -37,21 +37,21 @@ pub enum AggregatorComponent {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ComponentName {
-    Operator(OperatorComponent),
+    Vector(VectorComponent),
     Aggregator(AggregatorComponent),
 }
 
-impl OperatorComponent {
+impl VectorComponent {
     pub fn as_str(&self) -> &'static str {
         match self {
-            OperatorComponent::ChainTriggerLookup => "chain_trigger_lookup",
-            OperatorComponent::CosmosQuery => "cosmos_query",
-            OperatorComponent::KvStore => "kv_store",
-            OperatorComponent::EchoData => "echo_data",
-            OperatorComponent::Permissions => "permissions",
-            OperatorComponent::Square => "square",
-            OperatorComponent::EchoBlockInterval => "echo_block_interval",
-            OperatorComponent::EchoCronInterval => "echo_cron_interval",
+            VectorComponent::ChainTriggerLookup => "chain_trigger_lookup",
+            VectorComponent::CosmosQuery => "cosmos_query",
+            VectorComponent::KvStore => "kv_store",
+            VectorComponent::EchoData => "echo_data",
+            VectorComponent::Permissions => "permissions",
+            VectorComponent::Square => "square",
+            VectorComponent::EchoBlockInterval => "echo_block_interval",
+            VectorComponent::EchoCronInterval => "echo_cron_interval",
         }
     }
 }
@@ -68,7 +68,7 @@ impl AggregatorComponent {
 impl ComponentName {
     pub fn as_str(&self) -> &'static str {
         match self {
-            ComponentName::Operator(op) => op.as_str(),
+            ComponentName::Vector(op) => op.as_str(),
             ComponentName::Aggregator(agg) => agg.as_str(),
         }
     }
@@ -78,7 +78,7 @@ impl ComponentName {
     }
 
     pub fn is_operator(&self) -> bool {
-        matches!(self, ComponentName::Operator(_))
+        matches!(self, ComponentName::Vector(_))
     }
 }
 
@@ -118,13 +118,13 @@ impl ComponentSources {
             }
         }
 
-        // Upload components to ALL WAVS instances
+        // Upload components to ALL WarpDrive instances
         let mut lookup = BTreeMap::default();
 
         for component_name in component_names {
             let mut futures = FuturesUnordered::new();
 
-            // Upload to all HTTP clients (all WAVS instances)
+            // Upload to all HTTP clients (all WarpDrive instances)
             for http_client in http_clients.iter() {
                 futures.push(get_component_source(
                     http_client,

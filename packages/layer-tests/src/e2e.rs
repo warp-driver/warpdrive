@@ -151,7 +151,7 @@ async fn _run(
         &clients,
         &cosmos_code_map,
         // configs
-        //     .wavs_configs
+        //     .warpdrive_configs
         //     .first()
         //     .and_then(|config| config.hyperswarm_bootstrap.clone()),
     )
@@ -163,7 +163,7 @@ async fn _run(
         .bootstrap(&registry, &clients, evm_middleware, cosmos_middlewares)
         .await;
 
-    // upload components to ALL WAVS instances
+    // upload components to ALL WarpDrive instances
     let component_sources = ComponentSources::new(&configs, &registry, &clients.http_clients).await;
 
     // create the real services (deploy contracts etc.)

@@ -1,7 +1,7 @@
 use anyhow::Result;
 use std::collections::{BTreeMap, BTreeSet};
 use std::time::Instant;
-use utils::config::WAVS_ENV_PREFIX;
+use utils::config::WARPDRIVE_ENV_PREFIX;
 use warpdrive_engine::worlds::instance::{HostComponentLogger, InstanceData, InstanceDepsBuilder};
 use warpdrive_types::{
     AggregatorAction, AggregatorInput, AllowedHostPermission, Component, ComponentDigest,
@@ -102,7 +102,7 @@ impl ExecAggregator {
 
         let env_keys = std::env::vars()
             .map(|(key, _)| key)
-            .filter(|key| key.starts_with(WAVS_ENV_PREFIX))
+            .filter(|key| key.starts_with(WARPDRIVE_ENV_PREFIX))
             .collect();
 
         let source = ComponentSource::Digest(ComponentDigest::hash(&wasm_bytes));

@@ -35,7 +35,7 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 /// }
 /// ```
 ///
-/// This allows WAVS to call your contract with the `ServiceHandler` messages,
+/// This allows WarpDrive to call your contract with the `ServiceHandler` messages,
 /// without needing to know your full `QueryMsg` or `ExecuteMsg` types
 #[cw_serde]
 pub enum ServiceHandlerExecuteMessages {

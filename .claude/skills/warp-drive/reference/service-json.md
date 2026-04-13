@@ -1,12 +1,12 @@
 # Service JSON Reference
 
-JSON formats for `wavs_save_service`, `wavs_deploy_dev_service`, and `wavs_simulate_trigger`.
+JSON formats for `warpdrive_save_service`, `warpdrive_deploy_dev_service`, and `warpdrive_simulate_trigger`.
 
 ---
 
 ## ServiceManager JSON
 
-Used by: `wavs_deploy_service`, `wavs_delete_service`, `wavs_set_service_uri`, `wavs_register_operator`
+Used by: `warpdrive_deploy_service`, `warpdrive_delete_service`, `warpdrive_set_service_uri`, `warpdrive_register_operator`
 
 ```json
 // EVM
@@ -30,7 +30,7 @@ Used by: `wavs_deploy_service`, `wavs_delete_service`, `wavs_set_service_uri`, `
 
 ## Full Service Definition
 
-Used by: `wavs_save_service`, `wavs_deploy_dev_service`
+Used by: `warpdrive_save_service`, `warpdrive_deploy_dev_service`
 
 ```json
 {
@@ -70,7 +70,7 @@ Used by: `wavs_save_service`, `wavs_deploy_dev_service`
 - `status`: `"active"` or `"paused"`
 - `manager`: ServiceManager contract (EVM or Cosmos)
 - `workflows`: map of `workflow_id` → workflow definition; `workflow_id` is lowercase alphanumeric 3–36 chars
-- `component.source.digest`: raw 64-char hex string returned by `wavs_upload_component` (no `sha256:` prefix)
+- `component.source.digest`: raw 64-char hex string returned by `warpdrive_upload_component` (no `sha256:` prefix)
 - `submit`: `"none"` to discard results, or `{"aggregator": {...}}` for on-chain submission
 
 Multiple workflows in one service:
@@ -137,7 +137,7 @@ Fires every `interval` blocks.
 ```json
 "manual"
 ```
-Unit variant — use the bare string `"manual"` in the service definition `trigger` field. Only fires when explicitly triggered via `wavs_simulate_trigger`.
+Unit variant — use the bare string `"manual"` in the service definition `trigger` field. Only fires when explicitly triggered via `warpdrive_simulate_trigger`.
 
 ---
 
@@ -150,7 +150,7 @@ Use `{"aggregator": {...}}` when you need the component's output **submitted on-
 ### When you need aggregator submit
 
 - The component produces a result that must be written back to a smart contract
-- Multiple operators run the component and results are aggregated before submission
+- Multiple vectors run the component and results are aggregated before submission
 - The receiver contract has a method like `addPayload(bytes)` that accepts the aggregated output
 
 ### Full aggregator submit field
@@ -186,10 +186,10 @@ The receiver contract address goes in `component.config["service_handler"]` and 
 
 ### Critical: upload simple-aggregator.wasm as a second component
 
-When using aggregator submit, you must call `wavs_upload_component` **twice** — once for your main component, once for `simple-aggregator.wasm`:
+When using aggregator submit, you must call `warpdrive_upload_component` **twice** — once for your main component, once for `simple-aggregator.wasm`:
 
 ```
-wavs_upload_component(file_path="examples/build/components/simple-aggregator.wasm")
+warpdrive_upload_component(file_path="examples/build/components/simple-aggregator.wasm")
 → Digest: <aggregator-digest>
 ```
 
@@ -200,7 +200,7 @@ Use `<aggregator-digest>` in `submit.aggregator.component.source.digest`.
 ```
 [Trigger fires]
     → [Your component runs, produces output bytes]
-        → [simple-aggregator.wasm collects results from operators]
+        → [simple-aggregator.wasm collects results from vectors]
             → [Quorum reached → calls contract.method on-chain]
 ```
 
@@ -208,7 +208,7 @@ Use `<aggregator-digest>` in `submit.aggregator.component.source.digest`.
 
 ## SimulateTrigger Examples
 
-`wavs_simulate_trigger` requires: `service_id`, `workflow_id`, `trigger_json`, `data_json`
+`warpdrive_simulate_trigger` requires: `service_id`, `workflow_id`, `trigger_json`, `data_json`
 
 ### Manual Trigger
 ```json
@@ -253,7 +253,7 @@ data_json: {
 
 ## Service ID
 
-The `service_id` is a 64-character hex string derived from the ServiceManager contract address. Find it in `wavs_list_services` output. Required for `wavs_simulate_trigger` and `wavs_query_kv`.
+The `service_id` is a 64-character hex string derived from the ServiceManager contract address. Find it in `warpdrive_list_services` output. Required for `warpdrive_simulate_trigger` and `warpdrive_query_kv`.
 
 ---
 
@@ -267,7 +267,7 @@ To pass configuration to a component via `host::config_var("key")`, include a `c
     "default": {
       "trigger": {...},
       "component": {
-        "source": {"digest": "<64-char hex from wavs_upload_component>"},
+        "source": {"digest": "<64-char hex from warpdrive_upload_component>"},
         "config": {
           "api-url": "https://api.example.com",
           "threshold": "100"

@@ -125,7 +125,7 @@ export function ServiceDeploy({ onDeployComplete }: ServiceDeployProps) {
         setDeployState({ setUriStatus: 'done' });
       }
 
-      // Step 3: Register with WAVS
+      // Step 3: Register with WarpDrive
       setDeployState({ registerStatus: 'in_progress' });
       await addServiceCmd(resolvedManager.manager);
       const servicesData = await getServices();
@@ -201,7 +201,7 @@ export function ServiceDeploy({ onDeployComplete }: ServiceDeployProps) {
         </div>
 
         <div className="flex items-center justify-between py-2">
-          <span className="text-beige-warm text-sm">3. Register with WAVS</span>
+          <span className="text-beige-warm text-sm">3. Register with WarpDrive</span>
           <StatusBadge status={deployState.registerStatus} />
         </div>
 

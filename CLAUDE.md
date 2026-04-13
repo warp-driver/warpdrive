@@ -4,9 +4,9 @@ For context on this codebase, read the `docs/` directory and the `justfile`.
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## What Is WAVS
+## What Is WarpDrive
 
-WAVS (WebAssembly-based Actively Validated Services) is a platform for running Actively Validated Services (AVS). It executes AVS logic as sandboxed WebAssembly (WASI) components, bridges blockchain events (EVM and Cosmos) with off-chain computation, and coordinates multi-operator consensus.
+WarpDrive (WebAssembly-based Actively Validated Services) is a platform for running Actively Validated Services (Circuit). It executes Circuit logic as sandboxed WebAssembly (WASI) components, bridges blockchain events (EVM and Cosmos) with off-chain computation, and coordinates multi-vector consensus.
 
 ## Build, Lint, and Test Commands
 
@@ -47,10 +47,10 @@ just app-build-frontend # Vite build only
 
 ### Tests
 
-E2E integration tests run on-chain with a live WAVS node:
+E2E integration tests run on-chain with a live WarpDrive node:
 
 ```bash
-just test-wavs-e2e
+just test-warpdrive-e2e
 # or directly:
 cargo test -p layer-tests
 ```
@@ -60,8 +60,8 @@ To run a subset of tests, edit `packages/layer-tests/layer-tests.toml` to isolat
 ### Running the Stack
 
 ```bash
-just start-dev           # WAVS + Jaeger + Prometheus (full dev stack)
-just start-wavs-dev      # WAVS only with dev config
+just start-dev           # WarpDrive + Jaeger + Prometheus (full dev stack)
+just start-warpdrive-dev      # WarpDrive only with dev config
 just start-anvil         # Local EVM testnet on :8545
 just start-jaeger        # Tracing UI at http://localhost:16686
 just start-prometheus    # Metrics UI at http://localhost:9090
@@ -75,15 +75,15 @@ just dev-tool send-triggers --count 1000
 
 ## Architecture
 
-### Core Node (`packages/wavs/`)
+### Core Node (`packages/warpdrive/`)
 
-The main WAVS node is a Tokio-based async server centered around a **dispatcher** (`packages/wavs/src/dispatcher.rs`) that orchestrates four subsystems via Crossbeam channels:
+The main WarpDrive node is a Tokio-based async server centered around a **dispatcher** (`packages/warpdrive/src/dispatcher.rs`) that orchestrates four subsystems via Crossbeam channels:
 
 1. **Trigger Manager** (`subsystems/trigger/`) — Monitors EVM and Cosmos blockchain events; routes events to registered services via cron, timer, or on-chain triggers. Uses libp2p for P2P trigger distribution.
 
-2. **Engine** (`subsystems/engine/`) — Executes WASM components in isolated Wasmtime WASI runtimes. Each AVS service runs as a sandboxed component with restricted system access.
+2. **Engine** (`subsystems/engine/`) — Executes WASM components in isolated Wasmtime WASI runtimes. Each Circuit service runs as a sandboxed component with restricted system access.
 
-3. **Aggregator** (`subsystems/aggregator/`) — Collects execution results from multiple operators and handles consensus before submission.
+3. **Aggregator** (`subsystems/aggregator/`) — Collects execution results from multiple vectors and handles consensus before submission.
 
 4. **Submission** (`subsystems/submission/`) — Routes verified results to on-chain contracts (EVM or Cosmos), managing signing and transaction submission.
 
@@ -100,7 +100,7 @@ An HTTP API server (Axum) on top handles service registration, health checks, an
 
 ### Desktop App (`app/`)
 
-Tauri 2 desktop app with a React 19 + Vite 7 frontend. The Tauri backend in `app/src-tauri/` bridges to the WAVS node. State management uses Zustand; blockchain interaction uses Viem.
+Tauri 2 desktop app with a React 19 + Vite 7 frontend. The Tauri backend in `app/src-tauri/` bridges to the WarpDrive node. State management uses Zustand; blockchain interaction uses Viem.
 
 ### Examples
 
@@ -121,10 +121,10 @@ just download-cosmwasm   # CosmWasm middleware contracts
 Copy `.env.example` to `.env`. Key variables:
 
 ```
-RUST_LOG="info,wavs=debug"
-WAVS_SIGNING_MNEMONIC="..."
-WAVS_AGGREGATOR_EVM_CREDENTIAL="..."
-WAVS_AGGREGATOR_COSMOS_CREDENTIAL="..."
+RUST_LOG="info,warpdrive=debug"
+WARPDRIVE_SIGNING_MNEMONIC="..."
+WARPDRIVE_AGGREGATOR_EVM_CREDENTIAL="..."
+WARPDRIVE_AGGREGATOR_COSMOS_CREDENTIAL="..."
 ```
 
 ## Documentation

@@ -167,7 +167,7 @@ export function RegistrySelector({ onComplete, onRegistryAdded }: RegistrySelect
 
       // Connect to the newly deployed registry
       const info = await connectToRegistry(publicClient, result.proxyAddress);
-      const operators = await fetchOperators(publicClient, result.proxyAddress);
+      const vectors = await fetchOperators(publicClient, result.proxyAddress);
 
       addRegistry({
         chainId: selectedChain.chainId,
@@ -175,7 +175,7 @@ export function RegistrySelector({ onComplete, onRegistryAdded }: RegistrySelect
         rpcUrl: selectedChain.rpcUrl,
         address: result.proxyAddress,
         info,
-        operators,
+        vectors,
         isOwner: info.owner.toLowerCase() === userAddress.toLowerCase(),
       });
 
@@ -212,7 +212,7 @@ export function RegistrySelector({ onComplete, onRegistryAdded }: RegistrySelect
       const userAddress = await getAddress();
 
       const info = await connectToRegistry(publicClient, address);
-      const operators = await fetchOperators(publicClient, address);
+      const vectors = await fetchOperators(publicClient, address);
 
       addRegistry({
         chainId: selectedChain.chainId,
@@ -220,7 +220,7 @@ export function RegistrySelector({ onComplete, onRegistryAdded }: RegistrySelect
         rpcUrl: selectedChain.rpcUrl,
         address,
         info,
-        operators,
+        vectors,
         isOwner: info.owner.toLowerCase() === userAddress.toLowerCase(),
       });
 
@@ -271,7 +271,7 @@ export function RegistrySelector({ onComplete, onRegistryAdded }: RegistrySelect
       setPendingAutoRegister(false);
       onRegistryAdded?.(autoRegisterKey);
       setAutoRegisterKey(null);
-      Toast.info('Service registered with WAVS!');
+      Toast.info('Service registered with WarpDrive!');
       onComplete?.();
     } catch (err) {
       Toast.error(`Failed to register service: ${err}`);
@@ -313,7 +313,7 @@ export function RegistrySelector({ onComplete, onRegistryAdded }: RegistrySelect
         {pendingAutoRegister && (
           <div className="p-4 rounded-lg bg-charcoal-medium border border-purple-1">
             <p className="text-beige-warm text-sm mb-3">
-              This contract has a Service URI set. Register with WAVS?
+              This contract has a Service URI set. Register with WarpDrive?
             </p>
             <div className="flex gap-3">
               <Button
@@ -352,7 +352,7 @@ export function RegistrySelector({ onComplete, onRegistryAdded }: RegistrySelect
               <label className="text-beige-warm text-sm font-medium">Chain</label>
               {chainOptions.length === 0 ? (
                 <p className="text-red-4 text-sm">
-                  No EVM chains configured. Please add EVM chain configurations in your WAVS settings.
+                  No EVM chains configured. Please add EVM chain configurations in your WarpDrive settings.
                 </p>
               ) : (
                 <Dropdown
@@ -436,7 +436,7 @@ export function RegistrySelector({ onComplete, onRegistryAdded }: RegistrySelect
             <label className="text-beige-warm text-sm font-medium">Chain</label>
             {chainOptions.length === 0 ? (
               <p className="text-red-4 text-sm">
-                No EVM chains configured. Please add EVM chain configurations in your WAVS settings.
+                No EVM chains configured. Please add EVM chain configurations in your WarpDrive settings.
               </p>
             ) : (
               <Dropdown

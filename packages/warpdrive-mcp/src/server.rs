@@ -56,7 +56,7 @@ pub struct SimulateTriggerParams {
 pub struct SaveServiceParams {
     /// Full Service definition as a JSON string.
     /// Must include: name, status, manager (evm/cosmos), workflows (map of workflow_id → {trigger, component, submit}).
-    /// Requires dev endpoints enabled in wavs.toml.
+    /// Requires dev endpoints enabled in warpdrive.toml.
     pub service_json: String,
 }
 
@@ -64,7 +64,7 @@ pub struct SaveServiceParams {
 pub struct DeployDevServiceParams {
     /// Full Service definition as a JSON string.
     /// Must include: name, status, manager (evm/cosmos), workflows (map of workflow_id → {trigger, component, submit}).
-    /// Requires dev endpoints enabled in wavs.toml and --token.
+    /// Requires dev endpoints enabled in warpdrive.toml and --token.
     pub service_json: String,
 }
 
@@ -88,7 +88,7 @@ pub struct QueryLogsParams {
     /// Minimum log level filter: trace | debug | info | warn | error.
     /// Returns entries at this level and above (e.g. "info" includes warn + error).
     pub level: Option<String>,
-    /// Filter by target prefix, e.g. "wavs" or "warpdrive::subsystems::engine".
+    /// Filter by target prefix, e.g. "warpdrive" or "warpdrive::subsystems::engine".
     /// Component logs appear under "warpdrive::subsystems::engine::wasm_engine".
     pub target: Option<String>,
 }
@@ -126,7 +126,7 @@ pub struct SetServiceUriParams {
     /// EVM:    `{"evm":{"chain":"evm:31337","address":"0xAbCd..."}}`
     /// Cosmos: `{"cosmos":{"chain":"cosmos:mychain","address":"cosmos1..."}}`
     pub service_manager_json: String,
-    /// The URI to set on-chain (e.g. the URL returned by wavs_save_service)
+    /// The URI to set on-chain (e.g. the URL returned by warpdrive_save_service)
     pub uri: String,
     /// RPC endpoint URL for the chain (e.g. "http://localhost:8545")
     pub rpc_url: String,
@@ -149,9 +149,9 @@ pub struct RegisterOperatorParams {
     /// ServiceManager as a JSON object.
     /// EVM:    `{"evm":{"chain":"evm:31337","address":"0xAbCd..."}}`
     pub service_manager_json: String,
-    /// Weight to assign to the operator (default: 100).
-    /// Represents relative stake weight — higher weight = more influence in multi-operator consensus.
-    /// For single-operator setups, any positive value works; 100 is conventional.
+    /// Weight to assign to the vector (default: 100).
+    /// Represents relative stake weight — higher weight = more influence in multi-vector consensus.
+    /// For single-vector setups, any positive value works; 100 is conventional.
     pub weight: Option<u64>,
     /// RPC endpoint URL for the chain (e.g. "http://localhost:8545")
     pub rpc_url: String,
@@ -177,7 +177,7 @@ pub struct DeployAndRegisterParams {
     /// ServiceManager as a JSON object.
     /// EVM: `{"evm":{"chain":"evm:31337","address":"0xAbCd..."}}`
     pub service_manager_json: String,
-    /// Weight to assign to the operator (default: 100).
+    /// Weight to assign to the vector (default: 100).
     pub weight: Option<u64>,
     /// RPC endpoint URL for the chain (e.g. "http://localhost:8545")
     pub rpc_url: String,
@@ -238,13 +238,13 @@ pub struct WavsMcpServer {
 
 impl WavsMcpServer {
     pub fn new(
-        wavs_url: String,
+        warpdrive_url: String,
         token: Option<String>,
         mcp_chain_credential: Option<String>,
         signing_mnemonic: Option<String>,
     ) -> Self {
         Self {
-            client: WavsClient::new(wavs_url, token),
+            client: WavsClient::new(warpdrive_url, token),
             mcp_chain_credential,
             signing_mnemonic,
         }
@@ -256,7 +256,7 @@ impl WavsMcpServer {
             .ok_or_else(|| ErrorData {
                 code: ErrorCode::INVALID_PARAMS,
                 message: "--mcp-chain-credential is not configured on this MCP server. \
-                    Set WAVS_MCP_CHAIN_CREDENTIAL env var in the MCP client config, \
+                    Set WARPDRIVE_MCP_CHAIN_CREDENTIAL env var in the MCP client config, \
                     or restart with --mcp-chain-credential."
                     .into(),
                 data: None,
@@ -276,9 +276,9 @@ impl WavsMcpServer {
             .ok_or_else(|| ErrorData {
                 code: ErrorCode::INVALID_PARAMS,
                 message: "--signing-mnemonic is not configured on this MCP server. \
-                    Set WAVS_SIGNING_MNEMONIC env var, add signing_mnemonic to wavs.toml [wavs] section, \
+                    Set WARPDRIVE_SIGNING_MNEMONIC env var, add signing_mnemonic to warpdrive.toml [warpdrive] section, \
                     or restart with --signing-mnemonic. \
-                    This must be the same mnemonic that the WAVS node uses as its operator signing key.".into(),
+                    This must be the same mnemonic that the WarpDrive node uses as its vector signing key.".into(),
                 data: None,
             })
             .and_then(|s| {
@@ -341,7 +341,7 @@ impl WavsMcpServer {
                         hd_index,
                         evm_address,
                     }) => {
-                        format!("\nSigning key: HD index {hd_index} ({evm_address})\nCall wavs_register_operator next if using PoA.")
+                        format!("\nSigning key: HD index {hd_index} ({evm_address})\nCall warpdrive_register_operator next if using PoA.")
                     }
                     Err(_) => String::new(),
                 };
@@ -615,7 +615,7 @@ impl WavsMcpServer {
             };
         let weight = p.weight.unwrap_or(100);
 
-        // Query the WAVS node for the HD index assigned to this service. The node assigns a unique
+        // Query the WarpDrive node for the HD index assigned to this service. The node assigns a unique
         // HD-derived signing key per service (starting at index 1), so we must register the correct
         // address on-chain. This requires the service to be deployed to the node first.
         let signing_key_hd_index = match self.client.get_service_signer(manager.clone()).await {
@@ -628,19 +628,19 @@ impl WavsMcpServer {
             }
             Err(e) => {
                 return err(format!(
-                    "Failed to query service signing key from WAVS node: {e:#}\n\n\
-                     wavs_register_operator must be called AFTER wavs_deploy_service (or \
-                     wavs_deploy_dev_service) so the node has assigned a signing key to the \
-                     service. Deploy the service first, then call wavs_register_operator."
+                    "Failed to query service signing key from WarpDrive node: {e:#}\n\n\
+                     warpdrive_register_operator must be called AFTER warpdrive_deploy_service (or \
+                     warpdrive_deploy_dev_service) so the node has assigned a signing key to the \
+                     service. Deploy the service first, then call warpdrive_register_operator."
                 ));
             }
         };
 
         match chain_ops::register_operator(&manager, &owner_cred, &signing_cred, weight, signing_key_hd_index, &p.rpc_url).await {
             Ok((signing_key, register_tx, signing_key_tx)) => ok(format!(
-                "Operator registered.\nSigning key (HD index {signing_key_hd_index}): {signing_key}\nRegister tx: {register_tx}\nSigning key tx: {signing_key_tx}"
+                "Vector registered.\nSigning key (HD index {signing_key_hd_index}): {signing_key}\nRegister tx: {register_tx}\nSigning key tx: {signing_key_tx}"
             )),
-            Err(e) => err(format!("Failed to register operator: {e:#}")),
+            Err(e) => err(format!("Failed to register vector: {e:#}")),
         }
     }
 
@@ -690,11 +690,11 @@ impl WavsMcpServer {
                 Err(e) => return err(format!("Invalid service_manager_json: {e}")),
             };
 
-        // Step 1: register the service with the WAVS node so it gets an HD index assigned.
+        // Step 1: register the service with the WarpDrive node so it gets an HD index assigned.
         match self.client.deploy_service(manager.clone()).await {
             Ok(v) if v.is_null() => {}
             Ok(v) => tracing::info!("deploy_service response: {v}"),
-            Err(e) => return err(format!("wavs_deploy_service failed: {e:#}")),
+            Err(e) => return err(format!("warpdrive_deploy_service failed: {e:#}")),
         }
 
         // Step 2: query the node for the service-specific signing key.
@@ -703,12 +703,12 @@ impl WavsMcpServer {
             Err(e) => {
                 return err(format!(
                     "Service deployed but could not query signing key: {e:#}\n\
-                 Run wavs_register_operator separately once the node is ready."
+                 Run warpdrive_register_operator separately once the node is ready."
                 ))
             }
         };
 
-        // Step 3: register the operator on-chain with the correct signing key.
+        // Step 3: register the vector on-chain with the correct signing key.
         let weight = p.weight.unwrap_or(100);
         match chain_ops::register_operator(
             &manager,
@@ -721,14 +721,14 @@ impl WavsMcpServer {
         .await
         {
             Ok((signing_key, register_tx, signing_key_tx)) => ok(format!(
-                "Service deployed and operator registered.\n\
+                "Service deployed and vector registered.\n\
                  Signing key (HD index {hd_index}): {signing_key}\n\
                  Register tx:    {register_tx}\n\
                  Signing key tx: {signing_key_tx}"
             )),
             Err(e) => err(format!(
-                "Service deployed (HD index {hd_index}) but operator registration failed: {e:#}\n\
-                 Run wavs_register_operator separately to retry the on-chain step."
+                "Service deployed (HD index {hd_index}) but vector registration failed: {e:#}\n\
+                 Run warpdrive_register_operator separately to retry the on-chain step."
             )),
         }
     }
@@ -778,7 +778,7 @@ impl WavsMcpServer {
         );
 
         if output.status.success() {
-            // Scan for output .wasm files so callers can pass the path directly to wavs_upload_component.
+            // Scan for output .wasm files so callers can pass the path directly to warpdrive_upload_component.
             let wasm_dir = std::path::Path::new(&p.dir).join("target/wasm32-wasip1/release");
             if let Ok(entries) = std::fs::read_dir(&wasm_dir) {
                 let mut wasm_files: Vec<String> = entries
@@ -804,15 +804,15 @@ impl WavsMcpServer {
     fn tool_get_service_schema(&self) -> Result<CallToolResult, McpError> {
         ok(r#"## Service JSON Schema
 
-Use this as a reference when calling wavs_save_service or wavs_deploy_dev_service.
+Use this as a reference when calling warpdrive_save_service or warpdrive_deploy_dev_service.
 
 ### Digest format
-Raw 64-character hex string returned by wavs_upload_component. NO "sha256:" prefix.
+Raw 64-character hex string returned by warpdrive_upload_component. NO "sha256:" prefix.
 Example: f0b42a5171c9dcd75eac41c8ce2c4e7882d304c885266d8ac7b70af996b9a420
 
 ---
 
-### Manual trigger (fires only via wavs_simulate_trigger)
+### Manual trigger (fires only via warpdrive_simulate_trigger)
 ```json
 {
   "name": "my-service",
@@ -822,7 +822,7 @@ Example: f0b42a5171c9dcd75eac41c8ce2c4e7882d304c885266d8ac7b70af996b9a420
     "default": {
       "trigger": "manual",
       "component": {
-        "source": {"digest": "<64-char hex from wavs_upload_component>"},
+        "source": {"digest": "<64-char hex from warpdrive_upload_component>"},
         "permissions": {"file_system": false, "allowed_http_hosts": "none", "raw_sockets": false, "dns_resolution": false},
         "fuel_limit": null,
         "time_limit_seconds": null,
@@ -956,15 +956,15 @@ impl ServerHandler for WavsMcpServer {
                 ..Default::default()
             },
             instructions: Some(
-                "MCP server for the WAVS (WebAssembly-based Actively Validated Services) platform.\n\
+                "MCP server for the WarpDrive (WebAssembly-based Actively Validated Services) platform.\n\
                  \n\
-                 Read tools (no auth needed): wavs_get_node_info, wavs_get_health, wavs_list_services, wavs_get_service\n\
-                 Write tools (need --token): wavs_deploy_service, wavs_delete_service\n\
-                 Dev tools (need dev endpoints): wavs_upload_component, wavs_save_service, wavs_simulate_trigger, wavs_deploy_dev_service, wavs_query_kv\n\
-                 Chain-write tools (need WAVS_MCP_CHAIN_CREDENTIAL on MCP server): wavs_set_service_uri, wavs_deploy_service_manager, wavs_deploy_poa_service_manager\n\
-                 Chain-write tools (also need WAVS_SIGNING_MNEMONIC): wavs_register_operator, wavs_deploy_and_register, wavs_get_signing_address\n\
+                 Read tools (no auth needed): warpdrive_get_node_info, warpdrive_get_health, warpdrive_list_services, warpdrive_get_service\n\
+                 Write tools (need --token): warpdrive_deploy_service, warpdrive_delete_service\n\
+                 Dev tools (need dev endpoints): warpdrive_upload_component, warpdrive_save_service, warpdrive_simulate_trigger, warpdrive_deploy_dev_service, warpdrive_query_kv\n\
+                 Chain-write tools (need WARPDRIVE_MCP_CHAIN_CREDENTIAL on MCP server): warpdrive_set_service_uri, warpdrive_deploy_service_manager, warpdrive_deploy_poa_service_manager\n\
+                 Chain-write tools (also need WARPDRIVE_SIGNING_MNEMONIC): warpdrive_register_operator, wavs_deploy_and_register, wavs_get_signing_address\n\
                  Node-read tools (need --token): wavs_get_service_signer\n\
-                 Local tools: wavs_get_service_schema, wavs_get_wit_interface, wavs_scaffold_component, wavs_build_component"
+                 Local tools: warpdrive_get_service_schema, warpdrive_get_wit_interface, warpdrive_scaffold_component, warpdrive_build_component"
                     .to_string(),
             ),
             ..Default::default()
@@ -981,179 +981,179 @@ impl ServerHandler for WavsMcpServer {
         Ok(ListToolsResult {
             tools: vec![
                 // Read tools
-                tool("wavs_get_node_info",
-                     "Get WAVS node information: service count, chain keys, aggregator config, P2P status",
+                tool("warpdrive_get_node_info",
+                     "Get WarpDrive node information: service count, chain keys, aggregator config, P2P status",
                      empty.clone()),
-                tool("wavs_get_health",
+                tool("warpdrive_get_health",
                      "Get health status of all configured chain RPC endpoints",
                      empty.clone()),
-                tool("wavs_list_services",
+                tool("warpdrive_list_services",
                      "List all registered services with their workflows, triggers, and components",
                      empty.clone()),
                 Tool {
-                    name: "wavs_get_service".into(),
+                    name: "warpdrive_get_service".into(),
                     description: "Get full configuration for a specific service by chain and address".into(),
                     input_schema: schema_for_type::<GetServiceParams>().into(),
                 },
                 // Write tools
                 Tool {
-                    name: "wavs_deploy_service".into(),
+                    name: "warpdrive_deploy_service".into(),
                     description: "Production workflow: registers a service whose URI is already set on-chain \
-                        (call wavs_save_service + wavs_set_service_uri first). \
-                        For dev/testing without an on-chain contract, use wavs_deploy_dev_service instead. \
+                        (call warpdrive_save_service + warpdrive_set_service_uri first). \
+                        For dev/testing without an on-chain contract, use warpdrive_deploy_dev_service instead. \
                         Pass service_manager_json as: \
                         {\"evm\":{\"chain\":\"evm:31337\",\"address\":\"0x...\"}} or \
                         {\"cosmos\":{\"chain\":\"cosmos:mychain\",\"address\":\"cosmos1...\"}}. Requires --token.".into(),
                     input_schema: schema_for_type::<ServiceManagerParams>().into(),
                 },
                 Tool {
-                    name: "wavs_delete_service".into(),
+                    name: "warpdrive_delete_service".into(),
                     description: "Delete a registered service. Requires --token.".into(),
                     input_schema: schema_for_type::<ServiceManagerParams>().into(),
                 },
-                // Chain-write tools (need WAVS_MCP_CHAIN_CREDENTIAL on MCP server)
+                // Chain-write tools (need WARPDRIVE_MCP_CHAIN_CREDENTIAL on MCP server)
                 Tool {
-                    name: "wavs_set_service_uri".into(),
+                    name: "warpdrive_set_service_uri".into(),
                     description: "Call setServiceURI on the ServiceManager contract to update the \
-                        on-chain service URI. Requires --mcp-chain-credential (WAVS_MCP_CHAIN_CREDENTIAL) \
+                        on-chain service URI. Requires --mcp-chain-credential (WARPDRIVE_MCP_CHAIN_CREDENTIAL) \
                         to be configured on this MCP server. Provide the chain RPC URL as rpc_url. \
                         EVM only currently.".into(),
                     input_schema: schema_for_type::<SetServiceUriParams>().into(),
                 },
                 Tool {
-                    name: "wavs_deploy_service_manager".into(),
+                    name: "warpdrive_deploy_service_manager".into(),
                     description: "Deploy a new SimpleServiceManager PoA contract on-chain and return its address. \
-                        Requires --mcp-chain-credential (WAVS_MCP_CHAIN_CREDENTIAL) on this MCP server. \
+                        Requires --mcp-chain-credential (WARPDRIVE_MCP_CHAIN_CREDENTIAL) on this MCP server. \
                         Provide the chain RPC URL as rpc_url. EVM only currently.".into(),
                     input_schema: schema_for_type::<DeployServiceManagerParams>().into(),
                 },
                 Tool {
-                    name: "wavs_deploy_poa_service_manager".into(),
+                    name: "warpdrive_deploy_poa_service_manager".into(),
                     description: "Deploy a new POAStakeRegistry (full PoA middleware with proxy) on-chain via Docker. \
                         Returns the proxy address to use as service manager. \
                         Requires --mcp-chain-credential on this MCP server. \
                         Docker image ghcr.io/lay3rlabs/poa-middleware:1.0.1 must be available. \
                         Provide the chain RPC URL as rpc_url. EVM only currently. \
-                        After deploying, upload+save+deploy the service first, then call wavs_register_operator \
+                        After deploying, upload+save+deploy the service first, then call warpdrive_register_operator \
                         so the node has assigned a signing key that can be registered on-chain.".into(),
                     input_schema: schema_for_type::<DeployPoaServiceManagerParams>().into(),
                 },
                 Tool {
-                    name: "wavs_register_operator".into(),
-                    description: "PoA setup: registers the WAVS node's signing key as an operator on a POAStakeRegistry \
-                        contract and sets the signing key mapping. IMPORTANT: call this AFTER wavs_deploy_service (or \
-                        wavs_deploy_dev_service) — it queries the WAVS node for the service-specific HD-derived signing \
+                    name: "warpdrive_register_operator".into(),
+                    description: "PoA setup: registers the WarpDrive node's signing key as an vector on a POAStakeRegistry \
+                        contract and sets the signing key mapping. IMPORTANT: call this AFTER warpdrive_deploy_service (or \
+                        warpdrive_deploy_dev_service) — it queries the WarpDrive node for the service-specific HD-derived signing \
                         key (the key the node actually uses to sign envelopes) and registers that address on-chain. \
-                        Calls registerOperator (using WAVS_MCP_CHAIN_CREDENTIAL as owner) and \
-                        updateOperatorSigningKey (using WAVS_SIGNING_MNEMONIC as operator). \
-                        weight is a relative stake weight (default: 100; any positive value works for single-operator setups). \
+                        Calls registerOperator (using WARPDRIVE_MCP_CHAIN_CREDENTIAL as owner) and \
+                        updateOperatorSigningKey (using WARPDRIVE_SIGNING_MNEMONIC as vector). \
+                        weight is a relative stake weight (default: 100; any positive value works for single-vector setups). \
                         Requires --mcp-chain-credential and --signing-mnemonic on this MCP server. \
                         Provide the chain RPC URL as rpc_url. EVM only currently.".into(),
                     input_schema: schema_for_type::<RegisterOperatorParams>().into(),
                 },
                 Tool {
                     name: "wavs_deploy_and_register".into(),
-                    description: "POA convenience: atomically deploys a service to the WAVS node AND registers the \
-                        operator on the POAStakeRegistry in one call. Equivalent to wavs_deploy_service followed by \
-                        wavs_register_operator. The service must already be saved and its URI set on-chain \
-                        (run wavs_set_service_uri first). Requires --token, --mcp-chain-credential, and \
+                    description: "POA convenience: atomically deploys a service to the WarpDrive node AND registers the \
+                        vector on the POAStakeRegistry in one call. Equivalent to warpdrive_deploy_service followed by \
+                        warpdrive_register_operator. The service must already be saved and its URI set on-chain \
+                        (run warpdrive_set_service_uri first). Requires --token, --mcp-chain-credential, and \
                         --signing-mnemonic. EVM only.".into(),
                     input_schema: schema_for_type::<DeployAndRegisterParams>().into(),
                 },
                 Tool {
                     name: "wavs_get_service_signer".into(),
-                    description: "Query the WAVS node for the HD-derived signing key assigned to a specific service. \
+                    description: "Query the WarpDrive node for the HD-derived signing key assigned to a specific service. \
                         Returns the HD index and EVM address the node uses to sign envelopes for that service. \
                         Useful for diagnosing POAStakeRegistry InvalidSignature errors and verifying \
-                        wavs_register_operator registered the correct key. Requires --token.".into(),
+                        warpdrive_register_operator registered the correct key. Requires --token.".into(),
                     input_schema: schema_for_type::<ServiceManagerParams>().into(),
                 },
                 Tool {
                     name: "wavs_get_signing_address".into(),
-                    description: "Derive the EVM address for any HD index of the WAVS signing mnemonic without \
-                        network access. Defaults to HD index 0 (the operator identity). Pass hd_index to check \
+                    description: "Derive the EVM address for any HD index of the WarpDrive signing mnemonic without \
+                        network access. Defaults to HD index 0 (the vector identity). Pass hd_index to check \
                         a service-specific key (use the index from wavs_get_service_signer). \
-                        Requires --signing-mnemonic (WAVS_SIGNING_MNEMONIC) to be configured on this MCP server.".into(),
+                        Requires --signing-mnemonic (WARPDRIVE_SIGNING_MNEMONIC) to be configured on this MCP server.".into(),
                     input_schema: schema_for_type::<GetSigningAddressParams>().into(),
                 },
                 // Dev tools
                 Tool {
-                    name: "wavs_upload_component".into(),
-                    description: "Upload a compiled .wasm binary to the WAVS node. Returns the component digest. \
-                        Requires dev endpoints enabled in wavs.toml.".into(),
+                    name: "warpdrive_upload_component".into(),
+                    description: "Upload a compiled .wasm binary to the WarpDrive node. Returns the component digest. \
+                        Requires dev endpoints enabled in warpdrive.toml.".into(),
                     input_schema: schema_for_type::<UploadComponentParams>().into(),
                 },
                 Tool {
-                    name: "wavs_save_service".into(),
-                    description: "Save a service definition to the WAVS node's local store without registering it. \
+                    name: "warpdrive_save_service".into(),
+                    description: "Save a service definition to the WarpDrive node's local store without registering it. \
                         Returns the URI (e.g. http://localhost:8000/dev/services/<hash>) that can be set as the \
-                        on-chain serviceURI so the service can later be registered via wavs_deploy_service. \
-                        Requires dev endpoints enabled in wavs.toml. \
-                        Call wavs_get_service_schema first to see a minimal valid example.".into(),
+                        on-chain serviceURI so the service can later be registered via warpdrive_deploy_service. \
+                        Requires dev endpoints enabled in warpdrive.toml. \
+                        Call warpdrive_get_service_schema first to see a minimal valid example.".into(),
                     input_schema: schema_for_type::<SaveServiceParams>().into(),
                 },
                 Tool {
-                    name: "wavs_simulate_trigger".into(),
+                    name: "warpdrive_simulate_trigger".into(),
                     description: "Simulate a trigger against a deployed service. \
-                        Requires dev endpoints enabled in wavs.toml.".into(),
+                        Requires dev endpoints enabled in warpdrive.toml.".into(),
                     input_schema: schema_for_type::<SimulateTriggerParams>().into(),
                 },
                 Tool {
-                    name: "wavs_deploy_dev_service".into(),
+                    name: "warpdrive_deploy_dev_service".into(),
                     description: "Register a service directly without an on-chain contract (dev/testing only). \
                         Pass the full Service JSON. Handles the two-step save+register flow internally. \
-                        Requires dev endpoints enabled in wavs.toml and --token. \
-                        Call wavs_get_service_schema first to see a minimal valid example. \
+                        Requires dev endpoints enabled in warpdrive.toml and --token. \
+                        Call warpdrive_get_service_schema first to see a minimal valid example. \
                         Use this for local dev. For production with a real ServiceManager contract, \
-                        use wavs_save_service → wavs_set_service_uri → wavs_deploy_service instead.".into(),
+                        use warpdrive_save_service → warpdrive_set_service_uri → warpdrive_deploy_service instead.".into(),
                     input_schema: schema_for_type::<DeployDevServiceParams>().into(),
                 },
                 Tool {
-                    name: "wavs_query_kv".into(),
+                    name: "warpdrive_query_kv".into(),
                     description: "Read a value from a service's KV store. \
                         Useful for inspecting state written by kv-store components. \
-                        Requires dev endpoints enabled in wavs.toml.".into(),
+                        Requires dev endpoints enabled in warpdrive.toml.".into(),
                     input_schema: schema_for_type::<QueryKvParams>().into(),
                 },
                 Tool {
                     name: "wavs_query_logs".into(),
-                    description: "Query structured log entries from the WAVS node's in-memory ring buffer. \
+                    description: "Query structured log entries from the WarpDrive node's in-memory ring buffer. \
                         Returns a JSON object with `entries` and `next_id`. \
                         Pass the returned `next_id` as `since_id` on subsequent calls to receive only new entries. \
                         For WASM component execution logs use `wavs_query_component_logs` instead. \
-                        Requires dev endpoints enabled in wavs.toml.".into(),
+                        Requires dev endpoints enabled in warpdrive.toml.".into(),
                     input_schema: schema_for_type::<QueryLogsParams>().into(),
                 },
                 Tool {
                     name: "wavs_query_component_logs".into(),
-                    description: "Query logs emitted by WASM components during operator/aggregator execution. \
+                    description: "Query logs emitted by WASM components during vector/aggregator execution. \
                         Filters automatically to component logs and supports narrowing by `service_id`, \
                         `workflow_id`, and `digest`. Each entry's `fields` contains the component message \
                         plus those identifiers. Returns a JSON object with `entries` and `next_id`; \
                         pass `next_id` as `since_id` to page forward. \
-                        Requires dev endpoints enabled in wavs.toml.".into(),
+                        Requires dev endpoints enabled in warpdrive.toml.".into(),
                     input_schema: schema_for_type::<QueryComponentLogsParams>().into(),
                 },
                 // Local tools
-                tool("wavs_get_service_schema",
+                tool("warpdrive_get_service_schema",
                      "Return minimal valid Service JSON examples for every trigger type \
                       (manual, cron, block_interval, evm_contract_event, cosmos_contract_event), \
-                      submit options (none vs aggregator), and data_json formats for wavs_simulate_trigger. \
-                      Call this before wavs_save_service or wavs_deploy_dev_service to avoid schema errors.",
+                      submit options (none vs aggregator), and data_json formats for warpdrive_simulate_trigger. \
+                      Call this before warpdrive_save_service or warpdrive_deploy_dev_service to avoid schema errors.",
                      empty.clone()),
-                tool("wavs_get_wit_interface",
-                     "Return the full WIT interface definitions for WAVS WASM components \
+                tool("warpdrive_get_wit_interface",
+                     "Return the full WIT interface definitions for WarpDrive WASM components \
                       (HTTP, KV, sockets, TLS, host functions, etc.)",
                      empty.clone()),
                 Tool {
-                    name: "wavs_scaffold_component".into(),
-                    description: "Generate a ready-to-build WAVS WASM component scaffold (Cargo.toml + lib.rs). \
+                    name: "warpdrive_scaffold_component".into(),
+                    description: "Generate a ready-to-build WarpDrive WASM component scaffold (Cargo.toml + lib.rs). \
                         Trigger types: evm_contract_event | cosmos_contract_event | block_interval | cron | manual".into(),
                     input_schema: schema_for_type::<ScaffoldComponentParams>().into(),
                 },
                 Tool {
-                    name: "wavs_build_component".into(),
-                    description: "Build a WAVS WASM component using `cargo component build`. \
+                    name: "warpdrive_build_component".into(),
+                    description: "Build a WarpDrive WASM component using `cargo component build`. \
                         Returns full build output.".into(),
                     input_schema: schema_for_type::<BuildComponentParams>().into(),
                 },
@@ -1169,30 +1169,30 @@ impl ServerHandler for WavsMcpServer {
     ) -> Result<CallToolResult, McpError> {
         let args = req.arguments;
         match req.name.as_ref() {
-            "wavs_get_node_info" => self.tool_get_node_info().await,
-            "wavs_get_health" => self.tool_get_health().await,
-            "wavs_list_services" => self.tool_list_services().await,
-            "wavs_get_service" => self.tool_get_service(args).await,
-            "wavs_deploy_service" => self.tool_deploy_service(args).await,
-            "wavs_delete_service" => self.tool_delete_service(args).await,
-            "wavs_set_service_uri" => self.tool_set_service_uri(args).await,
-            "wavs_deploy_service_manager" => self.tool_deploy_service_manager(args).await,
-            "wavs_deploy_poa_service_manager" => self.tool_deploy_poa_service_manager(args).await,
-            "wavs_register_operator" => self.tool_register_operator(args).await,
+            "warpdrive_get_node_info" => self.tool_get_node_info().await,
+            "warpdrive_get_health" => self.tool_get_health().await,
+            "warpdrive_list_services" => self.tool_list_services().await,
+            "warpdrive_get_service" => self.tool_get_service(args).await,
+            "warpdrive_deploy_service" => self.tool_deploy_service(args).await,
+            "warpdrive_delete_service" => self.tool_delete_service(args).await,
+            "warpdrive_set_service_uri" => self.tool_set_service_uri(args).await,
+            "warpdrive_deploy_service_manager" => self.tool_deploy_service_manager(args).await,
+            "warpdrive_deploy_poa_service_manager" => self.tool_deploy_poa_service_manager(args).await,
+            "warpdrive_register_operator" => self.tool_register_operator(args).await,
             "wavs_deploy_and_register" => self.tool_deploy_and_register(args).await,
             "wavs_get_service_signer" => self.tool_get_service_signer(args).await,
             "wavs_get_signing_address" => self.tool_get_signing_address(args).await,
-            "wavs_upload_component" => self.tool_upload_component(args).await,
-            "wavs_save_service" => self.tool_save_service(args).await,
-            "wavs_simulate_trigger" => self.tool_simulate_trigger(args).await,
-            "wavs_deploy_dev_service" => self.tool_deploy_dev_service(args).await,
-            "wavs_query_kv" => self.tool_query_kv(args).await,
+            "warpdrive_upload_component" => self.tool_upload_component(args).await,
+            "warpdrive_save_service" => self.tool_save_service(args).await,
+            "warpdrive_simulate_trigger" => self.tool_simulate_trigger(args).await,
+            "warpdrive_deploy_dev_service" => self.tool_deploy_dev_service(args).await,
+            "warpdrive_query_kv" => self.tool_query_kv(args).await,
             "wavs_query_logs" => self.tool_query_logs(args).await,
             "wavs_query_component_logs" => self.tool_query_component_logs(args).await,
-            "wavs_get_service_schema" => self.tool_get_service_schema(),
-            "wavs_get_wit_interface" => self.tool_get_wit_interface().await,
-            "wavs_scaffold_component" => self.tool_scaffold_component(args).await,
-            "wavs_build_component" => self.tool_build_component(args).await,
+            "warpdrive_get_service_schema" => self.tool_get_service_schema(),
+            "warpdrive_get_wit_interface" => self.tool_get_wit_interface().await,
+            "warpdrive_scaffold_component" => self.tool_scaffold_component(args).await,
+            "warpdrive_build_component" => self.tool_build_component(args).await,
             name => Err(ErrorData {
                 code: ErrorCode::METHOD_NOT_FOUND,
                 message: format!("Unknown tool: {name}").into(),

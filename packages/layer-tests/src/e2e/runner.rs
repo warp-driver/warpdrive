@@ -101,15 +101,15 @@ impl Runner {
 
         for (group, mut group_tests) in test_groups {
             // Create hypercore clients BEFORE deploying services
-            // This ensures the test client announces to DHT before WAVS starts its hypercore streams.
-            // When WAVS deploys a service with a HypercoreAppend trigger, it immediately starts
-            // the hyperswarm discovery. If the test client hasn't announced yet, WAVS won't find it.
+            // This ensures the test client announces to DHT before WarpDrive starts its hypercore streams.
+            // When WarpDrive deploys a service with a HypercoreAppend trigger, it immediately starts
+            // the hyperswarm discovery. If the test client hasn't announced yet, WarpDrive won't find it.
             if let Err(e) = self.registry.create_hypercore_clients().await {
                 tracing::error!("Failed to create hypercore clients: {}", e);
             }
 
             // Give the hypercore client time to announce to DHT before services start discovering
-            // In CI with multiple operators, DHT propagation may take longer
+            // In CI with multiple vectors, DHT propagation may take longer
             if self
                 .registry
                 .get_hypercore_client("evm_hypercore_echo_data")
@@ -278,29 +278,29 @@ async fn run_test(
     component_sources: &ComponentSources,
     registry: &TestRegistry,
 ) -> anyhow::Result<()> {
-    // For multi-operator tests, wait for P2P mesh to form before triggering
-    if test.multi_operator && clients.http_clients.len() > 1 {
+    // For multi-vector tests, wait for P2P mesh to form before triggering
+    if test.multi_vector && clients.http_clients.len() > 1 {
         let expected_peers = clients.http_clients.len() - 1;
         tracing::info!(
-            "Multi-operator test: waiting for P2P mesh formation ({} expected peers)",
+            "Multi-vector test: waiting for P2P mesh formation ({} expected peers)",
             expected_peers
         );
 
-        // Wait for all operators to have connected to peers
+        // Wait for all vectors to have connected to peers
         for (idx, http_client) in clients.http_clients.iter().enumerate() {
             let status = http_client
                 .wait_for_p2p_ready(expected_peers, Some(Duration::from_secs(30)))
                 .await
                 .map_err(|e| {
                     anyhow!(
-                        "Operator {} P2P readiness check failed: {}. \
-                         Multi-operator tests require P2P mesh to be ready.",
+                        "Vector {} P2P readiness check failed: {}. \
+                         Multi-vector tests require P2P mesh to be ready.",
                         idx,
                         e
                     )
                 })?;
             tracing::info!(
-                "Operator {} P2P ready: {} connected peers",
+                "Vector {} P2P ready: {} connected peers",
                 idx,
                 status.connected_peers
             );
@@ -460,7 +460,7 @@ async fn run_test(
                 let record_payload = input_bytes.clone().unwrap_or_default();
                 let record_text = String::from_utf8_lossy(&record_payload).to_string();
 
-                // Send simulated trigger to all WAVS instances
+                // Send simulated trigger to all WarpDrive instances
                 for http_client in clients.http_clients.iter() {
                     let atproto_data = TriggerData::AtProtoEvent {
                         sequence: sequence as i64,
@@ -519,15 +519,15 @@ async fn run_test(
                         .context("Failed to wait for hypercore stream to finalize")?;
                     }
 
-                    // Wait for hypercore mesh to stabilize - require at least 1 WAVS instance to connect
-                    // In multi-operator mode, DHT discovery may not connect all operators reliably,
+                    // Wait for hypercore mesh to stabilize - require at least 1 WarpDrive instance to connect
+                    // In multi-vector mode, DHT discovery may not connect all vectors reliably,
                     // but data will still replicate if at least one connection is established
                     {
-                        // Require at least 1 connection, but ideally all operators
+                        // Require at least 1 connection, but ideally all vectors
                         let min_required_peers = 1;
                         let total_operators = clients.http_clients.len();
                         tracing::info!(
-                            "Waiting for hypercore mesh to stabilize (min {} peer, {} total operators) before append",
+                            "Waiting for hypercore mesh to stabilize (min {} peer, {} total vectors) before append",
                             min_required_peers,
                             total_operators
                         );
@@ -543,7 +543,7 @@ async fn run_test(
                         {
                             Ok(peer_count) => {
                                 tracing::info!(
-                                    "Hypercore mesh ready for append: {} connected peers (min required: {}, total operators: {})",
+                                    "Hypercore mesh ready for append: {} connected peers (min required: {}, total vectors: {})",
                                     peer_count,
                                     min_required_peers,
                                     total_operators
@@ -761,7 +761,7 @@ async fn run_test(
         tracing::info!("Test completed successfully!");
     }
 
-    // Wait for the aggregator submit callback to complete on all WAVS instances
+    // Wait for the aggregator submit callback to complete on all WarpDrive instances
     // before cleaning up the service. This ensures the after-submit callback
     // has finished writing to the KV store.
     // Only do this if:
@@ -800,7 +800,7 @@ async fn run_test(
         "Cleaning up service: {0:?}",
         service_deployment.service.manager
     );
-    // Delete service from all WAVS instances
+    // Delete service from all WarpDrive instances
     for http_client in clients.http_clients.iter() {
         http_client
             .delete_service(vec![service_deployment.service.manager.clone()])

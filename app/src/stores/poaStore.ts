@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { Address } from 'viem';
-import type { RegistryInfo, Operator } from '../contracts/POAStakeRegistry';
+import type { RegistryInfo, Vector } from '../contracts/POAStakeRegistry';
 import type { SavedRegistry } from '../types';
 import { savePoaRegistries } from '../tauri/commands';
 
@@ -10,7 +10,7 @@ export interface ConnectedRegistry {
   rpcUrl: string;
   address: Address;
   info: RegistryInfo | null;
-  operators: Operator[];
+  vectors: Vector[];
   isOwner: boolean;
 }
 
@@ -27,7 +27,7 @@ interface POAState {
   addRegistry: (registry: ConnectedRegistry) => void;
   removeRegistry: (key: string) => void;
   updateRegistryInfo: (key: string, info: RegistryInfo) => void;
-  updateRegistryOperators: (key: string, operators: Operator[]) => void;
+  updateRegistryOperators: (key: string, vectors: Vector[]) => void;
   updateRegistryOwnership: (key: string, isOwner: boolean) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
@@ -83,12 +83,12 @@ export const usePOAStore = create<POAState>((set, get) => ({
     });
   },
 
-  updateRegistryOperators: (key, operators) => {
+  updateRegistryOperators: (key, vectors) => {
     set((state) => {
       const registry = state.registries.get(key);
       if (!registry) return state;
       const newRegistries = new Map(state.registries);
-      newRegistries.set(key, { ...registry, operators });
+      newRegistries.set(key, { ...registry, vectors });
       return { registries: newRegistries };
     });
   },

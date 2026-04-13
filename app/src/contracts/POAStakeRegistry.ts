@@ -39,12 +39,12 @@ export const POAStakeRegistryABI = [
     outputs: [],
     stateMutability: 'nonpayable',
   },
-  // Operator management
+  // Vector management
   {
     type: 'function',
     name: 'registerOperator',
     inputs: [
-      { name: 'operator', type: 'address', internalType: 'address' },
+      { name: 'vector', type: 'address', internalType: 'address' },
       { name: 'weight', type: 'uint256', internalType: 'uint256' },
     ],
     outputs: [],
@@ -53,7 +53,7 @@ export const POAStakeRegistryABI = [
   {
     type: 'function',
     name: 'deregisterOperator',
-    inputs: [{ name: 'operator', type: 'address', internalType: 'address' }],
+    inputs: [{ name: 'vector', type: 'address', internalType: 'address' }],
     outputs: [],
     stateMutability: 'nonpayable',
   },
@@ -61,7 +61,7 @@ export const POAStakeRegistryABI = [
     type: 'function',
     name: 'updateOperatorWeight',
     inputs: [
-      { name: 'operator', type: 'address', internalType: 'address' },
+      { name: 'vector', type: 'address', internalType: 'address' },
       { name: 'weight', type: 'uint256', internalType: 'uint256' },
     ],
     outputs: [],
@@ -114,21 +114,21 @@ export const POAStakeRegistryABI = [
   {
     type: 'function',
     name: 'operatorRegistered',
-    inputs: [{ name: 'operator', type: 'address', internalType: 'address' }],
+    inputs: [{ name: 'vector', type: 'address', internalType: 'address' }],
     outputs: [{ name: '', type: 'bool', internalType: 'bool' }],
     stateMutability: 'view',
   },
   {
     type: 'function',
     name: 'getOperatorWeight',
-    inputs: [{ name: 'operator', type: 'address', internalType: 'address' }],
+    inputs: [{ name: 'vector', type: 'address', internalType: 'address' }],
     outputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
     stateMutability: 'view',
   },
   {
     type: 'function',
     name: 'getLatestOperatorSigningKey',
-    inputs: [{ name: 'operator', type: 'address', internalType: 'address' }],
+    inputs: [{ name: 'vector', type: 'address', internalType: 'address' }],
     outputs: [{ name: '', type: 'address', internalType: 'address' }],
     stateMutability: 'view',
   },
@@ -136,7 +136,7 @@ export const POAStakeRegistryABI = [
     type: 'function',
     name: 'getOperatorSigningKeyAtBlock',
     inputs: [
-      { name: 'operator', type: 'address', internalType: 'address' },
+      { name: 'vector', type: 'address', internalType: 'address' },
       { name: 'blockNumber', type: 'uint256', internalType: 'uint256' },
     ],
     outputs: [{ name: '', type: 'address', internalType: 'address' }],
@@ -146,7 +146,7 @@ export const POAStakeRegistryABI = [
     type: 'function',
     name: 'getOperatorWeightAtBlock',
     inputs: [
-      { name: 'operator', type: 'address', internalType: 'address' },
+      { name: 'vector', type: 'address', internalType: 'address' },
       { name: 'blockNumber', type: 'uint32', internalType: 'uint32' },
     ],
     outputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
@@ -222,20 +222,20 @@ export const POAStakeRegistryABI = [
   {
     type: 'event',
     name: 'OperatorRegistered',
-    inputs: [{ name: 'operator', type: 'address', indexed: true, internalType: 'address' }],
+    inputs: [{ name: 'vector', type: 'address', indexed: true, internalType: 'address' }],
     anonymous: false,
   },
   {
     type: 'event',
     name: 'OperatorDeregistered',
-    inputs: [{ name: 'operator', type: 'address', indexed: true, internalType: 'address' }],
+    inputs: [{ name: 'vector', type: 'address', indexed: true, internalType: 'address' }],
     anonymous: false,
   },
   {
     type: 'event',
     name: 'OperatorWeightUpdated',
     inputs: [
-      { name: 'operator', type: 'address', indexed: true, internalType: 'address' },
+      { name: 'vector', type: 'address', indexed: true, internalType: 'address' },
       { name: 'oldWeight', type: 'uint256', indexed: false, internalType: 'uint256' },
       { name: 'newWeight', type: 'uint256', indexed: false, internalType: 'uint256' },
     ],
@@ -260,7 +260,7 @@ export const POAStakeRegistryABI = [
     type: 'event',
     name: 'SigningKeyUpdate',
     inputs: [
-      { name: 'operator', type: 'address', indexed: true, internalType: 'address' },
+      { name: 'vector', type: 'address', indexed: true, internalType: 'address' },
       { name: 'updateBlock', type: 'uint256', indexed: true, internalType: 'uint256' },
       { name: 'newSigningKey', type: 'address', indexed: true, internalType: 'address' },
       { name: 'oldSigningKey', type: 'address', indexed: false, internalType: 'address' },
@@ -467,7 +467,7 @@ export interface RegistryInfo {
   serviceUri: string;
 }
 
-export interface Operator {
+export interface Vector {
   address: `0x${string}`;
   weight: bigint;
   signingKey: `0x${string}`;

@@ -4,7 +4,7 @@ use alloy_primitives::Address;
 use cron::Schedule;
 use warpdrive_types::{
     AggregatorBuilder, ServiceBuilder, ServiceManagerBuilder, Submit, SubmitBuilder, Timestamp,
-    Trigger, TriggerBuilder, WAVS_ENV_PREFIX,
+    Trigger, TriggerBuilder, WARPDRIVE_ENV_PREFIX,
 };
 
 pub trait ServiceJsonExt {
@@ -33,10 +33,10 @@ impl ServiceJsonExt for ServiceBuilder {
                 }
 
                 for key in &component.env_keys {
-                    if !key.starts_with(WAVS_ENV_PREFIX) {
+                    if !key.starts_with(WARPDRIVE_ENV_PREFIX) {
                         errors.push(format!(
                             "Workflow '{}' has environment variable '{}' that doesn't start with '{}'",
-                            workflow_id, key, WAVS_ENV_PREFIX
+                            workflow_id, key, WARPDRIVE_ENV_PREFIX
                         ));
                     }
                 }
@@ -148,10 +148,10 @@ impl ServiceJsonExt for ServiceBuilder {
                     }
 
                     for key in &component.env_keys {
-                        if !key.starts_with(WAVS_ENV_PREFIX) {
+                        if !key.starts_with(WARPDRIVE_ENV_PREFIX) {
                             errors.push(format!(
                                 "Workflow '{}' has aggregator component environment variable '{}' that doesn't start with '{}'",
-                                workflow_id, key, WAVS_ENV_PREFIX
+                                workflow_id, key, WARPDRIVE_ENV_PREFIX
                             ));
                         }
                     }

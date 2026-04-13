@@ -30,7 +30,7 @@ export function OperatorList({ registryKey: registryKeyProp }: OperatorListProps
     return null;
   }
 
-  const { operators, isOwner, address: registryAddress, rpcUrl, chainId } = registry;
+  const { vectors, isOwner, address: registryAddress, rpcUrl, chainId } = registry;
 
   // Map derived addresses to their index for wallet client creation
   const addressIndexMap = new Map<string, number>();
@@ -50,14 +50,14 @@ export function OperatorList({ registryKey: registryKeyProp }: OperatorListProps
 
       await deregisterOperator(publicClient, walletClient, registryAddress, operatorAddress);
 
-      // Refresh operators
+      // Refresh vectors
       const updatedOperators = await fetchOperators(publicClient, registryAddress);
       updateRegistryOperators(getRegistryKey(chainId, registryAddress), updatedOperators);
 
-      Toast.info(`Operator ${operatorAddress} deregistered`);
+      Toast.info(`Vector ${operatorAddress} deregistered`);
     } catch (err) {
-      console.error('Failed to deregister operator:', err);
-      Toast.error(`Failed to deregister operator: ${err}`);
+      console.error('Failed to deregister vector:', err);
+      Toast.error(`Failed to deregister vector: ${err}`);
     } finally {
       setLoading(false);
     }
@@ -77,13 +77,13 @@ export function OperatorList({ registryKey: registryKeyProp }: OperatorListProps
 
       await updateOperatorWeight(publicClient, walletClient, registryAddress, operatorAddress, weight);
 
-      // Refresh operators
+      // Refresh vectors
       const updatedOperators = await fetchOperators(publicClient, registryAddress);
       updateRegistryOperators(getRegistryKey(chainId, registryAddress), updatedOperators);
 
       setEditingWeight(null);
       setNewWeight('');
-      Toast.info('Operator weight updated');
+      Toast.info('Vector weight updated');
     } catch (err) {
       console.error('Failed to update weight:', err);
       Toast.error(`Failed to update weight: ${err}`);
@@ -99,19 +99,19 @@ export function OperatorList({ registryKey: registryKeyProp }: OperatorListProps
     setLoading(true);
     try {
       const publicClient = getPublicClient(rpcUrl, chainId);
-      // Create wallet client as the operator (not the owner)
+      // Create wallet client as the vector (not the owner)
       const operatorWalletClient = await getWalletClient(rpcUrl, chainId, addressIndex);
 
-      // Operator must have ETH to pay for gas
+      // Vector must have ETH to pay for gas
       const balance = await publicClient.getBalance({ address: operatorAddress });
       if (balance === 0n) {
         Toast.error(
-          `Operator ${operatorAddress} has no ETH to pay for gas. Fund this address before setting a signing key.`
+          `Vector ${operatorAddress} has no ETH to pay for gas. Fund this address before setting a signing key.`
         );
         return;
       }
 
-      // Use the operator address itself as the signing key
+      // Use the vector address itself as the signing key
       const signature = await createSigningKeySignature(
         operatorWalletClient.account,
         operatorAddress
@@ -125,7 +125,7 @@ export function OperatorList({ registryKey: registryKeyProp }: OperatorListProps
         signature
       );
 
-      // Refresh operators
+      // Refresh vectors
       const updatedOperators = await fetchOperators(publicClient, registryAddress);
       updateRegistryOperators(getRegistryKey(chainId, registryAddress), updatedOperators);
 
@@ -141,10 +141,10 @@ export function OperatorList({ registryKey: registryKeyProp }: OperatorListProps
   return (
     <div className="p-6 rounded-lg bg-charcoal-medium border border-charcoal-light">
       <h3 className="text-lg font-semibold text-beige-light mb-4">
-        Operators ({operators.length})
+        Vectors ({vectors.length})
       </h3>
 
-      {operators.length === 0 ? (
+      {vectors.length === 0 ? (
         <OperatorEmptyState
           isOwner={isOwner}
           registryAddress={registryAddress}
@@ -173,13 +173,13 @@ export function OperatorList({ registryKey: registryKeyProp }: OperatorListProps
               </tr>
             </thead>
             <tbody>
-              {operators.map((operator) => (
-                <tr key={operator.address} className="border-b border-charcoal-dark">
+              {vectors.map((vector) => (
+                <tr key={vector.address} className="border-b border-charcoal-dark">
                   <td className="py-3 px-3">
-                    <AddressDisplay address={operator.address} full />
+                    <AddressDisplay address={vector.address} full />
                   </td>
                   <td className="py-3 px-3">
-                    {editingWeight === operator.address ? (
+                    {editingWeight === vector.address ? (
                       <div className="flex items-center gap-2">
                         <input
                           type="number"
@@ -189,7 +189,7 @@ export function OperatorList({ registryKey: registryKeyProp }: OperatorListProps
                           placeholder="Weight"
                         />
                         <button
-                          onClick={() => handleUpdateWeight(operator.address)}
+                          onClick={() => handleUpdateWeight(vector.address)}
                           disabled={loading}
                           className="text-xs text-purple-2 hover:text-purple-3"
                         >
@@ -207,25 +207,25 @@ export function OperatorList({ registryKey: registryKeyProp }: OperatorListProps
                       </div>
                     ) : (
                       <span className="text-beige-warm text-sm">
-                        {operator.weight.toString()}
+                        {vector.weight.toString()}
                       </span>
                     )}
                   </td>
                   <td className="py-3 px-3">
                     <div className="flex items-center gap-2">
-                      {operator.signingKey === ZERO_ADDRESS ? (
+                      {vector.signingKey === ZERO_ADDRESS ? (
                         <span className="text-tan-muted text-sm italic">(not set)</span>
                       ) : (
-                        <AddressDisplay address={operator.signingKey} full />
+                        <AddressDisplay address={vector.signingKey} full />
                       )}
-                      {addressIndexMap.has(operator.address.toLowerCase()) && (
+                      {addressIndexMap.has(vector.address.toLowerCase()) && (
                         <Button
-                          text={operator.signingKey === ZERO_ADDRESS ? 'Set' : 'Update'}
+                          text={vector.signingKey === ZERO_ADDRESS ? 'Set' : 'Update'}
                           size="sm"
                           color="purple"
                           variant="outline"
                           disabled={loading}
-                          onClick={() => handleSetSigningKey(operator.address)}
+                          onClick={() => handleSetSigningKey(vector.address)}
                         />
                       )}
                     </div>
@@ -239,8 +239,8 @@ export function OperatorList({ registryKey: registryKeyProp }: OperatorListProps
                           variant="outline"
                           disabled={loading || editingWeight !== null}
                           onClick={() => {
-                            setEditingWeight(operator.address);
-                            setNewWeight(operator.weight.toString());
+                            setEditingWeight(vector.address);
+                            setNewWeight(vector.weight.toString());
                           }}
                         />
                         <Button
@@ -249,7 +249,7 @@ export function OperatorList({ registryKey: registryKeyProp }: OperatorListProps
                           color="red"
                           variant="outline"
                           disabled={loading}
-                          onClick={() => handleDeregister(operator.address)}
+                          onClick={() => handleDeregister(vector.address)}
                         />
                       </div>
                     </td>
@@ -288,14 +288,14 @@ function OperatorEmptyState({
   if (!isOwner) {
     return (
       <p className="text-tan-muted italic">
-        No operators registered. The contract owner can register operators.
+        No vectors registered. The contract owner can register vectors.
       </p>
     );
   }
 
   const handleRegister = async () => {
     if (!isAddress(operatorAddress)) {
-      Toast.error('Please enter a valid operator address');
+      Toast.error('Please enter a valid vector address');
       return;
     }
     const weight = BigInt(operatorWeight);
@@ -315,9 +315,9 @@ function OperatorEmptyState({
 
       setOperatorAddress('');
       setOperatorWeight('1');
-      Toast.info('Operator registered successfully');
+      Toast.info('Vector registered successfully');
     } catch (err) {
-      Toast.error(`Failed to register operator: ${err}`);
+      Toast.error(`Failed to register vector: ${err}`);
     } finally {
       setLoading(false);
     }
@@ -325,11 +325,11 @@ function OperatorEmptyState({
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-tan-muted">No operators registered yet.</p>
-      <p className="text-beige-warm text-sm">Register your first operator:</p>
+      <p className="text-tan-muted">No vectors registered yet.</p>
+      <p className="text-beige-warm text-sm">Register your first vector:</p>
       <div className="grid grid-cols-2 gap-3">
         <TextInput
-          placeholder="Operator address (0x...)"
+          placeholder="Vector address (0x...)"
           value={operatorAddress}
           onChange={setOperatorAddress}
         />
@@ -356,7 +356,7 @@ function OperatorEmptyState({
         </div>
       )}
       <Button
-        text="Register Operator"
+        text="Register Vector"
         color="purple"
         size="sm"
         disabled={loading}

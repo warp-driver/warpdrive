@@ -24,7 +24,7 @@ pub enum AppError {
     Tauri(String),
 
     #[error("Wavs Config: {0}")]
-    WavsConfig(String),
+    WarpdriveConfig(String),
 
     #[error("Health check: {0}")]
     HealthCheck(String),
@@ -32,7 +32,7 @@ pub enum AppError {
     #[error("Missing chain: {0}")]
     MissingChain(warpdrive_types::ChainKey),
 
-    #[error("WAVS is not running")]
+    #[error("WarpDrive is not running")]
     WavsNotRunning,
 
     #[error("Service: {0}")]

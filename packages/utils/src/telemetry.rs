@@ -103,14 +103,14 @@ pub fn setup_metrics(
 #[derive(Clone, Debug)]
 pub struct Metrics {
     pub http: HttpMetrics,
-    pub wavs: WavsMetrics,
+    pub warpdrive: WarpdriveMetrics,
 }
 
 impl Metrics {
     pub fn new(meter: Meter) -> Self {
         Self {
             http: HttpMetrics::new(meter.clone()),
-            wavs: WavsMetrics::new(meter),
+            warpdrive: WarpdriveMetrics::new(meter),
         }
     }
 }
@@ -183,7 +183,7 @@ impl HttpMetrics {
 }
 
 #[derive(Clone, Debug)]
-pub struct WavsMetrics {
+pub struct WarpdriveMetrics {
     pub engine: EngineMetrics,
     pub dispatcher: DispatcherMetrics,
     pub submission: SubmissionMetrics,
@@ -191,7 +191,7 @@ pub struct WavsMetrics {
     pub aggregator: AggregatorMetrics,
 }
 
-impl WavsMetrics {
+impl WarpdriveMetrics {
     pub fn new(meter: Meter) -> Self {
         Self {
             engine: EngineMetrics::new(meter.clone()),
@@ -247,19 +247,19 @@ impl EngineMetrics {
                 .build(),
             operator_executions_success: meter
                 .u64_counter(format!("{}.operator_executions_success", Self::NAMESPACE))
-                .with_description("Successful WASM operator executions")
+                .with_description("Successful WASM vector executions")
                 .build(),
             operator_executions_failed: meter
                 .u64_counter(format!("{}.operator_executions_failed", Self::NAMESPACE))
-                .with_description("Failed WASM operator executions")
+                .with_description("Failed WASM vector executions")
                 .build(),
             aggregator_executions_success: meter
                 .u64_counter(format!("{}.aggregator_executions_success", Self::NAMESPACE))
-                .with_description("Successful WASM operator executions")
+                .with_description("Successful WASM vector executions")
                 .build(),
             aggregator_executions_failed: meter
                 .u64_counter(format!("{}.aggregator_executions_failed", Self::NAMESPACE))
-                .with_description("Failed WASM operator executions")
+                .with_description("Failed WASM vector executions")
                 .build(),
         }
     }

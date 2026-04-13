@@ -38,14 +38,14 @@ interface AppState {
 
 export const useAppStore = create<AppState>((set, get) => ({
   // Initial state
-  settings: { wavs_home: null, saved_registries: [], saved_service_managers: [], saved_services: [], mcp_enabled: false, mcp_auto_start: false, mcp_token: null, env_vars: {} },
+  settings: { warpdrive_home: null, saved_registries: [], saved_service_managers: [], saved_services: [], mcp_enabled: false, mcp_auto_start: false, mcp_token: null, env_vars: {} },
   logList: [],
   activityList: [],
   services: new Map(),
 
   // Computed
   isSettingsComplete: () => {
-    return get().settings.wavs_home !== null;
+    return get().settings.warpdrive_home !== null;
   },
 
   getServiceLabel: (serviceId: ServiceId) => {
