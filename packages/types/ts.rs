@@ -43,10 +43,10 @@ fn create_package_json(version: &str) -> String {
   "license": "GPL-3.0-or-later",
   "repository": {{
     "type": "git",
-    "url": "git+https://github.com/Lay3rLabs/WAVS.git",
+    "url": "git+https://github.com/warp-driver/warpdrive.git",
     "directory": "packages/types/bindings"
   }},
-  "homepage": "https://github.com/Lay3rLabs/WAVS/tree/main/packages/types",
+  "homepage": "https://github.com/warp-driver/warpdrive/tree/main/packages/types",
   "publishConfig": {{
     "access": "public"
   }},

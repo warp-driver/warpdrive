@@ -433,11 +433,11 @@ ts-bindings:
     cargo test -p warpdrive-types --features ts-bindings
     cargo run --bin ts
 
-# Install the WAVS Claude Code skill globally
+# Install the WarpDrive Claude Code skill globally
 install-claude-skill:
     @mkdir -p ~/.claude/skills
-    @cp -r .claude/skills/wavs ~/.claude/skills/wavs
-    @echo "WAVS skill installed to ~/.claude/skills/wavs"
+    @cp -r .claude/skills/warp-drive ~/.claude/skills/warp-drive
+    @echo "WarpDrive skill installed to ~/.claude/skills/warp-drive"
     @echo "Restart Claude Code to pick up the skill."
 
 # Register warpdrive-mcp with Claude Code (interactive wizard)

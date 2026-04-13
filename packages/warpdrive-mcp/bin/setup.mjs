@@ -205,14 +205,14 @@ function writeDesktopConfig(command, args) {
   renameSync(tmp, configPath);
 }
 
-/** Copy bundled skill/ directory to ~/.claude/skills/wavs/. */
+/** Copy bundled skill/ directory to ~/.claude/skills/warp-drive/. */
 function installSkillFiles() {
   const skillSrc = path.join(__dirname, '..', 'skill');
   if (!existsSync(skillSrc)) {
     console.log('  (skill files not bundled in this install — skipping)');
     return false;
   }
-  const dest = path.join(os.homedir(), '.claude', 'skills', 'wavs');
+  const dest = path.join(os.homedir(), '.claude', 'skills', 'warp-drive');
   mkdirSync(path.dirname(dest), { recursive: true });
   cpSync(skillSrc, dest, { recursive: true, force: true });
   return true;
@@ -342,7 +342,7 @@ export default async function main() {
     // 9. Claude Code
     if (forCode) {
       const skInstalled = installSkillFiles();
-      if (skInstalled) console.log('  Skill files installed to ~/.claude/skills/wavs/');
+      if (skInstalled) console.log('  Skill files installed to ~/.claude/skills/warp-drive/');
       writeClaudeJson(projectPath, binary, mcpArgs, global_);
       console.log('  Claude Code: MCP server written to ~/.claude.json');
     }

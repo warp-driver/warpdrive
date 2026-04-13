@@ -41,7 +41,7 @@ jobs:
           # Get the HTTP status code when checking if the crate exists
           # We expect either 200 (exists) or 404 (doesn't exist)
           HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            -H "User-Agent: wavs-ci (https://github.com/Lay3rLabs/WAVS)" \
+            -H "User-Agent: wavs-ci (https://github.com/warp-driver/warpdrive)" \
             https://crates.io/api/v1/crates/${{ env.CRATE_NAME }}/${{ steps.version.outputs.version }})
 
           # Handle status codes appropriately
@@ -109,7 +109,7 @@ jobs:
         shell: bash
         run: |
           HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            -H "User-Agent: wavs-ci (https://github.com/Lay3rLabs/WAVS)" \
+            -H "User-Agent: wavs-ci (https://github.com/warp-driver/warpdrive)" \
             https://crates.io/api/v1/crates/${{ env.WASI_CRATE_NAME }}/${{ steps.version.outputs.version }})
 
           if [ "$HTTP_STATUS" = "200" ]; then

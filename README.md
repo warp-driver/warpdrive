@@ -54,21 +54,21 @@ This project uses [just](https://github.com/casey/just) for managing releases. T
 1. **Make your changes** — develop circuits, fix bugs, update WIT definitions, etc.
 2. **Set the version** — update version numbers across `Cargo.toml` and all WIT package definitions:
    ```bash
-   just set-version v2.7.0
+   just set-version v3.0.0
    ```
 3. **Create PR and merge** — get your changes reviewed and merged to main.
 4. **Push tags** — after merge, create and push git tags:
    ```bash
-   just push-tag v2.7.0
+   just push-tag v3.0.0
    ```
 
-This creates both a standard tag (`v2.7.0`) and a Go module tag (`wasi/go/v2.7.0`). The standard tag triggers CI to publish the `warpdrive-types` and `warpdrive-wasi-utils` crates to crates.io, WASM components to wa.dev, and TypeScript bindings to NPM.
+This creates both a standard tag (`v3.0.0`) and a Go module tag (`wasi/go/v3.0.0`). The standard tag triggers CI to publish the `warpdrive-types` and `warpdrive-wasi-utils` crates to crates.io, WASM components to wa.dev, and TypeScript bindings to NPM.
 
 ---
 
 ## Claude Code Integration
 
-WarpDrive ships with a `/wavs` skill for [Claude Code](https://claude.ai/code) that teaches Claude the full WarpDrive component development workflow — scaffolding, building, uploading, and deploying circuits via the MCP tools.
+WarpDrive ships with a `/warp-drive` skill for [Claude Code](https://claude.ai/code) that teaches Claude the full WarpDrive component development workflow — scaffolding, building, uploading, and deploying circuits via the MCP tools.
 
 Full Claude Code integration requires two independent steps:
 
@@ -77,7 +77,7 @@ Full Claude Code integration requires two independent steps:
 
 ### Step 1: Install the skill
 
-**In-repo (automatic):** If you're working inside this repository, the `/wavs` skill is available automatically. No installation needed.
+**In-repo (automatic):** If you're working inside this repository, the `/warp-drive` skill is available automatically. No installation needed.
 
 **Global (repo cloned):**
 ```bash
@@ -86,7 +86,7 @@ just install-claude-skill
 
 **Global (no clone needed):**
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Lay3rLabs/wavs/main/.claude/skills/wavs/install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/warp-driver/warpdrive/main/.claude/skills/warp-drive/install.sh)
 ```
 
 After installation, restart Claude Code to pick up the skill.

@@ -38,7 +38,7 @@ function getAssetName() {
   if (!asset) {
     throw new Error(
       `Unsupported platform/arch: ${key}. ` +
-      `Build warpdrive-mcp from source: https://github.com/Lay3rLabs/wavs`
+      `Build warpdrive-mcp from source: https://github.com/warp-driver/warpdrive`
     );
   }
   return asset;
@@ -73,7 +73,7 @@ async function fetchWithRedirects(url, maxRedirects = 5) {
 
 async function downloadBinary() {
   const asset = getAssetName();
-  const url = `https://github.com/Lay3rLabs/wavs/releases/download/v${VERSION}/${asset}`;
+  const url = `https://github.com/warp-driver/warpdrive/releases/download/v${VERSION}/${asset}`;
   const binDir = path.join(__dirname, 'bin');
   const isWindows = process.platform === 'win32';
   const binaryName = isWindows ? 'warpdrive-mcp.exe' : 'warpdrive-mcp';

@@ -1,11 +1,12 @@
 ---
-name: wavs
+name: warp-drive
 description: >
-  Develops, deploys, and manages WAVS (WebAssembly-based Actively Validated Services)
-  components and services using the wavs MCP server. Use when the user wants to build a
-  WASM component, deploy a new service, update an existing service, or manage service
-  lifecycle. Triggers on: wavs, wasm component, AVS, service manager,
-  deploy service, scaffold component.
+  Develops, deploys, and manages WarpDrive (WebAssembly-based verifiable off-chain
+  compute for Stellar/Soroban) components and services using the wavs MCP server.
+  Use when the user wants to build a WASM component, deploy a new service, update
+  an existing service, or manage service lifecycle. Triggers on: warp-drive, wavs,
+  wasm component, AVS, service manager, deploy service, scaffold component, Vectr,
+  circuit.
 ---
 
 # WAVS Developer Guide

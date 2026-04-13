@@ -1,4 +1,4 @@
-module github.com/Lay3rLabs/wavs/wasi/go
+module github.com/warp-driver/warpdrive/wasi/go
 
 go 1.23.1
 

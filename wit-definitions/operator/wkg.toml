@@ -3,7 +3,7 @@ author = "Lay3r Labs Team"
 description = "WAVS WASI Operator"
 license = "MIT"
 homepage = "https://www.wavs.xyz/"
-repository = "https://github.com/Lay3rLabs/WAVS"
+repository = "https://github.com/warp-driver/warpdrive"
 
 [overrides]
 "wavs:types" = { path = "../types/wit" }

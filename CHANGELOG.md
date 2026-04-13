@@ -9,4 +9,4 @@ and this project adheres to [Semantic Versioning].
 
 ## [v2.8.0]
 
-Snapshot taken from [WAVS](https://github.com/Lay3rLabs/WAVS)
+Snapshot taken from [WAVS](https://github.com/warp-driver/warpdrive)

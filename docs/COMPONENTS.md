@@ -17,7 +17,7 @@ WIT dependencies are managed with [`wkg`](https://github.com/bytecodealliance/wa
 
 The `wasi/go/` directory contains auto-generated Go bindings from the WIT definitions. These provide Go-language access to the WAVS WASI interfaces (types, operator trigger world, and standard WASI APIs for HTTP, sockets, clocks, filesystem, etc.).
 
-Module path: `github.com/Lay3rLabs/wavs/wasi/go`
+Module path: `github.com/warp-driver/warpdrive/wasi/go`
 
 ### wasi-utils Crate
 
@@ -48,7 +48,7 @@ WIT_DIR="./wit-definitions"
 # Clean and clone
 rm -rf "$WIT_DIR" .temp-clone
 mkdir -p .temp-clone
-git -C .temp-clone clone --depth=1 --branch "$BRANCH" --single-branch https://github.com/Lay3rLabs/WAVS.git
+git -C .temp-clone clone --depth=1 --branch "$BRANCH" --single-branch https://github.com/warp-driver/warpdrive.git
 cp -R .temp-clone/WAVS/wit-definitions "$WIT_DIR"
 rm -rf .temp-clone
 

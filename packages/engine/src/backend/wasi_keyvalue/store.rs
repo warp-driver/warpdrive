@@ -66,7 +66,7 @@ impl store::HostBucket for KeyValueState<'_> {
     }
 
     // TODO - test me!
-    // https://github.com/Lay3rLabs/WAVS/issues/767
+    // https://github.com/warp-driver/warpdrive/issues/767
     fn list_keys(
         &mut self,
         bucket: Resource<KeyValueBucket>,

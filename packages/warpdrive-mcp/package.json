@@ -6,7 +6,7 @@
   "license": "GPL-3.0-or-later",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Lay3rLabs/wavs.git",
+    "url": "https://github.com/warp-driver/warpdrive.git",
     "directory": "packages/warpdrive-mcp"
   },
   "bin": {

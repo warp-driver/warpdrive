@@ -268,7 +268,7 @@ impl EvmChainConfigExt for EvmChainConfig {
         &self,
         credential: Credential,
     ) -> std::result::Result<EvmSigningClientConfig, EvmClientError> {
-        // TODO: https://github.com/Lay3rLabs/WAVS/issues/1019
+        // TODO: https://github.com/warp-driver/warpdrive/issues/1019
         let endpoint = match (self.ws_endpoints.is_empty(), self.http_endpoint.clone()) {
             // prefer HTTP for signing clients
             (_, Some(url)) => EvmEndpoint::new_http(&url)?,
