@@ -18,8 +18,8 @@ use utils::{
     async_transaction::AsyncTransaction, config::EvmChainConfigExt, context::AppContext,
     evm_client::EvmSigningClient, storage::db::WavsDb, telemetry::AggregatorMetrics,
 };
-use wavs_engine::bindings::aggregator::world::AnyTxHash;
-use wavs_types::{
+use warpdrive_engine::bindings::aggregator::world::AnyTxHash;
+use warpdrive_types::{
     AggregatorAction, ChainKey, QuorumQueue, QuorumQueueId, Service, Submission, Submit,
     SubmitAction, TimerAction,
 };
@@ -75,11 +75,11 @@ pub enum AggregatorCommand {
     },
     // Subscribe to a service's P2P topic (called when service is added)
     SubscribeService {
-        service_id: wavs_types::ServiceId,
+        service_id: warpdrive_types::ServiceId,
     },
     /// Unsubscribe from P2P topic when service is removed
     UnsubscribeService {
-        service_id: wavs_types::ServiceId,
+        service_id: warpdrive_types::ServiceId,
     },
 }
 
@@ -112,11 +112,11 @@ impl Aggregator {
     }
 
     /// Get the current P2P network status
-    pub async fn get_p2p_status(&self) -> wavs_types::P2pStatus {
+    pub async fn get_p2p_status(&self) -> warpdrive_types::P2pStatus {
         let handle = self.p2p_handle.read().unwrap().clone();
         match handle {
             Some(h) => h.get_status().await.unwrap_or_default(),
-            None => wavs_types::P2pStatus::default(),
+            None => warpdrive_types::P2pStatus::default(),
         }
     }
 

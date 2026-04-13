@@ -1,6 +1,6 @@
 [package]
-name = "wavs"
-description = "WAVS Node Server"
+name = "warpdrive"
+description = "WarpDrive Node Server"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
@@ -12,12 +12,12 @@ publish = false
 [features]
 test-utils = []
 dev = []
-gui = ["dep:tauri", "wavs-gui-shared/backend"]
+gui = ["dep:tauri", "warpdrive-gui-shared/backend"]
 
 [dependencies]
-wavs-types = { workspace = true, features = ["full"] }
-wavs-engine = { workspace = true }
-wavs-gui-shared= { workspace = true}
+warpdrive-types = { workspace = true, features = ["full"] }
+warpdrive-engine = { workspace = true }
+warpdrive-gui-shared= { workspace = true}
 utils = { workspace = true }
 clap = { workspace = true }
 anyhow = { workspace = true }
@@ -76,7 +76,7 @@ tauri = {workspace = true, optional = true}
 
 [dev-dependencies]
 criterion = { workspace = true }
-wavs-benchmark-common = { workspace = true }
+warpdrive-benchmark-common = { workspace = true }
 utils = { workspace = true, features = ["test-utils"] }
 example-types = { workspace = true }
 alloy-node-bindings = { workspace = true }

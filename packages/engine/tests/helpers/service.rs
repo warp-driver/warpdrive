@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use wavs_types::{
+use warpdrive_types::{
     AllowedHostPermission, ComponentDigest, ComponentSource, Permissions, Service, SignatureKind,
     Submit, Trigger, TriggerAction, TriggerConfig, TriggerData, Workflow, WorkflowId,
 };
@@ -23,7 +23,7 @@ pub fn make_trigger_action(
 
 pub fn make_service(wasm_digest: ComponentDigest, config: BTreeMap<String, String>) -> Service {
     let workflow_id = WorkflowId::new("workflow-1").unwrap();
-    let component = wavs_types::Component {
+    let component = warpdrive_types::Component {
         source: ComponentSource::Digest(wasm_digest),
         permissions: Permissions {
             allowed_http_hosts: AllowedHostPermission::All,
@@ -48,8 +48,8 @@ pub fn make_service(wasm_digest: ComponentDigest, config: BTreeMap<String, Strin
     Service {
         name: "My Service".to_string(),
         workflows: BTreeMap::from([(workflow_id, workflow)]),
-        status: wavs_types::ServiceStatus::Active,
-        manager: wavs_types::ServiceManager::Evm {
+        status: warpdrive_types::ServiceStatus::Active,
+        manager: warpdrive_types::ServiceManager::Evm {
             chain: "evm:noop".parse().unwrap(),
             address: Default::default(),
         },

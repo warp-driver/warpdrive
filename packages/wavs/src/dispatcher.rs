@@ -36,14 +36,14 @@ use utils::error::EvmClientError;
 use utils::service::fetch_service;
 use utils::storage::fs::FileStorage;
 use utils::telemetry::{DispatcherMetrics, WavsMetrics};
-use wavs_gui_shared::event::TauriEventEmitterExt;
-use wavs_types::contracts::cosmwasm::service_manager::ServiceManagerQueryMessages;
-use wavs_types::IWavsServiceManager::IWavsServiceManagerInstance;
-use wavs_types::{
+use warpdrive_gui_shared::event::TauriEventEmitterExt;
+use warpdrive_types::contracts::cosmwasm::service_manager::ServiceManagerQueryMessages;
+use warpdrive_types::IWavsServiceManager::IWavsServiceManagerInstance;
+use warpdrive_types::{
     AnyChainConfig, ChainConfigError, ChainConfigs, ChainKey, ComponentDigest, ServiceManager,
     Submission, Submit, TriggerData, WorkflowIdError,
 };
-use wavs_types::{Service, ServiceError, ServiceId, SignerResponse, TriggerAction, WorkflowId};
+use warpdrive_types::{Service, ServiceError, ServiceId, SignerResponse, TriggerAction, WorkflowId};
 
 use crate::config::Config;
 use crate::service_registry::{RegistryError, ServiceRegistry};
@@ -94,10 +94,10 @@ pub enum TauriHandle {
 }
 
 impl TauriEventEmitterExt for TauriHandle {
-    fn emit_ext<E: wavs_gui_shared::event::TauriEventExt>(
+    fn emit_ext<E: warpdrive_gui_shared::event::TauriEventExt>(
         &self,
         _event: E,
-    ) -> Result<(), wavs_gui_shared::error::AppError> {
+    ) -> Result<(), warpdrive_gui_shared::error::AppError> {
         match self {
             #[cfg(feature = "gui")]
             TauriHandle::Real(handle) => handle.emit_ext(_event),
@@ -341,7 +341,7 @@ impl<S: CAStorage + 'static> Dispatcher<S> {
                             if let Err(err) =
                                 _self
                                     .tauri_handle
-                                    .emit_ext(wavs_gui_shared::event::TriggerEvent {
+                                    .emit_ext(warpdrive_gui_shared::event::TriggerEvent {
                                         action: action.clone(),
                                     })
                             {
@@ -458,7 +458,7 @@ impl<S: CAStorage + 'static> Dispatcher<S> {
                             trigger_data,
                         } => {
                             if let Err(err) = _self.tauri_handle.emit_ext(
-                                wavs_gui_shared::event::SubmissionEvent {
+                                warpdrive_gui_shared::event::SubmissionEvent {
                                     service_id,
                                     workflow_id,
                                     trigger_data,

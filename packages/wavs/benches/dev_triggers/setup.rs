@@ -3,12 +3,12 @@ use std::{net::SocketAddr, sync::Arc, thread::JoinHandle, time::Duration};
 use tempfile::tempdir;
 use utils::context::AppContext;
 use utils::filesystem::workspace_path;
-use wavs::config::Config;
-use wavs::dispatcher::TauriHandle;
-use wavs_types::{
+use warpdrive::config::Config;
+use warpdrive::dispatcher::TauriHandle;
+use warpdrive_types::{
     AllowedHostPermission, Component, ComponentDigest, ComponentSource, Service, WorkflowId,
 };
-use wavs_types::{SignatureKind, Submit};
+use warpdrive_types::{SignatureKind, Submit};
 
 #[derive(Debug, Clone)]
 pub enum ComponentConfig {
@@ -17,7 +17,7 @@ pub enum ComponentConfig {
 }
 
 pub struct DevTriggersRuntime {
-    pub dispatcher: Arc<wavs::dispatcher::Dispatcher<utils::storage::fs::FileStorage>>,
+    pub dispatcher: Arc<warpdrive::dispatcher::Dispatcher<utils::storage::fs::FileStorage>>,
     pub server_addr: SocketAddr,
     pub service: Service,
     pub workflow_id: WorkflowId,
@@ -41,7 +41,7 @@ impl DevTriggersRuntime {
             ..Default::default()
         };
         // Provide a test mnemonic so SubmissionManager can create a signer
-        config.signing_mnemonic = Some(wavs_types::Credential::new(
+        config.signing_mnemonic = Some(warpdrive_types::Credential::new(
             "test test test test test test test test test test test junk".to_string(),
         ));
 
@@ -70,11 +70,11 @@ impl DevTriggersRuntime {
             name: "Dev Test Service".to_string(),
             workflows: std::collections::BTreeMap::from([(
                 workflow_id.clone(),
-                wavs_types::Workflow {
-                    trigger: wavs_types::Trigger::Manual,
-                    component: wavs_types::Component {
+                warpdrive_types::Workflow {
+                    trigger: warpdrive_types::Trigger::Manual,
+                    component: warpdrive_types::Component {
                         source: ComponentSource::Digest(component_digest.clone()),
-                        permissions: wavs_types::Permissions {
+                        permissions: warpdrive_types::Permissions {
                             file_system: false,
                             allowed_http_hosts: AllowedHostPermission::None,
                             raw_sockets: false,
@@ -89,7 +89,7 @@ impl DevTriggersRuntime {
                     submit: Submit::Aggregator {
                         component: Box::new(Component {
                             source: ComponentSource::Digest(component_digest.clone()),
-                            permissions: wavs_types::Permissions {
+                            permissions: warpdrive_types::Permissions {
                                 file_system: false,
                                 allowed_http_hosts: AllowedHostPermission::None,
                                 raw_sockets: false,
@@ -104,8 +104,8 @@ impl DevTriggersRuntime {
                     },
                 },
             )]),
-            status: wavs_types::ServiceStatus::Active,
-            manager: wavs_types::ServiceManager::Evm {
+            status: warpdrive_types::ServiceStatus::Active,
+            manager: warpdrive_types::ServiceManager::Evm {
                 chain: "evm:exec".parse().unwrap(),
                 address: Default::default(),
             },
@@ -113,7 +113,7 @@ impl DevTriggersRuntime {
 
         // Build dispatcher
         #[allow(unused_mut)]
-        let mut dispatcher_local = wavs::dispatcher::Dispatcher::new(
+        let mut dispatcher_local = warpdrive::dispatcher::Dispatcher::new(
             &config,
             utils::telemetry::WavsMetrics::new(opentelemetry::global::meter("wavs-benchmark")),
             TauriHandle::Mock,
@@ -161,8 +161,8 @@ impl DevTriggersRuntime {
             move || {
                 let rt = tokio::runtime::Runtime::new().unwrap();
                 rt.block_on(async move {
-                    let health_status = wavs::health::SharedHealthStatus::new();
-                    let router = wavs::http::server::make_router(
+                    let health_status = warpdrive::health::SharedHealthStatus::new();
+                    let router = warpdrive::http::server::make_router(
                         server_config,
                         d_for_server,
                         false,
@@ -170,7 +170,7 @@ impl DevTriggersRuntime {
                             "wavs-benchmark",
                         )),
                         health_status,
-                        wavs::log_buffer::LogBufferInner::new(),
+                        warpdrive::log_buffer::LogBufferInner::new(),
                     )
                     .await
                     .unwrap();
@@ -213,11 +213,11 @@ impl DevTriggersRuntime {
         n: usize,
         wait_for_completion: bool,
     ) {
-        let body = wavs_types::SimulatedTriggerRequest {
+        let body = warpdrive_types::SimulatedTriggerRequest {
             service_id: self.service.id(),
             workflow_id: self.workflow_id.clone(),
-            trigger: wavs_types::Trigger::Manual,
-            data: wavs_types::TriggerData::Raw(self.payload.clone()),
+            trigger: warpdrive_types::Trigger::Manual,
+            data: warpdrive_types::TriggerData::Raw(self.payload.clone()),
             count: n,
             wait_for_completion,
         };

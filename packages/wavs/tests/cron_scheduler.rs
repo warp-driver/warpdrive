@@ -1,12 +1,12 @@
 #![allow(clippy::result_large_err)]
 use chrono::{DateTime, Duration, Timelike, Utc};
-use wavs::subsystems::trigger::schedulers::interval_scheduler::IntervalScheduler;
-use wavs::subsystems::trigger::{
+use warpdrive::subsystems::trigger::schedulers::interval_scheduler::IntervalScheduler;
+use warpdrive::subsystems::trigger::{
     error::TriggerError,
     lookup::LookupId,
     schedulers::{cron_scheduler::CronIntervalState, interval_scheduler::IntervalState},
 };
-use wavs_types::Timestamp;
+use warpdrive_types::Timestamp;
 
 // Helper function to create a timestamp from a datetime
 fn make_timestamp(dt: DateTime<Utc>) -> Timestamp {

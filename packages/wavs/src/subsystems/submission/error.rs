@@ -1,6 +1,6 @@
 use thiserror::Error;
 use utils::error::EvmClientError;
-use wavs_types::{ChainKey, ServiceId, SigningError, Submit};
+use warpdrive_types::{ChainKey, ServiceId, SigningError, Submit};
 
 use crate::{dispatcher::DispatcherCommand, services::ServicesError};
 

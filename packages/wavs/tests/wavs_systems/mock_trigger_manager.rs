@@ -5,13 +5,13 @@ use std::time::Duration;
 use utils::test_utils::address::{
     rand_address_cosmos, rand_address_evm, rand_event_cosmos, rand_event_evm,
 };
-use wavs::subsystems::trigger::error::TriggerError;
+use warpdrive::subsystems::trigger::error::TriggerError;
 
 use alloy_primitives::LogData;
 use serde::Serialize;
 use tokio::sync::mpsc;
 use utils::context::AppContext;
-use wavs_types::{
+use warpdrive_types::{
     ChainKey, ChainKeyError, ServiceId, Trigger, TriggerAction, TriggerConfig, TriggerData,
     WorkflowId, WorkflowIdError,
 };

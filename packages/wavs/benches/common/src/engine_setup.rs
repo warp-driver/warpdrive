@@ -3,10 +3,10 @@ use std::{collections::BTreeMap, sync::Arc};
 use tempfile::{tempdir, TempDir};
 use utils::{filesystem::workspace_path, storage::db::WavsDb};
 use wasmtime::{component::Component, Engine as WTEngine};
-use wavs_engine::worlds::instance::{
+use warpdrive_engine::worlds::instance::{
     HostComponentLogger, InstanceData, InstanceDeps, InstanceDepsBuilder,
 };
-use wavs_types::{
+use warpdrive_types::{
     AllowedHostPermission, ChainConfigs, ComponentDigest, Service, TriggerAction, TriggerConfig,
     TriggerData, Workflow, WorkflowId,
 };
@@ -21,7 +21,7 @@ pub struct EngineSetup {
     pub component_bytes: Vec<u8>,
     pub data_dir: TempDir,
     pub db_dir: TempDir,
-    pub keyvalue_ctx: wavs_engine::backend::wasi_keyvalue::context::KeyValueCtx,
+    pub keyvalue_ctx: warpdrive_engine::backend::wasi_keyvalue::context::KeyValueCtx,
 }
 
 impl EngineSetup {
@@ -41,7 +41,7 @@ impl EngineSetup {
             .join("echo_data.wasm");
         let component_bytes = std::fs::read(&component_path).unwrap();
         let component_source =
-            wavs_types::ComponentSource::Digest(ComponentDigest::hash(&component_bytes));
+            warpdrive_types::ComponentSource::Digest(ComponentDigest::hash(&component_bytes));
         let component = Component::new(&engine, &component_bytes).unwrap();
 
         // Create a simple workflow
@@ -51,10 +51,10 @@ impl EngineSetup {
         let db_dir = tempdir().unwrap();
 
         let workflow = Workflow {
-            trigger: wavs_types::Trigger::Manual,
-            component: wavs_types::Component {
+            trigger: warpdrive_types::Trigger::Manual,
+            component: warpdrive_types::Component {
                 source: component_source,
-                permissions: wavs_types::Permissions {
+                permissions: warpdrive_types::Permissions {
                     file_system: false,
                     allowed_http_hosts: AllowedHostPermission::None,
                     raw_sockets: false,
@@ -65,14 +65,14 @@ impl EngineSetup {
                 config,
                 env_keys: std::collections::BTreeSet::new(),
             },
-            submit: wavs_types::Submit::None,
+            submit: warpdrive_types::Submit::None,
         };
 
-        let service = wavs_types::Service {
+        let service = warpdrive_types::Service {
             name: "Exec Service".to_string(),
             workflows: BTreeMap::from([(workflow_id.clone(), workflow)]),
-            status: wavs_types::ServiceStatus::Active,
-            manager: wavs_types::ServiceManager::Evm {
+            status: warpdrive_types::ServiceStatus::Active,
+            manager: warpdrive_types::ServiceManager::Evm {
                 chain: "evm:exec".parse().unwrap(),
                 address: Default::default(),
             },
@@ -80,7 +80,7 @@ impl EngineSetup {
 
         let chain_configs = ChainConfigs::default();
 
-        let keyvalue_ctx = wavs_engine::backend::wasi_keyvalue::context::KeyValueCtx::new(
+        let keyvalue_ctx = warpdrive_engine::backend::wasi_keyvalue::context::KeyValueCtx::new(
             WavsDb::new().unwrap(),
             "engine".to_string(),
         );
@@ -134,7 +134,7 @@ impl EngineSetup {
             config: TriggerConfig {
                 service_id: self.service.id(),
                 workflow_id: self.workflow_id.clone(),
-                trigger: wavs_types::Trigger::Manual,
+                trigger: warpdrive_types::Trigger::Manual,
             },
             data: TriggerData::Raw(data),
         }

@@ -8,7 +8,7 @@ use utils::{
     context::AppContext,
     telemetry::{build_tracer_provider, setup_metrics, Metrics},
 };
-use wavs::{
+use warpdrive::{
     args::CliArgs,
     config::{Config, HealthCheckMode},
     dispatcher::{Dispatcher, TauriHandle},
@@ -140,7 +140,7 @@ fn main() {
     let dispatcher =
         Arc::new(Dispatcher::new(&config_clone, metrics.wavs, TauriHandle::Mock).unwrap());
 
-    wavs::run_server(
+    warpdrive::run_server(
         ctx,
         config,
         dispatcher,

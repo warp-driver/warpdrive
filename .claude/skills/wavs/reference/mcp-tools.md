@@ -142,16 +142,16 @@ description:  optional string
 
 ## MCP Server Configuration
 
-The MCP server binary is `wavs-mcp`. Key CLI args:
+The MCP server binary is `warpdrive-mcp`. Key CLI args:
 
 | Arg | Description |
 |-----|-------------|
 | `--wavs-url <url>` | WAVS node HTTP API URL (e.g. `http://localhost:8000`) |
 | `--token <token>` | Auth token (enables write tools) |
 
-The WAVS node URL and token can also be found by inspecting the running `wavs-mcp` process:
+The WAVS node URL and token can also be found by inspecting the running `warpdrive-mcp` process:
 ```bash
-ps aux | grep wavs-mcp
+ps aux | grep warpdrive-mcp
 ```
 
 Environment variables:

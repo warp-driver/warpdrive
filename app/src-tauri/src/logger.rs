@@ -2,7 +2,7 @@ use tauri::{AppHandle, Emitter};
 use tracing::{Event, Subscriber};
 use tracing_subscriber::layer::Context;
 use tracing_subscriber::Layer;
-use wavs_gui_shared::event::LogEvent;
+use warpdrive_gui_shared::event::LogEvent;
 
 pub struct TauriLogLayer {
     app: AppHandle,

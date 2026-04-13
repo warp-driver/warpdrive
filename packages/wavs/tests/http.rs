@@ -5,14 +5,14 @@ use axum::{
 };
 use tower::Service;
 use utils::test_utils::{address::rand_address_evm, mock_engine::COMPONENT_SQUARE_BYTES};
-use wavs::config::Config;
+use warpdrive::config::Config;
 mod wavs_systems;
-use wavs::health::HealthStatus;
+use warpdrive::health::HealthStatus;
 use wavs_systems::{
     http::{map_response, TestHttpApp},
     mock_trigger_manager::mock_evm_event_trigger,
 };
-use wavs_types::{
+use warpdrive_types::{
     AnyChainConfig, ChainKey, Component, ComponentDigest, ComponentSource, CosmosChainConfig,
     EvmChainConfig, SignatureKind, UploadComponentResponse,
 };
@@ -137,17 +137,17 @@ fn http_upload_component() {
 fn http_save_service() {
     let app = TestHttpApp::new();
 
-    let service = wavs_types::Service::new_simple(
+    let service = warpdrive_types::Service::new_simple(
         Some("My amazing service".to_string()),
         mock_evm_event_trigger(),
         ComponentSource::Digest(ComponentDigest::hash([1, 2, 3])),
-        wavs_types::Submit::Aggregator {
+        warpdrive_types::Submit::Aggregator {
             component: Box::new(Component::new(ComponentSource::Digest(
                 ComponentDigest::hash([1, 2, 3]),
             ))),
             signature_kind: SignatureKind::evm_default(),
         },
-        wavs_types::ServiceManager::Evm {
+        warpdrive_types::ServiceManager::Evm {
             chain: "evm:anvil".try_into().unwrap(),
             address: rand_address_evm(),
         },
@@ -201,7 +201,7 @@ fn http_save_service() {
 
     assert!(response.status().is_success());
 
-    let response: wavs_types::Service = app.ctx.rt.block_on(map_response(response));
+    let response: warpdrive_types::Service = app.ctx.rt.block_on(map_response(response));
 
     assert_eq!(response, service);
 
@@ -393,8 +393,8 @@ fn test_add_chain_prevents_duplicates() {
 
 #[test]
 fn http_logs_polling() {
-    use wavs::http::handlers::logs::LogsResponse;
-    use wavs::log_buffer::LogEntry;
+    use warpdrive::http::handlers::logs::LogsResponse;
+    use warpdrive::log_buffer::LogEntry;
 
     let app = TestHttpApp::new();
 
@@ -492,8 +492,8 @@ fn http_logs_invalid_level_returns_400() {
 
 #[test]
 fn http_logs_zero_limit_clamped() {
-    use wavs::http::handlers::logs::LogsResponse;
-    use wavs::log_buffer::LogEntry;
+    use warpdrive::http::handlers::logs::LogsResponse;
+    use warpdrive::log_buffer::LogEntry;
 
     let app = TestHttpApp::new();
 
@@ -524,7 +524,7 @@ fn http_logs_zero_limit_clamped() {
 
 /// Read exactly `n` SSE events from a streaming response body, with a per-frame timeout.
 /// Each SSE event is delimited by a blank line (`\n\n`).
-async fn read_sse_events(body: axum::body::Body, n: usize) -> Vec<wavs::log_buffer::LogEntry> {
+async fn read_sse_events(body: axum::body::Body, n: usize) -> Vec<warpdrive::log_buffer::LogEntry> {
     use http_body_util::BodyExt;
 
     let mut body = body;
@@ -559,7 +559,7 @@ async fn read_sse_events(body: axum::body::Body, n: usize) -> Vec<wavs::log_buff
 
 #[test]
 fn http_logs_sse_replay_ordering() {
-    use wavs::log_buffer::LogEntry;
+    use warpdrive::log_buffer::LogEntry;
 
     let app = TestHttpApp::new();
 

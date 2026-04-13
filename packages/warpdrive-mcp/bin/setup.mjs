@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * bin/setup.mjs — interactive wizard for `npx @wavs/mcp@latest` (no-args).
+ * bin/setup.mjs — interactive wizard for `npx @warpdrive/mcp@latest` (no-args).
  * Uses only Node.js built-ins: readline/promises, child_process, fs, path, os.
  */
 
@@ -21,14 +21,14 @@ function banner() {
   console.log('');
   console.log('  WAVS MCP Setup Wizard');
   console.log('  ─────────────────────');
-  console.log('  Sets up wavs-mcp for Claude Code and/or Claude Desktop');
+  console.log('  Sets up warpdrive-mcp for Claude Code and/or Claude Desktop');
   console.log('');
 }
 
-/** Find a locally built wavs-mcp binary in the repo's target/ directory. */
+/** Find a locally built warpdrive-mcp binary in the repo's target/ directory. */
 function findLocalBinary() {
-  const binaryName = process.platform === 'win32' ? 'wavs-mcp.exe' : 'wavs-mcp';
-  // packages/wavs-mcp/bin/ → packages/wavs-mcp/ → packages/ → repo root
+  const binaryName = process.platform === 'win32' ? 'warpdrive-mcp.exe' : 'warpdrive-mcp';
+  // packages/warpdrive-mcp/bin/ → packages/warpdrive-mcp/ → packages/ → repo root
   const repoRoot = path.resolve(__dirname, '../../..');
   for (const profile of ['release', 'debug']) {
     const candidate = path.join(repoRoot, 'target', profile, binaryName);
@@ -37,12 +37,12 @@ function findLocalBinary() {
   return null;
 }
 
-/** Find wavs-mcp binary in a permanent (non-npx-cache) location: PATH or npm global. */
+/** Find warpdrive-mcp binary in a permanent (non-npx-cache) location: PATH or npm global. */
 function findGlobalBinary() {
-  const binaryName = process.platform === 'win32' ? 'wavs-mcp.exe' : 'wavs-mcp';
+  const binaryName = process.platform === 'win32' ? 'warpdrive-mcp.exe' : 'warpdrive-mcp';
 
   try {
-    const result = spawnSync(process.platform === 'win32' ? 'where' : 'which', ['wavs-mcp'], {
+    const result = spawnSync(process.platform === 'win32' ? 'where' : 'which', ['warpdrive-mcp'], {
       encoding: 'utf8',
     });
     if (result.status === 0 && result.stdout.trim()) return result.stdout.trim().split('\n')[0].trim();
@@ -57,12 +57,12 @@ function findGlobalBinary() {
   return null;
 }
 
-/** Parse --wavs-url and --token from any running wavs-mcp process. */
+/** Parse --wavs-url and --token from any running warpdrive-mcp process. */
 function detectRunningProcess() {
   try {
     const out = execSync('ps aux', { encoding: 'utf8', timeout: 5000 });
     for (const line of out.split('\n')) {
-      if (!line.includes('wavs-mcp') || line.includes('grep')) continue;
+      if (!line.includes('warpdrive-mcp') || line.includes('grep')) continue;
       const urlM = line.match(/--wavs-url\s+(\S+)/);
       const tokM = line.match(/--token\s+(\S+)/);
       if (urlM || tokM) {
@@ -245,23 +245,23 @@ export default async function main() {
     } else {
       binary = findGlobalBinary();
       if (!binary) {
-        console.log('  wavs-mcp not found in PATH.');
+        console.log('  warpdrive-mcp not found in PATH.');
       }
       const installAns = await rl.question(
         binary
-          ? `  wavs-mcp found at ${binary}. Reinstall/update globally? [y/N] `
-          : '  Install wavs-mcp globally via npm install -g @wavs/mcp? [Y/n] '
+          ? `  warpdrive-mcp found at ${binary}. Reinstall/update globally? [y/N] `
+          : '  Install warpdrive-mcp globally via npm install -g @warpdrive/mcp? [Y/n] '
       );
       const shouldInstall = binary
         ? installAns.trim().toLowerCase() === 'y'
         : !installAns.trim() || installAns.trim().toLowerCase() === 'y';
       if (shouldInstall) {
-        console.log('  Running: npm install -g @wavs/mcp ...');
-        execFileSync('npm', ['install', '-g', '@wavs/mcp'], { stdio: 'inherit' });
+        console.log('  Running: npm install -g @warpdrive/mcp ...');
+        execFileSync('npm', ['install', '-g', '@warpdrive/mcp'], { stdio: 'inherit' });
         binary = findGlobalBinary();
       }
       if (!binary) {
-        console.error('\n  Could not find wavs-mcp binary. Aborting.');
+        console.error('\n  Could not find warpdrive-mcp binary. Aborting.');
         process.exit(1);
       }
     }
@@ -293,10 +293,10 @@ export default async function main() {
 
     // 4. Detect running process
     const { url: detectedUrl, token: detectedToken } = detectRunningProcess();
-    if (detectedUrl) console.log(`  Detected running wavs-mcp at ${detectedUrl}`);
+    if (detectedUrl) console.log(`  Detected running warpdrive-mcp at ${detectedUrl}`);
 
     // 5. URL
-    const url = await ask('wavs-mcp URL', detectedUrl || 'http://localhost:8000');
+    const url = await ask('warpdrive-mcp URL', detectedUrl || 'http://localhost:8000');
 
     // 6. Token
     let token = detectedToken;

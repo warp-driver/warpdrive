@@ -1,7 +1,7 @@
 use crate::http::{error::HttpResult, state::HttpState};
 use axum::{extract::State, response::IntoResponse, Json};
 use std::ops::Bound;
-use wavs_types::ListServicesResponse;
+use warpdrive_types::ListServicesResponse;
 
 #[utoipa::path(
     get,

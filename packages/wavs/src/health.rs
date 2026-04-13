@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use utoipa::ToSchema;
-use wavs_types::{ChainConfigs, ChainKey};
+use warpdrive_types::{ChainConfigs, ChainKey};
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct HealthStatus {

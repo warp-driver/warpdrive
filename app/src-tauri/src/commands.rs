@@ -9,18 +9,18 @@ use utils::{
     telemetry::{setup_metrics, Metrics},
     wkg::WkgClient,
 };
-use wavs::{config::HealthCheckMode, dispatcher::Dispatcher, health::SharedHealthStatus};
-use wavs_gui_shared::{
+use warpdrive::{config::HealthCheckMode, dispatcher::Dispatcher, health::SharedHealthStatus};
+use warpdrive_gui_shared::{
     command::DirectoryChooserResponse,
     error::{AppError, AppResult},
     settings::{SavedRegistry, Settings},
 };
-use wavs_types::{ChainConfigs, Credential, Service, ServiceId, ServiceManager};
+use warpdrive_types::{ChainConfigs, Credential, Service, ServiceId, ServiceManager};
 
-const KEYCHAIN_SERVICE: &str = "wavs-app";
+const KEYCHAIN_SERVICE: &str = "warpdrive-app";
 const KEYCHAIN_ACCOUNT: &str = "mnemonic";
 
-use wavs::health::HealthStatus;
+use warpdrive::health::HealthStatus;
 
 use crate::state::{
     LogBufferState, McpServerState, MnemonicCacheState, SettingsState, WavsConfigState,
@@ -200,7 +200,7 @@ pub async fn cmd_start_wavs(
         let ctx = ctx.clone();
         let dispatcher = dispatcher.clone();
         move || {
-            wavs::run_server(
+            warpdrive::run_server(
                 ctx,
                 config,
                 dispatcher,
@@ -230,7 +230,7 @@ pub async fn cmd_start_wavs(
             if let Some(token) = &saved_settings.mcp_token {
                 cmd.arg("--token").arg(token);
             }
-            // Inject chain credentials as env vars so wavs-mcp doesn't need to read
+            // Inject chain credentials as env vars so warpdrive-mcp doesn't need to read
             // wavs.toml from the project directory (which may be a git repo).
             if let Some(wavs_home) = &saved_settings.wavs_home {
                 let (cred, mnem) = read_wavs_home_credentials(wavs_home);
@@ -258,7 +258,7 @@ pub async fn cmd_start_wavs(
                 }
             }
         } else {
-            log::warn!("MCP auto-start enabled but wavs-mcp binary not found");
+            log::warn!("MCP auto-start enabled but warpdrive-mcp binary not found");
         }
     }
 
@@ -359,7 +359,7 @@ pub async fn cmd_save_service_to_node(
         )));
     }
 
-    let save_resp: wavs_types::SaveServiceResponse = resp
+    let save_resp: warpdrive_types::SaveServiceResponse = resp
         .json()
         .await
         .map_err(|e| AppError::Service(format!("Failed to parse save response: {}", e)))?;
@@ -675,14 +675,14 @@ pub struct McpStatus {
     pub pid: Option<u32>,
 }
 
-/// Resolve the wavs-mcp binary path.
+/// Resolve the warpdrive-mcp binary path.
 /// Looks alongside the current executable first (bundled app), then checks both
 /// debug and release profiles under the workspace target/ directory.
 fn find_mcp_binary() -> Option<std::path::PathBuf> {
     if let Ok(current) = std::env::current_exe() {
         if let Some(dir) = current.parent() {
             // 1. Sibling of current executable (bundled app)
-            let candidate = dir.join("wavs-mcp");
+            let candidate = dir.join("warpdrive-mcp");
             if candidate.exists() {
                 return Some(candidate);
             }
@@ -691,7 +691,7 @@ fn find_mcp_binary() -> Option<std::path::PathBuf> {
             // current exe is at target/{debug,release}/<name>, so dir.parent() is target/.
             if let Some(target) = dir.parent() {
                 for profile in &["release", "debug"] {
-                    let candidate = target.join(profile).join("wavs-mcp");
+                    let candidate = target.join(profile).join("warpdrive-mcp");
                     if candidate.exists() {
                         return Some(candidate);
                     }
@@ -735,7 +735,7 @@ pub async fn cmd_start_mcp_server(
 
     let bin = find_mcp_binary().ok_or_else(|| {
         AppError::Service(
-            "wavs-mcp binary not found. Build it with: cargo build -p wavs-mcp".to_string(),
+            "warpdrive-mcp binary not found. Build it with: cargo build -p warpdrive-mcp".to_string(),
         )
     })?;
 
@@ -753,7 +753,7 @@ pub async fn cmd_start_mcp_server(
 
     let child = cmd
         .spawn()
-        .map_err(|e| AppError::Service(format!("Failed to spawn wavs-mcp: {}", e)))?;
+        .map_err(|e| AppError::Service(format!("Failed to spawn warpdrive-mcp: {}", e)))?;
 
     mcp_state.set(child);
 
@@ -830,7 +830,7 @@ pub async fn cmd_save_env_vars(
 
 // --- Register with Claude Code ---
 
-/// Write wavs-mcp entry for `project_path` into ~/.claude.json.
+/// Write warpdrive-mcp entry for `project_path` into ~/.claude.json.
 /// Only writes command + args — credentials are stored in ~/.wavs/wavs.toml instead
 /// so they work with all MCP clients, not just Claude Code.
 fn register_claude_mcp_json(
@@ -996,7 +996,7 @@ pub async fn cmd_register_claude_mcp(
 ) -> AppResult<String> {
     let binary = find_mcp_binary().ok_or_else(|| {
         AppError::Service(
-            "wavs-mcp binary not found. Build it with: cargo build -p wavs-mcp".to_string(),
+            "warpdrive-mcp binary not found. Build it with: cargo build -p warpdrive-mcp".to_string(),
         )
     })?;
 

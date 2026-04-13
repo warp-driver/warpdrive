@@ -2,7 +2,7 @@
  * Extract a human-readable message from any thrown value.
  *
  * Tauri commands reject with the serialized AppError enum, e.g.:
- *   {"Service": "wavs-mcp binary not found"}
+ *   {"Service": "warpdrive-mcp binary not found"}
  *   {"WavsNotRunning": null}
  * Plain strings and Error objects are handled too.
  */

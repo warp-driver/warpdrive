@@ -9,8 +9,8 @@ use super::config::Configs;
 use futures::{stream::FuturesUnordered, StreamExt};
 use utils::filesystem::workspace_path;
 use wasm_pkg_common::package::PackageRef;
-use wavs_cli::clients::HttpClient;
-use wavs_types::{ComponentDigest, ComponentSource, Registry};
+use warpdrive_cli::clients::HttpClient;
+use warpdrive_types::{ComponentDigest, ComponentSource, Registry};
 
 #[derive(Clone, Debug, Default)]
 pub struct ComponentSources {
@@ -200,7 +200,7 @@ async fn get_component_source(
                 digest: ComponentDigest::from_str(digest_string).unwrap(),
                 domain: None,
                 version: None,
-                package: PackageRef::try_from(format!("wavs-tests:{0}", pkg_name)).unwrap(),
+                package: PackageRef::try_from(format!("warpdrive-tests:{0}", pkg_name)).unwrap(),
             },
         };
 

@@ -7,7 +7,7 @@ use crate::{
 use axum::{extract::State, response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
-use wavs_types::{ChainKey, P2pStatus};
+use warpdrive_types::{ChainKey, P2pStatus};
 
 #[derive(Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "snake_case")]

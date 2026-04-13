@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * bin/run.mjs — thin shim that delegates to the downloaded wavs-mcp binary.
+ * bin/run.mjs — thin shim that delegates to the downloaded warpdrive-mcp binary.
  * With no arguments, launches the interactive setup wizard instead.
  */
 
@@ -18,14 +18,14 @@ if (args.length === 0 && process.env.WAVS_SKIP_SETUP !== '1') {
   process.exit(0);
 }
 
-const binaryName = process.platform === 'win32' ? 'wavs-mcp.exe' : 'wavs-mcp';
+const binaryName = process.platform === 'win32' ? 'warpdrive-mcp.exe' : 'warpdrive-mcp';
 const binaryPath = path.join(__dirname, binaryName);
 
 if (!existsSync(binaryPath)) {
   console.error(
-    `wavs-mcp binary not found at ${binaryPath}.\n` +
-    `Run: npm install -g @wavs/mcp  (to trigger postinstall)\n` +
-    `Or build from source: cargo build --release -p wavs-mcp`
+    `warpdrive-mcp binary not found at ${binaryPath}.\n` +
+    `Run: npm install -g @warpdrive/mcp  (to trigger postinstall)\n` +
+    `Or build from source: cargo build --release -p warpdrive-mcp`
   );
   process.exit(1);
 }
@@ -33,6 +33,6 @@ if (!existsSync(binaryPath)) {
 const proc = spawn(binaryPath, args, { stdio: 'inherit' });
 proc.on('exit', (code) => process.exit(code ?? 0));
 proc.on('error', (err) => {
-  console.error(`Failed to start wavs-mcp: ${err.message}`);
+  console.error(`Failed to start warpdrive-mcp: ${err.message}`);
   process.exit(1);
 });

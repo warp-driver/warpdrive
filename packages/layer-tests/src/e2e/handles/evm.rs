@@ -1,7 +1,7 @@
 use std::process::{Command, Stdio};
 
 use utils::context::AppContext;
-use wavs_types::EvmChainConfig;
+use warpdrive_types::EvmChainConfig;
 
 use crate::e2e::config::Configs;
 

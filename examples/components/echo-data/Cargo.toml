@@ -14,4 +14,4 @@ example-helpers = { workspace = true }
 crate-type = ["cdylib"]
 
 [package.metadata.component]
-package = "wavs-tests:echo-data"
+package = "warpdrive-tests:echo-data"

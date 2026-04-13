@@ -9,7 +9,7 @@ use utils::config::ConfigFilePath;
 
 #[derive(Parser)]
 #[command(
-    name = "wavs-mcp",
+    name = "warpdrive-mcp",
     about = "WAVS MCP Server — exposes WAVS platform operations via Model Context Protocol"
 )]
 struct Args {

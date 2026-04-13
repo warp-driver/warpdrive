@@ -2280,7 +2280,7 @@ dependencies = [
  "anyhow",
  "example-helpers",
  "layer-climb",
- "wavs-wasi-utils",
+ "warpdrive-wasi-utils",
  "wstd",
 ]
 
@@ -3349,7 +3349,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw-wavs-mock-api"
+name = "cw-warpdrive-mock-api"
 version = "0.0.0"
 dependencies = [
  "anyhow",
@@ -3358,11 +3358,11 @@ dependencies = [
  "cosmwasm-std",
  "layer-climb-address",
  "serde",
- "wavs-types",
+ "warpdrive-types",
 ]
 
 [[package]]
-name = "cw-wavs-mock-service-handler"
+name = "cw-warpdrive-mock-service-handler"
 version = "0.0.0"
 dependencies = [
  "alloy-primitives",
@@ -3373,13 +3373,13 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-storage-plus",
- "cw-wavs-mock-api",
+ "cw-warpdrive-mock-api",
  "cw2",
- "wavs-types",
+ "warpdrive-types",
 ]
 
 [[package]]
-name = "cw-wavs-trigger-api"
+name = "cw-warpdrive-trigger-api"
 version = "0.0.0"
 dependencies = [
  "anyhow",
@@ -3388,11 +3388,11 @@ dependencies = [
  "cosmwasm-std",
  "layer-climb-address",
  "serde",
- "wavs-types",
+ "warpdrive-types",
 ]
 
 [[package]]
-name = "cw-wavs-trigger-simple"
+name = "cw-warpdrive-trigger-simple"
 version = "0.0.0"
 dependencies = [
  "anyhow",
@@ -3400,11 +3400,11 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-storage-plus",
- "cw-wavs-mock-api",
- "cw-wavs-trigger-api",
+ "cw-warpdrive-mock-api",
+ "cw-warpdrive-trigger-api",
  "cw2",
  "layer-climb-address",
- "wavs-types",
+ "warpdrive-types",
 ]
 
 [[package]]
@@ -4355,12 +4355,12 @@ dependencies = [
  "alloy-sol-types",
  "anyhow",
  "cosmwasm-std",
- "cw-wavs-mock-api",
- "cw-wavs-trigger-api",
+ "cw-warpdrive-mock-api",
+ "cw-warpdrive-trigger-api",
  "layer-climb",
  "serde",
+ "warpdrive-wasi-utils",
  "wasip2",
- "wavs-wasi-utils",
  "wit-bindgen 0.53.1",
 ]
 
@@ -6714,8 +6714,8 @@ dependencies = [
  "clap 4.6.0",
  "const-hex",
  "cosmwasm-std",
- "cw-wavs-mock-api",
- "cw-wavs-trigger-api",
+ "cw-warpdrive-mock-api",
+ "cw-warpdrive-trigger-api",
  "dashmap",
  "deadpool",
  "derive-enum-all-values",
@@ -6741,10 +6741,10 @@ dependencies = [
  "tracing-subscriber",
  "utils",
  "uuid",
+ "warpdrive",
+ "warpdrive-cli",
+ "warpdrive-types",
  "wasm-pkg-common",
- "wavs",
- "wavs-cli",
- "wavs-types",
 ]
 
 [[package]]
@@ -8762,7 +8762,7 @@ dependencies = [
  "example-types",
  "serde",
  "serde_json",
- "wavs-wasi-utils",
+ "warpdrive-wasi-utils",
  "wstd",
 ]
 
@@ -11268,9 +11268,9 @@ dependencies = [
  "example-types",
  "layer-climb-address",
  "serde",
+ "warpdrive-types",
+ "warpdrive-wasi-utils",
  "wasip2",
- "wavs-types",
- "wavs-wasi-utils",
  "wit-bindgen 0.53.1",
  "wstd",
 ]
@@ -12295,8 +12295,8 @@ dependencies = [
  "alloy-provider",
  "example-helpers",
  "example-types",
+ "warpdrive-wasi-utils",
  "wasip2",
- "wavs-wasi-utils",
  "wit-bindgen 0.53.1",
  "wstd",
 ]
@@ -13232,7 +13232,7 @@ dependencies = [
  "bip39",
  "cid",
  "const-hex",
- "cw-wavs-mock-api",
+ "cw-warpdrive-mock-api",
  "dashmap",
  "deadpool",
  "dirs 6.0.0",
@@ -13265,8 +13265,8 @@ dependencies = [
  "utils",
  "utoipa",
  "walkdir",
+ "warpdrive-types",
  "wasm-pkg-client",
- "wavs-types",
 ]
 
 [[package]]
@@ -13577,6 +13577,285 @@ dependencies = [
  "thiserror 1.0.69",
  "warg-crypto",
  "warg-protobuf",
+]
+
+[[package]]
+name = "warpdrive"
+version = "2.8.0"
+dependencies = [
+ "alloy-contract",
+ "alloy-node-bindings",
+ "alloy-primitives",
+ "alloy-provider",
+ "alloy-rpc-types-eth",
+ "alloy-signer-local",
+ "alloy-sol-types",
+ "anyhow",
+ "async-stream",
+ "async-trait",
+ "axum",
+ "axum-tracing-opentelemetry",
+ "base64 0.22.1",
+ "bimap",
+ "bincode",
+ "chrono",
+ "clap 4.6.0",
+ "const-hex",
+ "cosmwasm-std",
+ "criterion",
+ "cron",
+ "crossbeam",
+ "ctrlc",
+ "dashmap",
+ "example-types",
+ "futures",
+ "futures-lite 1.13.0",
+ "http-body-util",
+ "hypercore",
+ "hypercore-protocol",
+ "hyperswarm",
+ "iri-string",
+ "layer-climb",
+ "libp2p",
+ "opentelemetry",
+ "rand 0.9.2",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "slotmap",
+ "tauri",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio 1.50.0",
+ "tokio-stream",
+ "tokio-tungstenite 0.28.0",
+ "tokio-util",
+ "tower",
+ "tower-http",
+ "tracing",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
+ "url",
+ "utils",
+ "utoipa",
+ "utoipa-swagger-ui",
+ "warpdrive-benchmark-common",
+ "warpdrive-engine",
+ "warpdrive-gui-shared",
+ "warpdrive-types",
+ "wasm-pkg-common",
+ "wildmatch",
+]
+
+[[package]]
+name = "warpdrive-app"
+version = "2.8.0"
+dependencies = [
+ "anyhow",
+ "fix-path-env",
+ "keyring",
+ "log",
+ "opentelemetry",
+ "opentelemetry_sdk",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-fs",
+ "tokio 1.50.0",
+ "toml 0.9.12+spec-1.1.0",
+ "tracing",
+ "tracing-subscriber",
+ "utils",
+ "warpdrive",
+ "warpdrive-gui-shared",
+ "warpdrive-types",
+ "wasm-pkg-client",
+]
+
+[[package]]
+name = "warpdrive-benchmark-common"
+version = "2.8.0"
+dependencies = [
+ "tempfile",
+ "utils",
+ "warpdrive-engine",
+ "warpdrive-types",
+ "wasmtime",
+]
+
+[[package]]
+name = "warpdrive-cli"
+version = "2.8.0"
+dependencies = [
+ "alloy-json-abi",
+ "alloy-primitives",
+ "alloy-provider",
+ "anyhow",
+ "cfg-if 1.0.4",
+ "clap 4.6.0",
+ "const-hex",
+ "cron",
+ "iri-string",
+ "layer-climb",
+ "opentelemetry",
+ "rand 0.9.2",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "shellexpand",
+ "tempfile",
+ "tokio 1.50.0",
+ "tracing",
+ "tracing-subscriber",
+ "utils",
+ "uuid",
+ "warpdrive-engine",
+ "warpdrive-types",
+ "wasm-pkg-client",
+ "wasmtime",
+]
+
+[[package]]
+name = "warpdrive-dev-tools"
+version = "2.8.0"
+dependencies = [
+ "alloy-signer-local",
+ "clap 4.6.0",
+ "reqwest 0.12.28",
+ "tokio 1.50.0",
+ "tracing-subscriber",
+ "utils",
+ "warpdrive-cli",
+ "warpdrive-types",
+]
+
+[[package]]
+name = "warpdrive-engine"
+version = "2.8.0"
+dependencies = [
+ "alloy-primitives",
+ "alloy-sol-types",
+ "anyhow",
+ "const-hex",
+ "crossbeam",
+ "dashmap",
+ "example-types",
+ "iri-string",
+ "layer-climb",
+ "lru 0.16.3",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio 1.50.0",
+ "tracing",
+ "utils",
+ "warpdrive-types",
+ "warpdrive-wasi-utils",
+ "wasm-pkg-client",
+ "wasmtime",
+ "wasmtime-wasi",
+ "wasmtime-wasi-http",
+ "wasmtime-wasi-tls",
+]
+
+[[package]]
+name = "warpdrive-gui-shared"
+version = "2.8.0"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "tauri",
+ "thiserror 2.0.18",
+ "warpdrive-types",
+]
+
+[[package]]
+name = "warpdrive-mcp"
+version = "2.8.0"
+dependencies = [
+ "alloy-contract",
+ "alloy-primitives",
+ "alloy-signer",
+ "alloy-sol-macro",
+ "alloy-sol-types",
+ "anyhow",
+ "clap 4.6.0",
+ "const-hex",
+ "reqwest 0.12.28",
+ "rmcp",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio 1.50.0",
+ "toml 0.9.12+spec-1.1.0",
+ "tracing",
+ "tracing-subscriber",
+ "utils",
+ "warpdrive-types",
+]
+
+[[package]]
+name = "warpdrive-types"
+version = "2.8.0"
+dependencies = [
+ "alloy-contract",
+ "alloy-primitives",
+ "alloy-provider",
+ "alloy-rpc-types-eth",
+ "alloy-signer",
+ "alloy-signer-local",
+ "alloy-sol-macro",
+ "alloy-sol-types",
+ "anyhow",
+ "async-trait",
+ "bincode",
+ "cfg-if 1.0.4",
+ "chrono",
+ "const-hex",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "iri-string",
+ "layer-climb-address",
+ "layer-climb-config",
+ "regex",
+ "ripemd",
+ "semver 1.0.27",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "thiserror 2.0.18",
+ "tokio 1.50.0",
+ "ts-rs",
+ "utoipa",
+ "wasm-pkg-common",
+ "zeroize",
+]
+
+[[package]]
+name = "warpdrive-wasi-utils"
+version = "2.8.0"
+dependencies = [
+ "alloy-json-rpc",
+ "alloy-primitives",
+ "alloy-provider",
+ "alloy-rpc-client",
+ "alloy-sol-types",
+ "alloy-transport",
+ "alloy-transport-http",
+ "anyhow",
+ "cfg-if 1.0.4",
+ "futures-utils-wasm",
+ "http",
+ "serde",
+ "serde_json",
+ "tower-service",
+ "wstd",
 ]
 
 [[package]]
@@ -14369,285 +14648,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cd48d1679b6858988cb96b154dda0ec5bbb09275b71db46057be37332d5477be"
 dependencies = [
  "wast 245.0.1",
-]
-
-[[package]]
-name = "wavs"
-version = "2.8.0"
-dependencies = [
- "alloy-contract",
- "alloy-node-bindings",
- "alloy-primitives",
- "alloy-provider",
- "alloy-rpc-types-eth",
- "alloy-signer-local",
- "alloy-sol-types",
- "anyhow",
- "async-stream",
- "async-trait",
- "axum",
- "axum-tracing-opentelemetry",
- "base64 0.22.1",
- "bimap",
- "bincode",
- "chrono",
- "clap 4.6.0",
- "const-hex",
- "cosmwasm-std",
- "criterion",
- "cron",
- "crossbeam",
- "ctrlc",
- "dashmap",
- "example-types",
- "futures",
- "futures-lite 1.13.0",
- "http-body-util",
- "hypercore",
- "hypercore-protocol",
- "hyperswarm",
- "iri-string",
- "layer-climb",
- "libp2p",
- "opentelemetry",
- "rand 0.9.2",
- "reqwest 0.12.28",
- "serde",
- "serde_json",
- "slotmap",
- "tauri",
- "tempfile",
- "thiserror 2.0.18",
- "tokio 1.50.0",
- "tokio-stream",
- "tokio-tungstenite 0.28.0",
- "tokio-util",
- "tower",
- "tower-http",
- "tracing",
- "tracing-opentelemetry",
- "tracing-subscriber",
- "url",
- "utils",
- "utoipa",
- "utoipa-swagger-ui",
- "wasm-pkg-common",
- "wavs-benchmark-common",
- "wavs-engine",
- "wavs-gui-shared",
- "wavs-types",
- "wildmatch",
-]
-
-[[package]]
-name = "wavs-app"
-version = "2.8.0"
-dependencies = [
- "anyhow",
- "fix-path-env",
- "keyring",
- "log",
- "opentelemetry",
- "opentelemetry_sdk",
- "reqwest 0.12.28",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-fs",
- "tokio 1.50.0",
- "toml 0.9.12+spec-1.1.0",
- "tracing",
- "tracing-subscriber",
- "utils",
- "wasm-pkg-client",
- "wavs",
- "wavs-gui-shared",
- "wavs-types",
-]
-
-[[package]]
-name = "wavs-benchmark-common"
-version = "2.8.0"
-dependencies = [
- "tempfile",
- "utils",
- "wasmtime",
- "wavs-engine",
- "wavs-types",
-]
-
-[[package]]
-name = "wavs-cli"
-version = "2.8.0"
-dependencies = [
- "alloy-json-abi",
- "alloy-primitives",
- "alloy-provider",
- "anyhow",
- "cfg-if 1.0.4",
- "clap 4.6.0",
- "const-hex",
- "cron",
- "iri-string",
- "layer-climb",
- "opentelemetry",
- "rand 0.9.2",
- "reqwest 0.12.28",
- "serde",
- "serde_json",
- "shellexpand",
- "tempfile",
- "tokio 1.50.0",
- "tracing",
- "tracing-subscriber",
- "utils",
- "uuid",
- "wasm-pkg-client",
- "wasmtime",
- "wavs-engine",
- "wavs-types",
-]
-
-[[package]]
-name = "wavs-dev-tools"
-version = "2.8.0"
-dependencies = [
- "alloy-signer-local",
- "clap 4.6.0",
- "reqwest 0.12.28",
- "tokio 1.50.0",
- "tracing-subscriber",
- "utils",
- "wavs-cli",
- "wavs-types",
-]
-
-[[package]]
-name = "wavs-engine"
-version = "2.8.0"
-dependencies = [
- "alloy-primitives",
- "alloy-sol-types",
- "anyhow",
- "const-hex",
- "crossbeam",
- "dashmap",
- "example-types",
- "iri-string",
- "layer-climb",
- "lru 0.16.3",
- "reqwest 0.12.28",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.18",
- "tokio 1.50.0",
- "tracing",
- "utils",
- "wasm-pkg-client",
- "wasmtime",
- "wasmtime-wasi",
- "wasmtime-wasi-http",
- "wasmtime-wasi-tls",
- "wavs-types",
- "wavs-wasi-utils",
-]
-
-[[package]]
-name = "wavs-gui-shared"
-version = "2.8.0"
-dependencies = [
- "anyhow",
- "serde",
- "serde_json",
- "tauri",
- "thiserror 2.0.18",
- "wavs-types",
-]
-
-[[package]]
-name = "wavs-mcp"
-version = "2.8.0"
-dependencies = [
- "alloy-contract",
- "alloy-primitives",
- "alloy-signer",
- "alloy-sol-macro",
- "alloy-sol-types",
- "anyhow",
- "clap 4.6.0",
- "const-hex",
- "reqwest 0.12.28",
- "rmcp",
- "serde",
- "serde_json",
- "tempfile",
- "tokio 1.50.0",
- "toml 0.9.12+spec-1.1.0",
- "tracing",
- "tracing-subscriber",
- "utils",
- "wavs-types",
-]
-
-[[package]]
-name = "wavs-types"
-version = "2.8.0"
-dependencies = [
- "alloy-contract",
- "alloy-primitives",
- "alloy-provider",
- "alloy-rpc-types-eth",
- "alloy-signer",
- "alloy-signer-local",
- "alloy-sol-macro",
- "alloy-sol-types",
- "anyhow",
- "async-trait",
- "bincode",
- "cfg-if 1.0.4",
- "chrono",
- "const-hex",
- "cosmwasm-schema",
- "cosmwasm-std",
- "iri-string",
- "layer-climb-address",
- "layer-climb-config",
- "regex",
- "ripemd",
- "semver 1.0.27",
- "serde",
- "serde_json",
- "sha2 0.10.9",
- "thiserror 2.0.18",
- "tokio 1.50.0",
- "ts-rs",
- "utoipa",
- "wasm-pkg-common",
- "zeroize",
-]
-
-[[package]]
-name = "wavs-wasi-utils"
-version = "2.8.0"
-dependencies = [
- "alloy-json-rpc",
- "alloy-primitives",
- "alloy-provider",
- "alloy-rpc-client",
- "alloy-sol-types",
- "alloy-transport",
- "alloy-transport-http",
- "anyhow",
- "cfg-if 1.0.4",
- "futures-utils-wasm",
- "http",
- "serde",
- "serde_json",
- "tower-service",
- "wstd",
 ]
 
 [[package]]

@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, sync::Arc};
 
-use wavs_benchmark_common::engine_setup::EngineSetup;
-use wavs_types::TriggerAction;
+use warpdrive_benchmark_common::engine_setup::EngineSetup;
+use warpdrive_types::TriggerAction;
 
 #[derive(Clone)]
 pub struct ExecuteConfig {

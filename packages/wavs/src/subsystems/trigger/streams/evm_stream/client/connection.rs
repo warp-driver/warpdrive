@@ -21,7 +21,7 @@ use super::{
 use utils::evm_client::EvmEndpoint;
 use utils::health::check_evm_chain_endpoint_health_query;
 use utils::telemetry::EvmStreamMetrics;
-use wavs_types::{ChainKey, ChainKeyNamespace};
+use warpdrive_types::{ChainKey, ChainKeyNamespace};
 
 // A handle for managing WebSocket connections with intelligent retry logic
 //
@@ -601,7 +601,7 @@ mod test {
             rpc_ids.clone(),
             endpoints,
             channels.connection,
-            wavs_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
+            warpdrive_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
             None,
             test_metrics(),
         );
@@ -668,7 +668,7 @@ mod test {
             rpc_ids,
             endpoints,
             channels.connection,
-            wavs_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
+            warpdrive_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
             None,
             test_metrics(),
         );
@@ -721,7 +721,7 @@ mod test {
             rpc_ids,
             endpoints,
             channels.connection,
-            wavs_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
+            warpdrive_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
             None,
             test_metrics(),
         );
@@ -833,7 +833,7 @@ mod test {
             rpc_ids,
             endpoints,
             channels.connection,
-            wavs_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
+            warpdrive_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
             Some(1),
             test_metrics(),
         );

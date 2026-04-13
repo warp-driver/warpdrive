@@ -15,8 +15,8 @@ use alloy_signer_local::PrivateKeySigner;
 use error::SubmissionError;
 use tracing::instrument;
 use utils::{evm_client::signing::make_signer, telemetry::SubmissionMetrics};
-use wavs_types::Submission;
-use wavs_types::{Credential, Envelope, EventOrder, ServiceId, SignerResponse, Submit, WavsSigner};
+use warpdrive_types::Submission;
+use warpdrive_types::{Credential, Envelope, EventOrder, ServiceId, SignerResponse, Submit, WavsSigner};
 
 #[derive(Debug)]
 #[allow(clippy::large_enum_variant)]

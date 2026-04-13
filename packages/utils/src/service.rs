@@ -4,7 +4,7 @@ use iri_string::types::UriStr;
 use reqwest::Client;
 use serde::de::DeserializeOwned;
 use std::str::FromStr;
-use wavs_types::Service;
+use warpdrive_types::Service;
 
 pub const DEFAULT_IPFS_GATEWAY: &str = "https://ipfs.io/ipfs/";
 

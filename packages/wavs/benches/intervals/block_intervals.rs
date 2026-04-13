@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use criterion::Criterion;
 use tokio::sync::oneshot;
-use wavs_benchmark_common::app_context::APP_CONTEXT;
+use warpdrive_benchmark_common::app_context::APP_CONTEXT;
 
 use crate::setup::{Setup, SetupConfig};
 

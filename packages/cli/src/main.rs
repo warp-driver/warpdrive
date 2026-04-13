@@ -13,7 +13,7 @@ use utils::{
     evm_client::EvmSigningClient,
     service::fetch_service,
 };
-use wavs_cli::{
+use warpdrive_cli::{
     args::Command,
     command::{
         deploy_service::{DeployService, DeployServiceArgs, SetServiceUriArgs},
@@ -25,9 +25,9 @@ use wavs_cli::{
     context::CliContext,
     util::{write_output_file, ComponentInput},
 };
-use wavs_types::SignatureKind;
-use wavs_types::WavsSigner;
-use wavs_types::{ChainKeyId, Envelope, IWavsServiceHandler};
+use warpdrive_types::SignatureKind;
+use warpdrive_types::WavsSigner;
+use warpdrive_types::{ChainKeyId, Envelope, IWavsServiceHandler};
 
 // Shared function to create EVM client with any credential
 // duplicated here instead of using the one in CliContext so
@@ -35,7 +35,7 @@ use wavs_types::{ChainKeyId, Envelope, IWavsServiceHandler};
 async fn new_evm_client_with_credential(
     ctx: &CliContext,
     chain_id: ChainKeyId,
-    credential: &wavs_types::Credential,
+    credential: &warpdrive_types::Credential,
     hd_index: Option<u32>,
 ) -> Result<EvmSigningClient> {
     let chain_config = ctx
@@ -62,7 +62,7 @@ async fn new_evm_client_with_credential(
 async fn new_cosmos_client_with_credential(
     ctx: &CliContext,
     chain_id: ChainKeyId,
-    credential: &wavs_types::Credential,
+    credential: &warpdrive_types::Credential,
     hd_index: Option<u32>,
 ) -> Result<SigningClient> {
     let chain_config = ctx
@@ -155,14 +155,14 @@ async fn main() {
 
             let set_service_url_args = if set_uri {
                 match service.manager {
-                    wavs_types::ServiceManager::Evm { ref chain, .. } => {
+                    warpdrive_types::ServiceManager::Evm { ref chain, .. } => {
                         let provider = new_evm_client(&ctx, chain.id.clone())
                             .await
                             .unwrap()
                             .provider;
                         Some(SetServiceUriArgs::new_evm(provider, service_uri.clone()))
                     }
-                    wavs_types::ServiceManager::Cosmos { ref chain, .. } => {
+                    warpdrive_types::ServiceManager::Cosmos { ref chain, .. } => {
                         let client = new_cosmos_client(&ctx, chain.id.clone()).await.unwrap();
                         Some(SetServiceUriArgs::new_cosmos(client, service_uri.clone()))
                     }

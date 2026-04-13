@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use reqwest::{Client, Method};
 use serde_json::Value;
-use wavs_types::{
+use warpdrive_types::{
     AddServiceRequest, DeleteServicesRequest, GetSignerRequest, SaveServiceResponse,
     ServiceManager, SignerResponse, SimulatedTriggerRequest, UploadComponentResponse,
 };

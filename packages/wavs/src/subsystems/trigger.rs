@@ -29,7 +29,7 @@ use std::{
 use streams::{cosmos_stream, cron_stream, evm_stream, MultiplexedStream, StreamTriggers};
 use tracing::instrument;
 use utils::telemetry::TriggerMetrics;
-use wavs_types::{
+use warpdrive_types::{
     contracts::cosmwasm::service_manager::event::WavsServiceUriUpdatedEvent, AnyChainConfig,
     ByteArray, ChainConfigs, ChainKey, DevHypercoreStreamState, IWavsServiceManager, ServiceId,
     Trigger, TriggerAction, TriggerConfig, TriggerData,
@@ -186,7 +186,7 @@ impl TriggerManager {
     }
 
     #[instrument(skip(self, service), fields(subsys = "TriggerManager"))]
-    pub fn add_service(&self, service: &wavs_types::Service) -> Result<(), TriggerError> {
+    pub fn add_service(&self, service: &warpdrive_types::Service) -> Result<(), TriggerError> {
         // The mechanics of adding a trigger are that we:
 
         // 1. Setup all the records needed to track the trigger in various "lookup" maps.
@@ -206,7 +206,7 @@ impl TriggerManager {
             })?;
 
         match service.manager.clone() {
-            wavs_types::ServiceManager::Evm { chain, address } => {
+            warpdrive_types::ServiceManager::Evm { chain, address } => {
                 self.command_sender
                     .send(TriggerCommand::WatchEvmContractEvents {
                         chain,
@@ -214,7 +214,7 @@ impl TriggerManager {
                         event_hashes: vec![IWavsServiceManager::ServiceURIUpdated::SIGNATURE_HASH],
                     })?;
             }
-            wavs_types::ServiceManager::Cosmos { .. } => {
+            warpdrive_types::ServiceManager::Cosmos { .. } => {
                 /* Nothing to do, Cosmos consumes all events, service URI changes will be handled */
             }
         }
@@ -1200,7 +1200,7 @@ mod tests {
     use utils::{
         storage::db::WavsDb, telemetry::TriggerMetrics, test_utils::address::rand_address_evm,
     };
-    use wavs_types::{
+    use warpdrive_types::{
         Component, ComponentDigest, ComponentSource, ServiceManager, SignatureKind, Submit,
         Trigger, TriggerAction, TriggerConfig, TriggerData, Workflow, WorkflowId,
     };
@@ -1215,9 +1215,9 @@ mod tests {
         let metrics = TriggerMetrics::new(opentelemetry::global::meter("test"));
         let (dispatcher_tx, dispatcher_rx) = crossbeam::channel::unbounded::<DispatcherCommand>();
 
-        let service = wavs_types::Service {
+        let service = warpdrive_types::Service {
             name: "serv1".to_string(),
-            status: wavs_types::ServiceStatus::Active,
+            status: warpdrive_types::ServiceStatus::Active,
             manager: ServiceManager::Evm {
                 chain: "evm:anvil".parse().unwrap(),
                 address: rand_address_evm(),
@@ -1306,9 +1306,9 @@ mod tests {
         let workflow_id = WorkflowId::new("workflow-1").unwrap();
         let feed_key = "feed-key-1".to_string();
 
-        let service = wavs_types::Service {
+        let service = warpdrive_types::Service {
             name: "hypercore-service".to_string(),
-            status: wavs_types::ServiceStatus::Active,
+            status: warpdrive_types::ServiceStatus::Active,
             manager: ServiceManager::Evm {
                 chain: "evm:anvil".parse().unwrap(),
                 address: rand_address_evm(),

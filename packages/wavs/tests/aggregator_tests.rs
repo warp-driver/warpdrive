@@ -3,7 +3,7 @@
 mod wavs_systems;
 
 use utils::{context::AppContext, init_tracing_tests, telemetry::Metrics};
-use wavs::subsystems::aggregator::AggregatorCommand;
+use warpdrive::subsystems::aggregator::AggregatorCommand;
 
 use crate::wavs_systems::{
     channels::TestChannels,

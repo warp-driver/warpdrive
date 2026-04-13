@@ -88,8 +88,8 @@ pub struct QueryLogsParams {
     /// Minimum log level filter: trace | debug | info | warn | error.
     /// Returns entries at this level and above (e.g. "info" includes warn + error).
     pub level: Option<String>,
-    /// Filter by target prefix, e.g. "wavs" or "wavs::subsystems::engine".
-    /// Component logs appear under "wavs::subsystems::engine::wasm_engine".
+    /// Filter by target prefix, e.g. "wavs" or "warpdrive::subsystems::engine".
+    /// Component logs appear under "warpdrive::subsystems::engine::wasm_engine".
     pub target: Option<String>,
 }
 
@@ -250,7 +250,7 @@ impl WavsMcpServer {
         }
     }
 
-    fn require_mcp_chain_credential(&self) -> Result<wavs_types::Credential, McpError> {
+    fn require_mcp_chain_credential(&self) -> Result<warpdrive_types::Credential, McpError> {
         self.mcp_chain_credential
             .as_deref()
             .ok_or_else(|| ErrorData {
@@ -262,7 +262,7 @@ impl WavsMcpServer {
                 data: None,
             })
             .and_then(|s| {
-                s.parse::<wavs_types::Credential>().map_err(|e| ErrorData {
+                s.parse::<warpdrive_types::Credential>().map_err(|e| ErrorData {
                     code: ErrorCode::INVALID_PARAMS,
                     message: format!("invalid mcp_chain_credential: {e}").into(),
                     data: None,
@@ -270,7 +270,7 @@ impl WavsMcpServer {
             })
     }
 
-    fn require_signing_mnemonic(&self) -> Result<wavs_types::Credential, McpError> {
+    fn require_signing_mnemonic(&self) -> Result<warpdrive_types::Credential, McpError> {
         self.signing_mnemonic
             .as_deref()
             .ok_or_else(|| ErrorData {
@@ -282,7 +282,7 @@ impl WavsMcpServer {
                 data: None,
             })
             .and_then(|s| {
-                s.parse::<wavs_types::Credential>().map_err(|e| ErrorData {
+                s.parse::<warpdrive_types::Credential>().map_err(|e| ErrorData {
                     code: ErrorCode::INVALID_PARAMS,
                     message: format!("invalid signing_mnemonic: {e}").into(),
                     data: None,
@@ -329,7 +329,7 @@ impl WavsMcpServer {
         args: Option<serde_json::Map<String, serde_json::Value>>,
     ) -> Result<CallToolResult, McpError> {
         let p: ServiceManagerParams = parse_args(args)?;
-        let manager: wavs_types::ServiceManager =
+        let manager: warpdrive_types::ServiceManager =
             match serde_json::from_str(&p.service_manager_json) {
                 Ok(m) => m,
                 Err(e) => return err(format!("Invalid service_manager_json: {e}")),
@@ -337,7 +337,7 @@ impl WavsMcpServer {
         match self.client.deploy_service(manager.clone()).await {
             Ok(v) if v.is_null() => {
                 let signer_info = match self.client.get_service_signer(manager).await {
-                    Ok(wavs_types::SignerResponse::Secp256k1 {
+                    Ok(warpdrive_types::SignerResponse::Secp256k1 {
                         hd_index,
                         evm_address,
                     }) => {
@@ -398,7 +398,7 @@ impl WavsMcpServer {
         args: Option<serde_json::Map<String, serde_json::Value>>,
     ) -> Result<CallToolResult, McpError> {
         use std::str::FromStr;
-        use wavs_types::{ServiceId, WorkflowId};
+        use warpdrive_types::{ServiceId, WorkflowId};
 
         let p: SimulateTriggerParams = parse_args(args)?;
 
@@ -423,7 +423,7 @@ impl WavsMcpServer {
             Err(e) => return err(format!("Invalid data_json: {e}")),
         };
 
-        let req = wavs_types::SimulatedTriggerRequest {
+        let req = warpdrive_types::SimulatedTriggerRequest {
             service_id,
             workflow_id,
             trigger,
@@ -443,7 +443,7 @@ impl WavsMcpServer {
         args: Option<serde_json::Map<String, serde_json::Value>>,
     ) -> Result<CallToolResult, McpError> {
         let p: DeployDevServiceParams = parse_args(args)?;
-        let manager: Option<wavs_types::ServiceManager> =
+        let manager: Option<warpdrive_types::ServiceManager> =
             serde_json::from_str::<serde_json::Value>(&p.service_json)
                 .ok()
                 .and_then(|v| serde_json::from_value(v.get("manager")?.clone()).ok());
@@ -451,7 +451,7 @@ impl WavsMcpServer {
             Ok(hash) => {
                 let signer_info = if let Some(mgr) = manager {
                     match self.client.get_service_signer(mgr).await {
-                        Ok(wavs_types::SignerResponse::Secp256k1 {
+                        Ok(warpdrive_types::SignerResponse::Secp256k1 {
                             hd_index,
                             evm_address,
                         }) => {
@@ -510,7 +510,7 @@ impl WavsMcpServer {
                 p.since_id.unwrap_or(0),
                 p.limit,
                 p.level.as_deref(),
-                Some("wavs::subsystems::engine::wasm_engine"),
+                Some("warpdrive::subsystems::engine::wasm_engine"),
             )
             .await
         {
@@ -608,7 +608,7 @@ impl WavsMcpServer {
         let p: RegisterOperatorParams = parse_args(args)?;
         let owner_cred = self.require_mcp_chain_credential()?;
         let signing_cred = self.require_signing_mnemonic()?;
-        let manager: wavs_types::ServiceManager =
+        let manager: warpdrive_types::ServiceManager =
             match serde_json::from_str(&p.service_manager_json) {
                 Ok(m) => m,
                 Err(e) => return err(format!("Invalid service_manager_json: {e}")),
@@ -619,7 +619,7 @@ impl WavsMcpServer {
         // HD-derived signing key per service (starting at index 1), so we must register the correct
         // address on-chain. This requires the service to be deployed to the node first.
         let signing_key_hd_index = match self.client.get_service_signer(manager.clone()).await {
-            Ok(wavs_types::SignerResponse::Secp256k1 {
+            Ok(warpdrive_types::SignerResponse::Secp256k1 {
                 hd_index,
                 evm_address,
             }) => {
@@ -667,7 +667,7 @@ impl WavsMcpServer {
             Err(e) => return err(format!("Invalid service_manager_json: {e}")),
         };
         match self.client.get_service_signer(manager).await {
-            Ok(wavs_types::SignerResponse::Secp256k1 {
+            Ok(warpdrive_types::SignerResponse::Secp256k1 {
                 hd_index,
                 evm_address,
             }) => ok(format!(
@@ -684,7 +684,7 @@ impl WavsMcpServer {
         let p: DeployAndRegisterParams = parse_args(args)?;
         let owner_cred = self.require_mcp_chain_credential()?;
         let signing_cred = self.require_signing_mnemonic()?;
-        let manager: wavs_types::ServiceManager =
+        let manager: warpdrive_types::ServiceManager =
             match serde_json::from_str(&p.service_manager_json) {
                 Ok(m) => m,
                 Err(e) => return err(format!("Invalid service_manager_json: {e}")),
@@ -699,7 +699,7 @@ impl WavsMcpServer {
 
         // Step 2: query the node for the service-specific signing key.
         let hd_index = match self.client.get_service_signer(manager.clone()).await {
-            Ok(wavs_types::SignerResponse::Secp256k1 { hd_index, .. }) => hd_index,
+            Ok(warpdrive_types::SignerResponse::Secp256k1 { hd_index, .. }) => hd_index,
             Err(e) => {
                 return err(format!(
                     "Service deployed but could not query signing key: {e:#}\n\
@@ -948,7 +948,7 @@ impl ServerHandler for WavsMcpServer {
     fn get_info(&self) -> ServerInfo {
         ServerInfo {
             server_info: Implementation {
-                name: "wavs-mcp".into(),
+                name: "warpdrive-mcp".into(),
                 version: env!("CARGO_PKG_VERSION").into(),
             },
             capabilities: ServerCapabilities {

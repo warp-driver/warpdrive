@@ -1,5 +1,5 @@
 use thiserror::Error;
-use wavs_types::{ComponentDigest, ServiceId, WorkflowId};
+use warpdrive_types::{ComponentDigest, ServiceId, WorkflowId};
 
 #[derive(Error, Debug)]
 pub enum EngineError {
@@ -58,7 +58,7 @@ pub enum EngineError {
     MissingEventIdSalt,
 
     #[error("Wasm response size limit exceeded: {0}")]
-    ResponseSizeExceeded(#[from] wavs_types::WasmResponseSizeError),
+    ResponseSizeExceeded(#[from] warpdrive_types::WasmResponseSizeError),
 
     #[error("Mismatched instance data and logger. Data: {data}, Logger: {logger}")]
     MismatchedInstanceDataAndLogger {

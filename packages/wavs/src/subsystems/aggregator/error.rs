@@ -1,6 +1,6 @@
 use thiserror::Error;
 use utils::error::EvmClientError;
-use wavs_types::{
+use warpdrive_types::{
     contracts::cosmwasm::service_manager::error::WavsValidateError, ChainConfigError,
     QuorumQueueId, ServiceManagerError, SigningError,
 };

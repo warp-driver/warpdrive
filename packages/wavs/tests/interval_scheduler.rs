@@ -1,4 +1,4 @@
-use wavs::subsystems::trigger::{
+use warpdrive::subsystems::trigger::{
     lookup::LookupId,
     schedulers::interval_scheduler::{IntervalScheduler, IntervalState, IntervalTime},
 };

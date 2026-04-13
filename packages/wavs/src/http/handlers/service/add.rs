@@ -4,7 +4,7 @@ use reqwest::StatusCode;
 use crate::http::{
     error::HttpResult, handlers::service::get::get_service_inner_hash, state::HttpState,
 };
-use wavs_types::{AddServiceRequest, ServiceManager};
+use warpdrive_types::{AddServiceRequest, ServiceManager};
 
 #[utoipa::path(
     post,

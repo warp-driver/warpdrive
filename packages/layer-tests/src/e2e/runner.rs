@@ -15,7 +15,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use utils::alloy_helpers::SolidityEventFinder;
-use wavs_types::{
+use warpdrive_types::{
     AtProtoAction, ChainKeyNamespace, SimulatedTriggerRequest, Submit, Trigger, TriggerData,
     Workflow, WorkflowId,
 };

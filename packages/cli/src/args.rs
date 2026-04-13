@@ -11,7 +11,7 @@ use utils::{
     serde::deserialize_vec_string,
 };
 use wasm_pkg_client::{PackageRef, Version};
-use wavs_types::{
+use warpdrive_types::{
     AtProtoAction, ChainKey, ComponentDigest, Credential, ServiceStatus, Timestamp, WorkflowId,
 };
 
@@ -463,7 +463,7 @@ pub struct CliArgs {
     pub log_level: Vec<String>,
 
     /// The directory to store all internal data files
-    /// Default is /var/wavs-cli
+    /// Default is /var/warpdrive-cli
     #[arg(long)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<PathBuf>,

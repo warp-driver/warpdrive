@@ -66,7 +66,7 @@ _install-native HOME DATA:
     @echo "export WAVS_HOME=\"{{HOME}}\""
     @echo "export WAVS_DATA=\"{{DATA}}/wavs\""
     @echo "export WAVS_CLI_HOME=\"{{HOME}}\""
-    @echo "export WAVS_CLI_DATA=\"{{DATA}}/wavs-cli\""
+    @echo "export WAVS_CLI_DATA=\"{{DATA}}/warpdrive-cli\""
     @echo "export WAVS_DOTENV=\"{{HOME}}/.env\""
 
 wasi-build COMPONENT="*" TAG="latest":
@@ -141,7 +141,7 @@ solidity-build CLEAN="":
     cp -r {{REPO_ROOT}}/out/ISimpleTrigger.sol {{REPO_ROOT}}/examples/contracts/solidity/abi/
     cp -r {{REPO_ROOT}}/out/SimpleSubmit.sol {{REPO_ROOT}}/examples/contracts/solidity/abi/
     cp -r {{REPO_ROOT}}/out/ISimpleSubmit.sol {{REPO_ROOT}}/examples/contracts/solidity/abi/
-    # wavs-types
+    # warpdrive-types
     cp -r {{REPO_ROOT}}/out/IWavsServiceHandler.sol {{REPO_ROOT}}/packages/types/src/contracts/solidity/abi/
     cp -r {{REPO_ROOT}}/out/IWavsServiceManager.sol {{REPO_ROOT}}/packages/types/src/contracts/solidity/abi/
     cp -r {{REPO_ROOT}}/out/SimpleServiceManager.sol {{REPO_ROOT}}/packages/types/src/contracts/solidity/abi/
@@ -413,8 +413,8 @@ wasi-publish version component="*" flags="":
 	        id=$(basename "$path"); \
 	        id="${id%.wasm}"; \
 	        id=$(echo "$id" | sed 's/_/-/g'); \
-	        echo "Publishing $path at wavs-tests:$id@{{version}}"; \
-	        wkg publish "$path" --package="wavs-tests:$id@{{version}}" {{flags}}; \
+	        echo "Publishing $path at warpdrive-tests:$id@{{version}}"; \
+	        wkg publish "$path" --package="warpdrive-tests:$id@{{version}}" {{flags}}; \
 	    done; \
 	else \
 	    awk '{print $2}' checksums.txt | while read path; do \
@@ -422,15 +422,15 @@ wasi-publish version component="*" flags="":
 	        id="${id%.wasm}"; \
 	        id=$(echo "$id" | sed 's/_/-/g'); \
 	        if [ "$id" = "{{component}}" ]; then \
-	            echo "Publishing $path at wavs-tests:$id@{{version}}"; \
-	            wkg publish "$path" --package="wavs-tests:$id@{{version}}" {{flags}}; \
+	            echo "Publishing $path at warpdrive-tests:$id@{{version}}"; \
+	            wkg publish "$path" --package="warpdrive-tests:$id@{{version}}" {{flags}}; \
 	        fi; \
 	    done; \
 	fi
 
 ts-bindings:
     rm -rf packages/types/bindings
-    cargo test -p wavs-types --features ts-bindings
+    cargo test -p warpdrive-types --features ts-bindings
     cargo run --bin ts
 
 # Install the WAVS Claude Code skill globally
@@ -440,9 +440,9 @@ install-claude-skill:
     @echo "WAVS skill installed to ~/.claude/skills/wavs"
     @echo "Restart Claude Code to pick up the skill."
 
-# Register wavs-mcp with Claude Code (interactive wizard)
+# Register warpdrive-mcp with Claude Code (interactive wizard)
 setup-claude-mcp:
-    @node packages/wavs-mcp/bin/setup.mjs
+    @node packages/warpdrive-mcp/bin/setup.mjs
 
 debug:
     cargo test --package wavs --features dev --test aggregator_tests send_to_self

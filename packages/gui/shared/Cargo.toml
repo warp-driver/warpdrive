@@ -1,5 +1,5 @@
 [package]
-name = "wavs-gui-shared"
+name = "warpdrive-gui-shared"
 description = "WAVS gui shared"
 version.workspace = true
 edition.workspace = true
@@ -16,7 +16,7 @@ crate-type = ["cdylib", "rlib"]
 backend = ["dep:tauri"]
 
 [dependencies]
-wavs-types = { workspace = true, features = ["full"] }
+warpdrive-types = { workspace = true, features = ["full"] }
 serde_json = {workspace = true}
 serde = {workspace = true}
 thiserror = {workspace = true}

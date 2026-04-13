@@ -1,5 +1,5 @@
 [package]
-name = "cw-wavs-trigger-api"
+name = "cw-warpdrive-trigger-api"
 version = "0.0.0"
 edition = "2021"
 license = "Apache-2.0"
@@ -8,7 +8,7 @@ license = "Apache-2.0"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-wavs-types = { workspace = true }
+warpdrive-types = { workspace = true }
 cosmwasm-std = {workspace = true}
 anyhow = {workspace = true}
 cosmwasm-schema = {workspace = true}

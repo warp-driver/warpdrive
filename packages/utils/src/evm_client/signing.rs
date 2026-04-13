@@ -5,7 +5,7 @@ use alloy_signer::k256::SecretKey;
 use alloy_signer_local::{coins_bip39::English, MnemonicBuilder, PrivateKeySigner};
 use std::time::Duration;
 use tokio::time::sleep;
-use wavs_types::{Credential, Envelope, SignatureData};
+use warpdrive_types::{Credential, Envelope, SignatureData};
 
 use crate::{error::EvmClientError, evm_client::AnyNonceManager};
 
@@ -160,7 +160,7 @@ mod test {
     use alloy_provider::Provider;
     use alloy_rpc_types_eth::TransactionTrait;
     use alloy_signer_local::{coins_bip39::English, MnemonicBuilder, PrivateKeySigner};
-    use wavs_types::{Credential, Envelope, SignatureKind, WavsSigner};
+    use warpdrive_types::{Credential, Envelope, SignatureKind, WavsSigner};
 
     use crate::{
         evm_client::{AnyNonceManager, EvmSigningClient, EvmSigningClientConfig},
@@ -213,7 +213,7 @@ mod test {
             .sign(
                 &signer,
                 SignatureKind {
-                    algorithm: wavs_types::SignatureAlgorithm::Secp256k1,
+                    algorithm: warpdrive_types::SignatureAlgorithm::Secp256k1,
                     prefix: None,
                 },
             )
@@ -243,14 +243,14 @@ mod test {
             .sign(
                 &signer,
                 SignatureKind {
-                    algorithm: wavs_types::SignatureAlgorithm::Secp256k1,
+                    algorithm: warpdrive_types::SignatureAlgorithm::Secp256k1,
                     prefix: None,
                 },
             )
             .await
             .unwrap();
 
-        signature.kind.prefix = Some(wavs_types::SignaturePrefix::Eip191);
+        signature.kind.prefix = Some(warpdrive_types::SignaturePrefix::Eip191);
 
         assert_ne!(
             signature.evm_signer_address(&envelope).unwrap(),

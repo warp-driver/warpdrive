@@ -16,17 +16,17 @@ WAVS runs off-chain computation as sandboxed WebAssembly (WASI) components trigg
 
 ## MCP Setup
 
-The `wavs:` MCP tools below require `wavs-mcp` to be running and registered with Claude Code.
+The `wavs:` MCP tools below require `warpdrive-mcp` to be running and registered with Claude Code.
 
 **One-command setup (recommended)**
 ```bash
-npx @wavs/mcp@latest
+npx @warpdrive/mcp@latest
 ```
 Interactive wizard: installs the binary, prompts for URL + token + credentials,
 writes `~/.claude.json` and `~/.wavs/wavs.toml`, installs skill files.
 
 **Using the WAVS desktop app**
-The app auto-starts `wavs-mcp`. Use the "Register with Claude Code" button in
+The app auto-starts `warpdrive-mcp`. Use the "Register with Claude Code" button in
 Settings → MCP Server to register for any project path without leaving the app.
 
 **WAVS repo users**
@@ -39,11 +39,11 @@ just setup-claude-mcp [/path/to/project]
 # 1. Start a WAVS node
 just start-wavs-dev
 
-# 2. Run wavs-mcp (in a separate terminal)
-./target/release/wavs-mcp --wavs-url http://localhost:8000 --token <token>
+# 2. Run warpdrive-mcp (in a separate terminal)
+./target/release/warpdrive-mcp --wavs-url http://localhost:8000 --token <token>
 
 # 3. Register with Claude Code
-npx @wavs/mcp@latest
+npx @warpdrive/mcp@latest
 ```
 
 > **Local tools** (`scaffold_component`, `build_component`, `get_wit_interface`) work without MCP — useful for component development without a running node.

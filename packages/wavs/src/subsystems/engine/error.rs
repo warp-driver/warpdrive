@@ -1,6 +1,6 @@
 use thiserror::Error;
 use utils::storage::CAStorageError;
-use wavs_types::{ComponentDigest, ServiceId, WorkflowId};
+use warpdrive_types::{ComponentDigest, ServiceId, WorkflowId};
 
 #[derive(Error, Debug)]
 pub enum EngineError {
@@ -17,7 +17,7 @@ pub enum EngineError {
     UnknownDigest(ComponentDigest),
 
     #[error{"{0}"}]
-    Engine(#[from] wavs_engine::utils::error::EngineError),
+    Engine(#[from] warpdrive_engine::utils::error::EngineError),
 
     #[error{"Unable to send result after executing Service {0} / Workflow {1}"}]
     WasiResultSend(ServiceId, WorkflowId),

@@ -17,7 +17,7 @@ use std::{
     str::FromStr,
     sync::{atomic::AtomicU64, Arc},
 };
-use wavs_types::Credential;
+use warpdrive_types::Credential;
 
 use crate::error::EvmClientError;
 

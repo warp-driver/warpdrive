@@ -11,8 +11,8 @@ use utils::{
     filesystem::workspace_path,
     test_utils::middleware::evm::EvmMiddlewareType,
 };
-use wavs::subsystems::aggregator::p2p::P2pConfig;
-use wavs_types::{ChainConfigs, CosmosChainConfigBuilder, Credential, EvmChainConfigBuilder};
+use warpdrive::subsystems::aggregator::p2p::P2pConfig;
+use warpdrive_types::{ChainConfigs, CosmosChainConfigBuilder, Credential, EvmChainConfigBuilder};
 
 use crate::config::{TestConfig, TestP2pMode};
 
@@ -28,9 +28,9 @@ pub struct Configs {
     pub matrix: TestMatrix,
     pub registry: bool,
     /// WAVS configs - one per operator node
-    pub wavs_configs: Vec<wavs::config::Config>,
-    pub cli: wavs_cli::config::Config,
-    pub cli_args: wavs_cli::args::CliArgs,
+    pub wavs_configs: Vec<warpdrive::config::Config>,
+    pub cli: warpdrive_cli::config::Config,
+    pub cli_args: warpdrive_cli::args::CliArgs,
     pub chains: Arc<RwLock<ChainConfigs>>,
     pub mnemonics: TestMnemonics,
     pub middleware_concurrency: bool,
@@ -230,7 +230,7 @@ impl From<TestConfig> for Configs {
         // Create WAVS configs for each operator
         let mut wavs_configs = Vec::with_capacity(num_operators);
         for operator_index in 0..num_operators {
-            let mut wavs_config: wavs::config::Config = ConfigBuilder::new(wavs::args::CliArgs {
+            let mut wavs_config: warpdrive::config::Config = ConfigBuilder::new(warpdrive::args::CliArgs {
                 data: Some(tempfile::tempdir().unwrap().path().to_path_buf()),
                 home: Some(workspace_path()),
                 // deliberately point to a non-existing file
@@ -291,7 +291,7 @@ impl From<TestConfig> for Configs {
             wavs_configs.push(wavs_config);
         }
 
-        let cli_args = wavs_cli::args::CliArgs {
+        let cli_args = warpdrive_cli::args::CliArgs {
             data: Some(tempfile::tempdir().unwrap().path().to_path_buf()),
             home: Some(workspace_path()),
             // deliberately point to a non-existing file
@@ -299,7 +299,7 @@ impl From<TestConfig> for Configs {
             ..Default::default()
         };
 
-        let mut cli_config: wavs_cli::config::Config =
+        let mut cli_config: warpdrive_cli::config::Config =
             ConfigBuilder::new(cli_args.clone()).build().unwrap();
 
         cli_config.chains = chain_configs.clone();

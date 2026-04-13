@@ -1,6 +1,6 @@
 # WAVS MCP Server
 
-`wavs-mcp` is a [Model Context Protocol](https://modelcontextprotocol.io) server that exposes WAVS platform operations to AI clients over stdio. It lets Claude Desktop, Cursor, VS Code, and other MCP-compatible clients query a live WAVS node, scaffold and build WASM components, upload binaries, deploy services, and simulate triggers — all from natural language.
+`warpdrive-mcp` is a [Model Context Protocol](https://modelcontextprotocol.io) server that exposes WAVS platform operations to AI clients over stdio. It lets Claude Desktop, Cursor, VS Code, and other MCP-compatible clients query a live WAVS node, scaffold and build WASM components, upload binaries, deploy services, and simulate triggers — all from natural language.
 
 ---
 
@@ -31,7 +31,7 @@ Recommended storage (in priority order):
 
 3. **CLI arg** — `--mcp-chain-credential`. Avoid (visible in `ps aux`).
 
-`wavs.toml` in a project directory **will not** be read for credentials — `wavs-mcp` intentionally
+`wavs.toml` in a project directory **will not** be read for credentials — `warpdrive-mcp` intentionally
 skips project-local paths. Non-credential config (ports, chain endpoints, dev flags) is safe there.
 
 ---
@@ -41,8 +41,8 @@ skips project-local paths. Non-credential config (ports, chain endpoints, dev fl
 ### 1. Build the binary
 
 ```bash
-cargo build --release -p wavs-mcp
-# Binary: ./target/release/wavs-mcp
+cargo build --release -p warpdrive-mcp
+# Binary: ./target/release/warpdrive-mcp
 ```
 
 ### 2. Start a WAVS node (if you don't have one running)
@@ -56,7 +56,7 @@ just start-wavs-dev
 ### 4. Test with MCP Inspector
 
 ```bash
-npx @modelcontextprotocol/inspector ./target/release/wavs-mcp
+npx @modelcontextprotocol/inspector ./target/release/warpdrive-mcp
 ```
 
 ---
@@ -71,7 +71,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 {
   "mcpServers": {
     "wavs": {
-      "command": "/path/to/WAVS/target/release/wavs-mcp",
+      "command": "/path/to/WAVS/target/release/warpdrive-mcp",
       "args": ["--wavs-url", "http://localhost:8000", "--token", "your-token-here"]
     }
   }
@@ -92,7 +92,7 @@ Edit `.cursor/mcp.json` in your project root (or `~/.cursor/mcp.json` globally):
 {
   "mcpServers": {
     "wavs": {
-      "command": "/path/to/WAVS/target/release/wavs-mcp",
+      "command": "/path/to/WAVS/target/release/warpdrive-mcp",
       "args": ["--wavs-url", "http://localhost:8000", "--token", "your-token-here"]
     }
   }
@@ -108,7 +108,7 @@ Edit `.vscode/mcp.json` in your workspace:
   "servers": {
     "wavs": {
       "type": "stdio",
-      "command": "/path/to/WAVS/target/release/wavs-mcp",
+      "command": "/path/to/WAVS/target/release/warpdrive-mcp",
       "args": ["--wavs-url", "http://localhost:8000", "--token", "your-token-here"]
     }
   }
@@ -118,7 +118,7 @@ Edit `.vscode/mcp.json` in your workspace:
 ### CLI flags (alternative to env vars)
 
 ```bash
-./target/release/wavs-mcp \
+./target/release/warpdrive-mcp \
   --wavs-url http://localhost:8000 \
   --token your-bearer-token
 ```

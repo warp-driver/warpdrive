@@ -1,7 +1,7 @@
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 
 use crate::http::{error::HttpResult, state::HttpState};
-use wavs_types::{DeleteServicesRequest, ServiceId, ServiceManager};
+use warpdrive_types::{DeleteServicesRequest, ServiceId, ServiceManager};
 
 #[utoipa::path(
     delete,

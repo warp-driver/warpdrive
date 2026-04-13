@@ -5,7 +5,7 @@ use std::{
 
 use bimap::BiMap;
 use utils::telemetry::TriggerMetrics;
-use wavs_types::{
+use warpdrive_types::{
     AtProtoAction, ByteArray, ChainKey, ServiceId, Trigger, TriggerConfig, WorkflowId,
 };
 
@@ -111,7 +111,7 @@ impl LookupMaps {
             .collect()
     }
 
-    pub fn add_service(&self, service: &wavs_types::Service) -> Result<(), TriggerError> {
+    pub fn add_service(&self, service: &warpdrive_types::Service) -> Result<(), TriggerError> {
         let manager_address: layer_climb::prelude::Address = service.manager.address();
 
         self.service_manager
@@ -354,7 +354,7 @@ impl LookupMaps {
         Ok(())
     }
 
-    pub fn remove_service(&self, service_id: wavs_types::ServiceId) -> Result<(), TriggerError> {
+    pub fn remove_service(&self, service_id: warpdrive_types::ServiceId) -> Result<(), TriggerError> {
         let mut trigger_configs = self.trigger_configs.write().unwrap();
         let mut triggers_by_evm_contract_event =
             self.triggers_by_evm_contract_event.write().unwrap();

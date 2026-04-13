@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use wavs_types::{ServiceId, TriggerAction, TriggerData, WorkflowId};
+use warpdrive_types::{ServiceId, TriggerAction, TriggerData, WorkflowId};
 
 use crate::error::AppResult;
 use crate::settings::Settings;

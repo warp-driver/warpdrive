@@ -1,7 +1,7 @@
 use std::num::{NonZeroU32, NonZeroU64};
 
 use dashmap::DashMap;
-use wavs_types::ChainKey;
+use warpdrive_types::ChainKey;
 
 use crate::subsystems::trigger::lookup::LookupId;
 

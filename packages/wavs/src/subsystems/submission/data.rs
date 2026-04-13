@@ -1,4 +1,4 @@
-use wavs_types::{
+use warpdrive_types::{
     EventId, EventIdSalt, Service, ServiceId, TriggerAction, WasmResponse, WorkflowId,
 };
 

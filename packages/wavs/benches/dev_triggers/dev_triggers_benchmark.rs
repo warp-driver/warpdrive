@@ -42,7 +42,7 @@ pub fn benchmark(c: &mut Criterion) {
                         let runtime = DevTriggersRuntime::new(component_config.clone());
                         let start = Instant::now();
                         let client = Client::new();
-                        wavs_benchmark_common::app_context::APP_CONTEXT
+                        warpdrive_benchmark_common::app_context::APP_CONTEXT
                             .rt
                             .block_on(async {
                                 runtime

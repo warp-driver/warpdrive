@@ -18,7 +18,7 @@ use crate::state::{
     WavsInstanceState,
 };
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use wavs::log_buffer::{InMemoryLogLayer, LogBufferInner};
+use warpdrive::log_buffer::{InMemoryLogLayer, LogBufferInner};
 
 mod commands;
 mod logger;

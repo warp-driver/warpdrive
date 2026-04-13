@@ -1,5 +1,5 @@
 [package]
-name = "wavs-dev-tools"
+name = "warpdrive-dev-tools"
 description = "WAVS Types"
 version.workspace = true
 edition.workspace = true
@@ -11,8 +11,8 @@ publish = false
 
 [dependencies]
 alloy-signer-local = { workspace = true }
-wavs-types = { workspace = true, features = ["full"] }
-wavs-cli = { workspace = true }
+warpdrive-types = { workspace = true, features = ["full"] }
+warpdrive-cli = { workspace = true }
 utils = { workspace = true }
 clap = { workspace = true }
 tracing-subscriber = { workspace = true }

@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use anyhow::Result;
 use wasmtime::Trap;
-use wavs_types::AggregatorInput;
+use warpdrive_types::AggregatorInput;
 
 use crate::utils::error::EngineError;
 use crate::{bindings::aggregator::world::AggregatorWorld, worlds::instance::InstanceDeps};

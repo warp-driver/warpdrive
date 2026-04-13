@@ -30,7 +30,7 @@ pub enum AppError {
     HealthCheck(String),
 
     #[error("Missing chain: {0}")]
-    MissingChain(wavs_types::ChainKey),
+    MissingChain(warpdrive_types::ChainKey),
 
     #[error("WAVS is not running")]
     WavsNotRunning,

@@ -1,11 +1,11 @@
 [package]
-name = "wavs-mcp"
+name = "warpdrive-mcp"
 edition.workspace = true
 version.workspace = true
 license.workspace = true
 
 [[bin]]
-name = "wavs-mcp"
+name = "warpdrive-mcp"
 path = "src/main.rs"
 
 [dependencies]
@@ -15,7 +15,7 @@ tokio = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 clap = { workspace = true }
-wavs-types = { workspace = true }
+warpdrive-types = { workspace = true }
 anyhow = { workspace = true }
 const-hex = { workspace = true }
 tracing = { workspace = true }

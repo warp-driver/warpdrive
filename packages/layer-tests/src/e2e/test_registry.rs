@@ -6,7 +6,7 @@ use example_types::{
 use serde_json::json;
 use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
-use wavs_types::AtProtoAction;
+use warpdrive_types::AtProtoAction;
 
 use super::clients::Clients;
 use super::components::{AggregatorComponent, ComponentName, OperatorComponent};
@@ -24,7 +24,7 @@ use crate::e2e::test_definition::{
     ChangeServiceDefinition, ComponentDefinition, CosmosSubmitDefinition, ExpectedOutputCallback,
     TestGroupId,
 };
-use wavs_types::{ChainConfigs, ChainKey, Trigger, WorkflowId};
+use warpdrive_types::{ChainConfigs, ChainKey, Trigger, WorkflowId};
 
 /// This map is used to ensure cosmos contracts only have their wasm uploaded once
 /// Key -> Cosmos Trigger Definition, Value -> Maybe Code Id

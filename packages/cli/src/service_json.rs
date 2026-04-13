@@ -2,7 +2,7 @@ use std::{num::NonZeroU64, str::FromStr};
 
 use alloy_primitives::Address;
 use cron::Schedule;
-use wavs_types::{
+use warpdrive_types::{
     AggregatorBuilder, ServiceBuilder, ServiceManagerBuilder, Submit, SubmitBuilder, Timestamp,
     Trigger, TriggerBuilder, WAVS_ENV_PREFIX,
 };

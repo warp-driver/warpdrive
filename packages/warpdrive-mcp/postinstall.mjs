@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * postinstall.mjs — downloads the platform-specific wavs-mcp binary from
+ * postinstall.mjs — downloads the platform-specific warpdrive-mcp binary from
  * the GitHub release that matches the package version.
  *
- * Runs once automatically after `npm install @lay3rlabs/wavs-mcp`.
+ * Runs once automatically after `npm install @lay3rlabs/warpdrive-mcp`.
  */
 
 import { createWriteStream, chmodSync, existsSync, mkdirSync } from 'fs';
@@ -26,11 +26,11 @@ function getAssetName() {
   const arch = process.arch;
 
   const targets = {
-    'darwin-arm64':  'wavs-mcp-aarch64-apple-darwin.tar.gz',
-    'darwin-x64':    'wavs-mcp-x86_64-apple-darwin.tar.gz',
-    'linux-x64':     'wavs-mcp-x86_64-unknown-linux-gnu.tar.gz',
-    'linux-arm64':   'wavs-mcp-aarch64-unknown-linux-gnu.tar.gz',
-    'win32-x64':     'wavs-mcp-x86_64-pc-windows-msvc.zip',
+    'darwin-arm64':  'warpdrive-mcp-aarch64-apple-darwin.tar.gz',
+    'darwin-x64':    'warpdrive-mcp-x86_64-apple-darwin.tar.gz',
+    'linux-x64':     'warpdrive-mcp-x86_64-unknown-linux-gnu.tar.gz',
+    'linux-arm64':   'warpdrive-mcp-aarch64-unknown-linux-gnu.tar.gz',
+    'win32-x64':     'warpdrive-mcp-x86_64-pc-windows-msvc.zip',
   };
 
   const key = `${platform}-${arch}`;
@@ -38,7 +38,7 @@ function getAssetName() {
   if (!asset) {
     throw new Error(
       `Unsupported platform/arch: ${key}. ` +
-      `Build wavs-mcp from source: https://github.com/Lay3rLabs/wavs`
+      `Build warpdrive-mcp from source: https://github.com/Lay3rLabs/wavs`
     );
   }
   return asset;
@@ -76,17 +76,17 @@ async function downloadBinary() {
   const url = `https://github.com/Lay3rLabs/wavs/releases/download/v${VERSION}/${asset}`;
   const binDir = path.join(__dirname, 'bin');
   const isWindows = process.platform === 'win32';
-  const binaryName = isWindows ? 'wavs-mcp.exe' : 'wavs-mcp';
+  const binaryName = isWindows ? 'warpdrive-mcp.exe' : 'warpdrive-mcp';
   const binaryPath = path.join(binDir, binaryName);
 
   if (existsSync(binaryPath)) {
-    console.log(`wavs-mcp binary already present at ${binaryPath}`);
+    console.log(`warpdrive-mcp binary already present at ${binaryPath}`);
     return;
   }
 
   mkdirSync(binDir, { recursive: true });
 
-  console.log(`Downloading wavs-mcp v${VERSION} for ${process.platform}/${process.arch}...`);
+  console.log(`Downloading warpdrive-mcp v${VERSION} for ${process.platform}/${process.arch}...`);
   console.log(`  URL: ${url}`);
 
   const response = await fetchWithRedirects(url);
@@ -98,13 +98,13 @@ async function downloadBinary() {
       createGunzip(),
       new Extract({
         cwd: binDir,
-        filter: (p) => path.basename(p) === 'wavs-mcp' || path.basename(p) === 'wavs-mcp.exe',
+        filter: (p) => path.basename(p) === 'warpdrive-mcp' || path.basename(p) === 'warpdrive-mcp.exe',
       })
     );
   } else {
     // .zip on Windows — write zip then extract
     const { default: https } = await import('https');
-    const zipPath = path.join(binDir, 'wavs-mcp.zip');
+    const zipPath = path.join(binDir, 'warpdrive-mcp.zip');
     await pipeline(response, createWriteStream(zipPath));
 
     // Node 18.3+ has a built-in unzip via child_process on Windows; use it
@@ -122,12 +122,12 @@ async function downloadBinary() {
     chmodSync(binaryPath, 0o755);
   }
 
-  console.log(`wavs-mcp installed to ${binaryPath}`);
+  console.log(`warpdrive-mcp installed to ${binaryPath}`);
 }
 
 downloadBinary().catch((err) => {
-  console.error(`Failed to download wavs-mcp binary: ${err.message}`);
-  console.error('You can build it from source: cargo build --release -p wavs-mcp');
+  console.error(`Failed to download warpdrive-mcp binary: ${err.message}`);
+  console.error('You can build it from source: cargo build --release -p warpdrive-mcp');
   // Non-fatal — the package still installs; bin/run.mjs will error at runtime.
   process.exit(0);
 });

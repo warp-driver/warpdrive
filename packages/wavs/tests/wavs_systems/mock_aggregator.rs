@@ -5,7 +5,7 @@ use std::{
 
 use thiserror::Error;
 use utils::{context::AppContext, telemetry::Metrics};
-use wavs::{config::Config, services::Services, subsystems::aggregator::Aggregator};
+use warpdrive::{config::Config, services::Services, subsystems::aggregator::Aggregator};
 
 use crate::wavs_systems::channels::TestChannels;
 

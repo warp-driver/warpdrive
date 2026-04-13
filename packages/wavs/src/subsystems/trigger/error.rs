@@ -1,7 +1,7 @@
 use iri_string::types::CreationError;
 use thiserror::Error;
 use utils::error::EvmClientError;
-use wavs_types::{ByteArray, ChainKey, ServiceId, WorkflowId};
+use warpdrive_types::{ByteArray, ChainKey, ServiceId, WorkflowId};
 
 use crate::{
     dispatcher::DispatcherCommand, services::ServicesError, subsystems::trigger::TriggerCommand,

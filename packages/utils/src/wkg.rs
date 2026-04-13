@@ -6,7 +6,7 @@ use wasm_pkg_client::{
     caching::{CachingClient, FileCache},
     Client, Config, Error as WkgError, PackageRef, Release, Version,
 };
-use wavs_types::{ComponentDigest, Registry};
+use warpdrive_types::{ComponentDigest, Registry};
 
 pub struct WkgClient {
     // due to a bug in the client which can deadlock with the filesystem

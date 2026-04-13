@@ -1,4 +1,4 @@
-use wavs_wasi_utils::impl_u128_conversions;
+use warpdrive_wasi_utils::impl_u128_conversions;
 
 use crate::bindings::{
     aggregator::world::wavs::operator::input as aggregator_operator_input,
@@ -21,12 +21,12 @@ use crate::bindings::{
 
 impl_u128_conversions!(U128);
 
-impl TryFrom<wavs_types::Trigger> for component_service::Trigger {
+impl TryFrom<warpdrive_types::Trigger> for component_service::Trigger {
     type Error = anyhow::Error;
 
-    fn try_from(src: wavs_types::Trigger) -> Result<Self, Self::Error> {
+    fn try_from(src: warpdrive_types::Trigger) -> Result<Self, Self::Error> {
         Ok(match src {
-            wavs_types::Trigger::CosmosContractEvent {
+            warpdrive_types::Trigger::CosmosContractEvent {
                 address,
                 chain,
                 event_type,
@@ -37,7 +37,7 @@ impl TryFrom<wavs_types::Trigger> for component_service::Trigger {
                     event_type,
                 },
             ),
-            wavs_types::Trigger::EvmContractEvent {
+            warpdrive_types::Trigger::EvmContractEvent {
                 address,
                 chain,
                 event_hash,
@@ -48,7 +48,7 @@ impl TryFrom<wavs_types::Trigger> for component_service::Trigger {
                     event_hash: event_hash.as_slice().to_vec(),
                 },
             ),
-            wavs_types::Trigger::BlockInterval {
+            warpdrive_types::Trigger::BlockInterval {
                 chain,
                 n_blocks,
                 start_block,
@@ -61,8 +61,8 @@ impl TryFrom<wavs_types::Trigger> for component_service::Trigger {
                     end_block: end_block.map(Into::into),
                 })
             }
-            wavs_types::Trigger::Manual => component_service::Trigger::Manual,
-            wavs_types::Trigger::Cron {
+            warpdrive_types::Trigger::Manual => component_service::Trigger::Manual,
+            warpdrive_types::Trigger::Cron {
                 schedule,
                 start_time,
                 end_time,
@@ -71,7 +71,7 @@ impl TryFrom<wavs_types::Trigger> for component_service::Trigger {
                 start_time: start_time.map(Into::into),
                 end_time: end_time.map(Into::into),
             }),
-            wavs_types::Trigger::AtProtoEvent {
+            warpdrive_types::Trigger::AtProtoEvent {
                 collection,
                 repo_did,
                 action,
@@ -80,7 +80,7 @@ impl TryFrom<wavs_types::Trigger> for component_service::Trigger {
                 repo_did,
                 action: action.map(|a| a.to_string()),
             }),
-            wavs_types::Trigger::HypercoreAppend { feed_key } => {
+            warpdrive_types::Trigger::HypercoreAppend { feed_key } => {
                 component_service::Trigger::HypercoreAppend(
                     component_service::TriggerHypercoreAppend { feed_key },
                 )
@@ -133,10 +133,10 @@ impl From<layer_climb::prelude::CosmosAddr> for component_chain::CosmosAddress {
     }
 }
 
-impl From<wavs_types::CosmosChainConfig>
+impl From<warpdrive_types::CosmosChainConfig>
     for crate::bindings::operator::world::host::CosmosChainConfig
 {
-    fn from(config: wavs_types::CosmosChainConfig) -> Self {
+    fn from(config: warpdrive_types::CosmosChainConfig) -> Self {
         Self {
             chain_id: config.chain_id.as_str().to_string(),
             rpc_endpoint: config.rpc_endpoint,
@@ -149,8 +149,8 @@ impl From<wavs_types::CosmosChainConfig>
     }
 }
 
-impl From<wavs_types::EvmChainConfig> for crate::bindings::operator::world::host::EvmChainConfig {
-    fn from(config: wavs_types::EvmChainConfig) -> Self {
+impl From<warpdrive_types::EvmChainConfig> for crate::bindings::operator::world::host::EvmChainConfig {
+    fn from(config: warpdrive_types::EvmChainConfig) -> Self {
         Self {
             chain_id: config.chain_id.to_string(),
             ws_endpoints: config.ws_endpoints,
@@ -159,18 +159,18 @@ impl From<wavs_types::EvmChainConfig> for crate::bindings::operator::world::host
     }
 }
 
-impl From<wavs_types::Timestamp> for component_core::Timestamp {
-    fn from(src: wavs_types::Timestamp) -> Self {
+impl From<warpdrive_types::Timestamp> for component_core::Timestamp {
+    fn from(src: warpdrive_types::Timestamp) -> Self {
         component_core::Timestamp {
             nanos: src.as_nanos(),
         }
     }
 }
 
-impl TryFrom<wavs_types::Service> for component_service::Service {
+impl TryFrom<warpdrive_types::Service> for component_service::Service {
     type Error = anyhow::Error;
 
-    fn try_from(src: wavs_types::Service) -> Result<Self, Self::Error> {
+    fn try_from(src: warpdrive_types::Service) -> Result<Self, Self::Error> {
         Ok(Self {
             name: src.name,
             workflows: src
@@ -188,10 +188,10 @@ impl TryFrom<wavs_types::Service> for component_service::Service {
     }
 }
 
-impl TryFrom<wavs_types::Workflow> for component_service::Workflow {
+impl TryFrom<warpdrive_types::Workflow> for component_service::Workflow {
     type Error = anyhow::Error;
 
-    fn try_from(src: wavs_types::Workflow) -> Result<Self, Self::Error> {
+    fn try_from(src: warpdrive_types::Workflow) -> Result<Self, Self::Error> {
         Ok(Self {
             trigger: src.trigger.try_into()?,
             component: src.component.into(),
@@ -200,8 +200,8 @@ impl TryFrom<wavs_types::Workflow> for component_service::Workflow {
     }
 }
 
-impl From<wavs_types::Component> for component_service::Component {
-    fn from(src: wavs_types::Component) -> Self {
+impl From<warpdrive_types::Component> for component_service::Component {
+    fn from(src: warpdrive_types::Component) -> Self {
         Self {
             source: src.source.into(),
             permissions: src.permissions.into(),
@@ -213,13 +213,13 @@ impl From<wavs_types::Component> for component_service::Component {
     }
 }
 
-impl From<wavs_types::ComponentSource> for component_service::ComponentSource {
-    fn from(src: wavs_types::ComponentSource) -> Self {
+impl From<warpdrive_types::ComponentSource> for component_service::ComponentSource {
+    fn from(src: warpdrive_types::ComponentSource) -> Self {
         match src {
-            wavs_types::ComponentSource::Digest(digest) => {
+            warpdrive_types::ComponentSource::Digest(digest) => {
                 component_service::ComponentSource::Digest(digest.to_string())
             }
-            wavs_types::ComponentSource::Download { uri, digest } => {
+            warpdrive_types::ComponentSource::Download { uri, digest } => {
                 component_service::ComponentSource::Download(
                     component_service::ComponentSourceDownload {
                         uri: uri.to_string(),
@@ -227,15 +227,15 @@ impl From<wavs_types::ComponentSource> for component_service::ComponentSource {
                     },
                 )
             }
-            wavs_types::ComponentSource::Registry { registry } => {
+            warpdrive_types::ComponentSource::Registry { registry } => {
                 component_service::ComponentSource::Registry(registry.into())
             }
         }
     }
 }
 
-impl From<wavs_types::Registry> for component_service::Registry {
-    fn from(src: wavs_types::Registry) -> Self {
+impl From<warpdrive_types::Registry> for component_service::Registry {
+    fn from(src: warpdrive_types::Registry) -> Self {
         Self {
             digest: src.digest.to_string(),
             domain: src.domain,
@@ -245,8 +245,8 @@ impl From<wavs_types::Registry> for component_service::Registry {
     }
 }
 
-impl From<wavs_types::Permissions> for component_service::Permissions {
-    fn from(src: wavs_types::Permissions) -> Self {
+impl From<warpdrive_types::Permissions> for component_service::Permissions {
+    fn from(src: warpdrive_types::Permissions) -> Self {
         Self {
             allowed_http_hosts: src.allowed_http_hosts.into(),
             file_system: src.file_system,
@@ -256,11 +256,11 @@ impl From<wavs_types::Permissions> for component_service::Permissions {
     }
 }
 
-impl From<wavs_types::Submit> for component_service::Submit {
-    fn from(src: wavs_types::Submit) -> Self {
+impl From<warpdrive_types::Submit> for component_service::Submit {
+    fn from(src: warpdrive_types::Submit) -> Self {
         match src {
-            wavs_types::Submit::None => component_service::Submit::None,
-            wavs_types::Submit::Aggregator {
+            warpdrive_types::Submit::None => component_service::Submit::None,
+            warpdrive_types::Submit::Aggregator {
                 component,
                 signature_kind,
             } => component_service::Submit::Aggregator(component_service::AggregatorSubmit {
@@ -271,8 +271,8 @@ impl From<wavs_types::Submit> for component_service::Submit {
     }
 }
 
-impl From<wavs_types::SignatureKind> for component_service::SignatureKind {
-    fn from(src: wavs_types::SignatureKind) -> Self {
+impl From<warpdrive_types::SignatureKind> for component_service::SignatureKind {
+    fn from(src: warpdrive_types::SignatureKind) -> Self {
         Self {
             algorithm: src.algorithm.into(),
             prefix: src.prefix.map(Into::into),
@@ -280,57 +280,57 @@ impl From<wavs_types::SignatureKind> for component_service::SignatureKind {
     }
 }
 
-impl From<wavs_types::SignatureAlgorithm> for component_service::SignatureAlgorithm {
-    fn from(src: wavs_types::SignatureAlgorithm) -> Self {
+impl From<warpdrive_types::SignatureAlgorithm> for component_service::SignatureAlgorithm {
+    fn from(src: warpdrive_types::SignatureAlgorithm) -> Self {
         match src {
-            wavs_types::SignatureAlgorithm::Secp256k1 => {
+            warpdrive_types::SignatureAlgorithm::Secp256k1 => {
                 component_service::SignatureAlgorithm::Secp256k1
             }
         }
     }
 }
 
-impl From<wavs_types::SignaturePrefix> for component_service::SignaturePrefix {
-    fn from(src: wavs_types::SignaturePrefix) -> Self {
+impl From<warpdrive_types::SignaturePrefix> for component_service::SignaturePrefix {
+    fn from(src: warpdrive_types::SignaturePrefix) -> Self {
         match src {
-            wavs_types::SignaturePrefix::Eip191 => component_service::SignaturePrefix::Eip191,
+            warpdrive_types::SignaturePrefix::Eip191 => component_service::SignaturePrefix::Eip191,
         }
     }
 }
 
-impl From<wavs_types::AllowedHostPermission> for component_service::AllowedHostPermission {
-    fn from(src: wavs_types::AllowedHostPermission) -> Self {
+impl From<warpdrive_types::AllowedHostPermission> for component_service::AllowedHostPermission {
+    fn from(src: warpdrive_types::AllowedHostPermission) -> Self {
         match src {
-            wavs_types::AllowedHostPermission::All => component_service::AllowedHostPermission::All,
-            wavs_types::AllowedHostPermission::None => {
+            warpdrive_types::AllowedHostPermission::All => component_service::AllowedHostPermission::All,
+            warpdrive_types::AllowedHostPermission::None => {
                 component_service::AllowedHostPermission::None
             }
-            wavs_types::AllowedHostPermission::Only(hosts) => {
+            warpdrive_types::AllowedHostPermission::Only(hosts) => {
                 component_service::AllowedHostPermission::Only(hosts)
             }
         }
     }
 }
 
-impl From<wavs_types::ServiceStatus> for component_service::ServiceStatus {
-    fn from(src: wavs_types::ServiceStatus) -> Self {
+impl From<warpdrive_types::ServiceStatus> for component_service::ServiceStatus {
+    fn from(src: warpdrive_types::ServiceStatus) -> Self {
         match src {
-            wavs_types::ServiceStatus::Active => component_service::ServiceStatus::Active,
-            wavs_types::ServiceStatus::Paused => component_service::ServiceStatus::Paused,
+            warpdrive_types::ServiceStatus::Active => component_service::ServiceStatus::Active,
+            warpdrive_types::ServiceStatus::Paused => component_service::ServiceStatus::Paused,
         }
     }
 }
 
-impl From<wavs_types::ServiceManager> for component_service::ServiceManager {
-    fn from(src: wavs_types::ServiceManager) -> Self {
+impl From<warpdrive_types::ServiceManager> for component_service::ServiceManager {
+    fn from(src: warpdrive_types::ServiceManager) -> Self {
         match src {
-            wavs_types::ServiceManager::Evm { chain, address } => {
+            warpdrive_types::ServiceManager::Evm { chain, address } => {
                 component_service::ServiceManager::Evm(component_service::EvmManager {
                     chain: chain.to_string(),
                     address: address.into(),
                 })
             }
-            wavs_types::ServiceManager::Cosmos { chain, address } => {
+            warpdrive_types::ServiceManager::Cosmos { chain, address } => {
                 component_service::ServiceManager::Cosmos(component_service::CosmosManager {
                     chain: chain.to_string(),
                     address: address.into(),
@@ -340,8 +340,8 @@ impl From<wavs_types::ServiceManager> for component_service::ServiceManager {
     }
 }
 
-impl From<wavs_types::WasmResponse> for component_output::WasmResponse {
-    fn from(src: wavs_types::WasmResponse) -> Self {
+impl From<warpdrive_types::WasmResponse> for component_output::WasmResponse {
+    fn from(src: warpdrive_types::WasmResponse) -> Self {
         Self {
             payload: src.payload,
             ordering: src.ordering,
@@ -350,10 +350,10 @@ impl From<wavs_types::WasmResponse> for component_output::WasmResponse {
     }
 }
 
-impl TryFrom<wavs_types::TriggerAction> for component_input::TriggerAction {
+impl TryFrom<warpdrive_types::TriggerAction> for component_input::TriggerAction {
     type Error = anyhow::Error;
 
-    fn try_from(src: wavs_types::TriggerAction) -> Result<Self, Self::Error> {
+    fn try_from(src: warpdrive_types::TriggerAction) -> Result<Self, Self::Error> {
         Ok(Self {
             config: src.config.try_into()?,
             data: src.data.try_into()?,
@@ -361,10 +361,10 @@ impl TryFrom<wavs_types::TriggerAction> for component_input::TriggerAction {
     }
 }
 
-impl TryFrom<wavs_types::TriggerConfig> for component_input::TriggerConfig {
+impl TryFrom<warpdrive_types::TriggerConfig> for component_input::TriggerConfig {
     type Error = anyhow::Error;
 
-    fn try_from(src: wavs_types::TriggerConfig) -> Result<Self, Self::Error> {
+    fn try_from(src: warpdrive_types::TriggerConfig) -> Result<Self, Self::Error> {
         Ok(Self {
             service_id: src.service_id.to_string(),
             workflow_id: src.workflow_id.to_string(),
@@ -373,12 +373,12 @@ impl TryFrom<wavs_types::TriggerConfig> for component_input::TriggerConfig {
     }
 }
 
-impl TryFrom<wavs_types::TriggerData> for component_input::TriggerData {
+impl TryFrom<warpdrive_types::TriggerData> for component_input::TriggerData {
     type Error = anyhow::Error;
 
-    fn try_from(src: wavs_types::TriggerData) -> Result<Self, Self::Error> {
+    fn try_from(src: warpdrive_types::TriggerData) -> Result<Self, Self::Error> {
         match src {
-            wavs_types::TriggerData::EvmContractEvent {
+            warpdrive_types::TriggerData::EvmContractEvent {
                 chain,
                 contract_address,
                 log_data,
@@ -410,7 +410,7 @@ impl TryFrom<wavs_types::TriggerData> for component_input::TriggerData {
                     },
                 },
             )),
-            wavs_types::TriggerData::CosmosContractEvent {
+            warpdrive_types::TriggerData::CosmosContractEvent {
                 contract_address,
                 chain,
                 event,
@@ -432,7 +432,7 @@ impl TryFrom<wavs_types::TriggerData> for component_input::TriggerData {
                     block_height,
                 },
             )),
-            wavs_types::TriggerData::BlockInterval {
+            warpdrive_types::TriggerData::BlockInterval {
                 chain,
                 block_height,
             } => Ok(component_input::TriggerData::BlockInterval(
@@ -441,12 +441,12 @@ impl TryFrom<wavs_types::TriggerData> for component_input::TriggerData {
                     block_height,
                 },
             )),
-            wavs_types::TriggerData::Cron { trigger_time } => Ok(
+            warpdrive_types::TriggerData::Cron { trigger_time } => Ok(
                 component_input::TriggerData::Cron(component_events::TriggerDataCron {
                     trigger_time: trigger_time.into(),
                 }),
             ),
-            wavs_types::TriggerData::AtProtoEvent {
+            warpdrive_types::TriggerData::AtProtoEvent {
                 sequence,
                 timestamp,
                 repo,
@@ -477,7 +477,7 @@ impl TryFrom<wavs_types::TriggerData> for component_input::TriggerData {
                     },
                 ))
             }
-            wavs_types::TriggerData::HypercoreAppend {
+            warpdrive_types::TriggerData::HypercoreAppend {
                 feed_key,
                 index,
                 data,
@@ -488,17 +488,17 @@ impl TryFrom<wavs_types::TriggerData> for component_input::TriggerData {
                     data,
                 },
             )),
-            wavs_types::TriggerData::Raw(data) => Ok(component_input::TriggerData::Raw(data)),
+            warpdrive_types::TriggerData::Raw(data) => Ok(component_input::TriggerData::Raw(data)),
         }
     }
 }
 
 // aggregator
 
-impl TryFrom<wavs_types::AggregatorInput> for aggregator_input::AggregatorInput {
+impl TryFrom<warpdrive_types::AggregatorInput> for aggregator_input::AggregatorInput {
     type Error = anyhow::Error;
 
-    fn try_from(input: wavs_types::AggregatorInput) -> Result<Self, Self::Error> {
+    fn try_from(input: warpdrive_types::AggregatorInput) -> Result<Self, Self::Error> {
         Ok(aggregator_input::AggregatorInput {
             trigger_action: input.trigger_action.try_into()?,
             operator_response: input.operator_response.into(),
@@ -506,10 +506,10 @@ impl TryFrom<wavs_types::AggregatorInput> for aggregator_input::AggregatorInput 
     }
 }
 
-impl TryFrom<wavs_types::TriggerAction> for aggregator_input::TriggerAction {
+impl TryFrom<warpdrive_types::TriggerAction> for aggregator_input::TriggerAction {
     type Error = anyhow::Error;
 
-    fn try_from(action: wavs_types::TriggerAction) -> Result<Self, Self::Error> {
+    fn try_from(action: warpdrive_types::TriggerAction) -> Result<Self, Self::Error> {
         Ok(aggregator_input::TriggerAction {
             config: action.config.try_into()?,
             data: action.data.try_into()?,
@@ -517,8 +517,8 @@ impl TryFrom<wavs_types::TriggerAction> for aggregator_input::TriggerAction {
     }
 }
 
-impl From<wavs_types::WasmResponse> for aggregator_input::WasmResponse {
-    fn from(resp: wavs_types::WasmResponse) -> Self {
+impl From<warpdrive_types::WasmResponse> for aggregator_input::WasmResponse {
+    fn from(resp: warpdrive_types::WasmResponse) -> Self {
         aggregator_input::WasmResponse {
             payload: resp.payload,
             ordering: resp.ordering,
@@ -527,10 +527,10 @@ impl From<wavs_types::WasmResponse> for aggregator_input::WasmResponse {
     }
 }
 
-impl TryFrom<wavs_types::TriggerConfig> for aggregator_operator_input::TriggerConfig {
+impl TryFrom<warpdrive_types::TriggerConfig> for aggregator_operator_input::TriggerConfig {
     type Error = anyhow::Error;
 
-    fn try_from(config: wavs_types::TriggerConfig) -> Result<Self, Self::Error> {
+    fn try_from(config: warpdrive_types::TriggerConfig) -> Result<Self, Self::Error> {
         Ok(aggregator_operator_input::TriggerConfig {
             service_id: config.service_id.to_string(),
             workflow_id: config.workflow_id.to_string(),
@@ -539,12 +539,12 @@ impl TryFrom<wavs_types::TriggerConfig> for aggregator_operator_input::TriggerCo
     }
 }
 
-impl TryFrom<wavs_types::TriggerData> for aggregator_operator_input::TriggerData {
+impl TryFrom<warpdrive_types::TriggerData> for aggregator_operator_input::TriggerData {
     type Error = anyhow::Error;
 
-    fn try_from(src: wavs_types::TriggerData) -> Result<Self, Self::Error> {
+    fn try_from(src: warpdrive_types::TriggerData) -> Result<Self, Self::Error> {
         match src {
-            wavs_types::TriggerData::EvmContractEvent {
+            warpdrive_types::TriggerData::EvmContractEvent {
                 chain,
                 contract_address,
                 log_data,
@@ -576,7 +576,7 @@ impl TryFrom<wavs_types::TriggerData> for aggregator_operator_input::TriggerData
                     },
                 },
             )),
-            wavs_types::TriggerData::CosmosContractEvent {
+            warpdrive_types::TriggerData::CosmosContractEvent {
                 contract_address,
                 chain,
                 event,
@@ -598,7 +598,7 @@ impl TryFrom<wavs_types::TriggerData> for aggregator_operator_input::TriggerData
                     block_height,
                 },
             )),
-            wavs_types::TriggerData::BlockInterval {
+            warpdrive_types::TriggerData::BlockInterval {
                 chain,
                 block_height,
             } => Ok(aggregator_operator_input::TriggerData::BlockInterval(
@@ -607,12 +607,12 @@ impl TryFrom<wavs_types::TriggerData> for aggregator_operator_input::TriggerData
                     block_height,
                 },
             )),
-            wavs_types::TriggerData::Cron { trigger_time } => Ok(
+            warpdrive_types::TriggerData::Cron { trigger_time } => Ok(
                 aggregator_operator_input::TriggerData::Cron(aggregator_events::TriggerDataCron {
                     trigger_time: trigger_time.into(),
                 }),
             ),
-            wavs_types::TriggerData::AtProtoEvent {
+            warpdrive_types::TriggerData::AtProtoEvent {
                 sequence,
                 timestamp,
                 repo,
@@ -643,7 +643,7 @@ impl TryFrom<wavs_types::TriggerData> for aggregator_operator_input::TriggerData
                     },
                 ))
             }
-            wavs_types::TriggerData::HypercoreAppend {
+            warpdrive_types::TriggerData::HypercoreAppend {
                 feed_key,
                 index,
                 data,
@@ -654,17 +654,17 @@ impl TryFrom<wavs_types::TriggerData> for aggregator_operator_input::TriggerData
                     data,
                 },
             )),
-            wavs_types::TriggerData::Raw(data) => {
+            warpdrive_types::TriggerData::Raw(data) => {
                 Ok(aggregator_operator_input::TriggerData::Raw(data))
             }
         }
     }
 }
 
-impl TryFrom<wavs_types::Service> for aggregator_service::Service {
+impl TryFrom<warpdrive_types::Service> for aggregator_service::Service {
     type Error = anyhow::Error;
 
-    fn try_from(service: wavs_types::Service) -> Result<Self, Self::Error> {
+    fn try_from(service: warpdrive_types::Service) -> Result<Self, Self::Error> {
         Ok(aggregator_service::Service {
             name: service.name,
             workflows: service
@@ -678,10 +678,10 @@ impl TryFrom<wavs_types::Service> for aggregator_service::Service {
     }
 }
 
-impl TryFrom<wavs_types::Workflow> for aggregator_service::Workflow {
+impl TryFrom<warpdrive_types::Workflow> for aggregator_service::Workflow {
     type Error = anyhow::Error;
 
-    fn try_from(workflow: wavs_types::Workflow) -> Result<Self, Self::Error> {
+    fn try_from(workflow: warpdrive_types::Workflow) -> Result<Self, Self::Error> {
         Ok(aggregator_service::Workflow {
             trigger: workflow.trigger.try_into()?,
             component: workflow.component.into(),
@@ -690,19 +690,19 @@ impl TryFrom<wavs_types::Workflow> for aggregator_service::Workflow {
     }
 }
 
-impl From<wavs_types::ServiceStatus> for aggregator_service::ServiceStatus {
-    fn from(status: wavs_types::ServiceStatus) -> Self {
+impl From<warpdrive_types::ServiceStatus> for aggregator_service::ServiceStatus {
+    fn from(status: warpdrive_types::ServiceStatus) -> Self {
         match status {
-            wavs_types::ServiceStatus::Active => aggregator_service::ServiceStatus::Active,
-            wavs_types::ServiceStatus::Paused => aggregator_service::ServiceStatus::Paused,
+            warpdrive_types::ServiceStatus::Active => aggregator_service::ServiceStatus::Active,
+            warpdrive_types::ServiceStatus::Paused => aggregator_service::ServiceStatus::Paused,
         }
     }
 }
 
-impl From<wavs_types::ServiceManager> for aggregator_service::ServiceManager {
-    fn from(manager: wavs_types::ServiceManager) -> Self {
+impl From<warpdrive_types::ServiceManager> for aggregator_service::ServiceManager {
+    fn from(manager: warpdrive_types::ServiceManager) -> Self {
         match manager {
-            wavs_types::ServiceManager::Evm { chain, address } => {
+            warpdrive_types::ServiceManager::Evm { chain, address } => {
                 aggregator_service::ServiceManager::Evm(aggregator_service::EvmManager {
                     chain: chain.to_string(),
                     address: aggregator_chain::EvmAddress {
@@ -710,7 +710,7 @@ impl From<wavs_types::ServiceManager> for aggregator_service::ServiceManager {
                     },
                 })
             }
-            wavs_types::ServiceManager::Cosmos { chain, address } => {
+            warpdrive_types::ServiceManager::Cosmos { chain, address } => {
                 aggregator_service::ServiceManager::Cosmos(aggregator_service::CosmosManager {
                     chain: chain.to_string(),
                     address: aggregator_chain::CosmosAddress {
@@ -748,8 +748,8 @@ impl From<layer_climb::prelude::CosmosAddr> for aggregator_chain::CosmosAddress 
     }
 }
 
-impl From<wavs_types::Component> for aggregator_service::Component {
-    fn from(component: wavs_types::Component) -> Self {
+impl From<warpdrive_types::Component> for aggregator_service::Component {
+    fn from(component: warpdrive_types::Component) -> Self {
         aggregator_service::Component {
             source: component.source.into(),
             permissions: component.permissions.into(),
@@ -761,13 +761,13 @@ impl From<wavs_types::Component> for aggregator_service::Component {
     }
 }
 
-impl From<wavs_types::ComponentSource> for aggregator_service::ComponentSource {
-    fn from(source: wavs_types::ComponentSource) -> Self {
+impl From<warpdrive_types::ComponentSource> for aggregator_service::ComponentSource {
+    fn from(source: warpdrive_types::ComponentSource) -> Self {
         match source {
-            wavs_types::ComponentSource::Digest(digest) => {
+            warpdrive_types::ComponentSource::Digest(digest) => {
                 aggregator_service::ComponentSource::Digest(digest.to_string())
             }
-            wavs_types::ComponentSource::Download { uri, digest } => {
+            warpdrive_types::ComponentSource::Download { uri, digest } => {
                 aggregator_service::ComponentSource::Download(
                     aggregator_service::ComponentSourceDownload {
                         uri: uri.to_string(),
@@ -775,15 +775,15 @@ impl From<wavs_types::ComponentSource> for aggregator_service::ComponentSource {
                     },
                 )
             }
-            wavs_types::ComponentSource::Registry { registry } => {
+            warpdrive_types::ComponentSource::Registry { registry } => {
                 aggregator_service::ComponentSource::Registry(registry.into())
             }
         }
     }
 }
 
-impl From<wavs_types::Registry> for aggregator_service::Registry {
-    fn from(registry: wavs_types::Registry) -> Self {
+impl From<warpdrive_types::Registry> for aggregator_service::Registry {
+    fn from(registry: warpdrive_types::Registry) -> Self {
         aggregator_service::Registry {
             digest: registry.digest.to_string(),
             domain: registry.domain,
@@ -793,8 +793,8 @@ impl From<wavs_types::Registry> for aggregator_service::Registry {
     }
 }
 
-impl From<wavs_types::Permissions> for aggregator_service::Permissions {
-    fn from(permissions: wavs_types::Permissions) -> Self {
+impl From<warpdrive_types::Permissions> for aggregator_service::Permissions {
+    fn from(permissions: warpdrive_types::Permissions) -> Self {
         aggregator_service::Permissions {
             allowed_http_hosts: permissions.allowed_http_hosts.into(),
             file_system: permissions.file_system,
@@ -804,27 +804,27 @@ impl From<wavs_types::Permissions> for aggregator_service::Permissions {
     }
 }
 
-impl From<wavs_types::AllowedHostPermission> for aggregator_service::AllowedHostPermission {
-    fn from(permission: wavs_types::AllowedHostPermission) -> Self {
+impl From<warpdrive_types::AllowedHostPermission> for aggregator_service::AllowedHostPermission {
+    fn from(permission: warpdrive_types::AllowedHostPermission) -> Self {
         match permission {
-            wavs_types::AllowedHostPermission::All => {
+            warpdrive_types::AllowedHostPermission::All => {
                 aggregator_service::AllowedHostPermission::All
             }
-            wavs_types::AllowedHostPermission::None => {
+            warpdrive_types::AllowedHostPermission::None => {
                 aggregator_service::AllowedHostPermission::None
             }
-            wavs_types::AllowedHostPermission::Only(hosts) => {
+            warpdrive_types::AllowedHostPermission::Only(hosts) => {
                 aggregator_service::AllowedHostPermission::Only(hosts)
             }
         }
     }
 }
 
-impl From<wavs_types::Submit> for aggregator_service::Submit {
-    fn from(submit: wavs_types::Submit) -> Self {
+impl From<warpdrive_types::Submit> for aggregator_service::Submit {
+    fn from(submit: warpdrive_types::Submit) -> Self {
         match submit {
-            wavs_types::Submit::None => aggregator_service::Submit::None,
-            wavs_types::Submit::Aggregator {
+            warpdrive_types::Submit::None => aggregator_service::Submit::None,
+            warpdrive_types::Submit::Aggregator {
                 component,
                 signature_kind,
             } => aggregator_service::Submit::Aggregator(aggregator_service::AggregatorSubmit {
@@ -835,8 +835,8 @@ impl From<wavs_types::Submit> for aggregator_service::Submit {
     }
 }
 
-impl From<wavs_types::SignatureKind> for aggregator_service::SignatureKind {
-    fn from(src: wavs_types::SignatureKind) -> Self {
+impl From<warpdrive_types::SignatureKind> for aggregator_service::SignatureKind {
+    fn from(src: warpdrive_types::SignatureKind) -> Self {
         Self {
             algorithm: src.algorithm.into(),
             prefix: src.prefix.map(Into::into),
@@ -844,31 +844,31 @@ impl From<wavs_types::SignatureKind> for aggregator_service::SignatureKind {
     }
 }
 
-impl From<wavs_types::SignatureAlgorithm> for aggregator_service::SignatureAlgorithm {
-    fn from(src: wavs_types::SignatureAlgorithm) -> Self {
+impl From<warpdrive_types::SignatureAlgorithm> for aggregator_service::SignatureAlgorithm {
+    fn from(src: warpdrive_types::SignatureAlgorithm) -> Self {
         match src {
-            wavs_types::SignatureAlgorithm::Secp256k1 => {
+            warpdrive_types::SignatureAlgorithm::Secp256k1 => {
                 aggregator_service::SignatureAlgorithm::Secp256k1
             }
         }
     }
 }
 
-impl From<wavs_types::SignaturePrefix> for aggregator_service::SignaturePrefix {
-    fn from(src: wavs_types::SignaturePrefix) -> Self {
+impl From<warpdrive_types::SignaturePrefix> for aggregator_service::SignaturePrefix {
+    fn from(src: warpdrive_types::SignaturePrefix) -> Self {
         match src {
-            wavs_types::SignaturePrefix::Eip191 => aggregator_service::SignaturePrefix::Eip191,
+            warpdrive_types::SignaturePrefix::Eip191 => aggregator_service::SignaturePrefix::Eip191,
         }
     }
 }
 
-impl TryFrom<wavs_types::Trigger> for aggregator_service::Trigger {
+impl TryFrom<warpdrive_types::Trigger> for aggregator_service::Trigger {
     type Error = anyhow::Error;
 
-    fn try_from(trigger: wavs_types::Trigger) -> Result<Self, Self::Error> {
+    fn try_from(trigger: warpdrive_types::Trigger) -> Result<Self, Self::Error> {
         Ok(match trigger {
-            wavs_types::Trigger::Manual => aggregator_service::Trigger::Manual,
-            wavs_types::Trigger::EvmContractEvent {
+            warpdrive_types::Trigger::Manual => aggregator_service::Trigger::Manual,
+            warpdrive_types::Trigger::EvmContractEvent {
                 address,
                 chain,
                 event_hash,
@@ -879,7 +879,7 @@ impl TryFrom<wavs_types::Trigger> for aggregator_service::Trigger {
                     event_hash: event_hash.as_slice().to_vec(),
                 },
             ),
-            wavs_types::Trigger::CosmosContractEvent {
+            warpdrive_types::Trigger::CosmosContractEvent {
                 address,
                 chain,
                 event_type,
@@ -890,7 +890,7 @@ impl TryFrom<wavs_types::Trigger> for aggregator_service::Trigger {
                     event_type,
                 },
             ),
-            wavs_types::Trigger::BlockInterval {
+            warpdrive_types::Trigger::BlockInterval {
                 chain,
                 n_blocks,
                 start_block,
@@ -903,7 +903,7 @@ impl TryFrom<wavs_types::Trigger> for aggregator_service::Trigger {
                     end_block: end_block.map(Into::into),
                 },
             ),
-            wavs_types::Trigger::Cron {
+            warpdrive_types::Trigger::Cron {
                 schedule,
                 start_time,
                 end_time,
@@ -912,7 +912,7 @@ impl TryFrom<wavs_types::Trigger> for aggregator_service::Trigger {
                 start_time: start_time.map(Into::into),
                 end_time: end_time.map(Into::into),
             }),
-            wavs_types::Trigger::AtProtoEvent {
+            warpdrive_types::Trigger::AtProtoEvent {
                 collection,
                 repo_did,
                 action,
@@ -923,7 +923,7 @@ impl TryFrom<wavs_types::Trigger> for aggregator_service::Trigger {
                     action: action.map(|a| a.to_string()),
                 })
             }
-            wavs_types::Trigger::HypercoreAppend { feed_key } => {
+            warpdrive_types::Trigger::HypercoreAppend { feed_key } => {
                 aggregator_service::Trigger::HypercoreAppend(
                     aggregator_service::TriggerHypercoreAppend { feed_key },
                 )
@@ -946,37 +946,37 @@ impl TryFrom<layer_climb::prelude::Address> for aggregator_chain::CosmosAddress 
     }
 }
 
-impl From<wavs_types::Timestamp> for aggregator_core::Timestamp {
-    fn from(timestamp: wavs_types::Timestamp) -> Self {
+impl From<warpdrive_types::Timestamp> for aggregator_core::Timestamp {
+    fn from(timestamp: warpdrive_types::Timestamp) -> Self {
         aggregator_core::Timestamp {
             nanos: timestamp.as_nanos(),
         }
     }
 }
 
-impl From<wavs_types::Duration> for aggregator_core::Duration {
-    fn from(duration: wavs_types::Duration) -> Self {
+impl From<warpdrive_types::Duration> for aggregator_core::Duration {
+    fn from(duration: warpdrive_types::Duration) -> Self {
         aggregator_core::Duration {
             secs: duration.secs,
         }
     }
 }
 
-impl From<aggregator_core::Duration> for wavs_types::Duration {
+impl From<aggregator_core::Duration> for warpdrive_types::Duration {
     fn from(duration: aggregator_core::Duration) -> Self {
-        wavs_types::Duration {
+        warpdrive_types::Duration {
             secs: duration.secs,
         }
     }
 }
 
-impl From<wavs_types::AggregatorAction> for aggregator_output::AggregatorAction {
-    fn from(action: wavs_types::AggregatorAction) -> Self {
+impl From<warpdrive_types::AggregatorAction> for aggregator_output::AggregatorAction {
+    fn from(action: warpdrive_types::AggregatorAction) -> Self {
         match action {
-            wavs_types::AggregatorAction::Submit(action) => {
+            warpdrive_types::AggregatorAction::Submit(action) => {
                 aggregator_output::AggregatorAction::Submit(action.into())
             }
-            wavs_types::AggregatorAction::Timer(timer) => {
+            warpdrive_types::AggregatorAction::Timer(timer) => {
                 aggregator_output::AggregatorAction::Timer(aggregator_output::TimerAction {
                     delay: timer.delay.into(),
                 })
@@ -985,17 +985,17 @@ impl From<wavs_types::AggregatorAction> for aggregator_output::AggregatorAction 
     }
 }
 
-impl From<wavs_types::SubmitAction> for aggregator_output::SubmitAction {
-    fn from(action: wavs_types::SubmitAction) -> Self {
+impl From<warpdrive_types::SubmitAction> for aggregator_output::SubmitAction {
+    fn from(action: warpdrive_types::SubmitAction) -> Self {
         match action {
-            wavs_types::SubmitAction::Evm(action) => {
+            warpdrive_types::SubmitAction::Evm(action) => {
                 aggregator_output::SubmitAction::Evm(aggregator_output::EvmSubmitAction {
                     chain: action.chain.to_string(),
                     address: action.address.into(),
                     gas_price: action.gas_price.map(|x| x.into()),
                 })
             }
-            wavs_types::SubmitAction::Cosmos(action) => {
+            warpdrive_types::SubmitAction::Cosmos(action) => {
                 aggregator_output::SubmitAction::Cosmos(aggregator_output::CosmosSubmitAction {
                     chain: action.chain.to_string(),
                     address: action.address.into(),
@@ -1006,8 +1006,8 @@ impl From<wavs_types::SubmitAction> for aggregator_output::SubmitAction {
     }
 }
 
-impl From<wavs_types::CosmosChainConfig> for aggregator_chain::CosmosChainConfig {
-    fn from(config: wavs_types::CosmosChainConfig) -> Self {
+impl From<warpdrive_types::CosmosChainConfig> for aggregator_chain::CosmosChainConfig {
+    fn from(config: warpdrive_types::CosmosChainConfig) -> Self {
         Self {
             chain_id: config.chain_id.as_str().to_string(),
             rpc_endpoint: config.rpc_endpoint,
@@ -1020,8 +1020,8 @@ impl From<wavs_types::CosmosChainConfig> for aggregator_chain::CosmosChainConfig
     }
 }
 
-impl From<wavs_types::EvmChainConfig> for aggregator_chain::EvmChainConfig {
-    fn from(config: wavs_types::EvmChainConfig) -> Self {
+impl From<warpdrive_types::EvmChainConfig> for aggregator_chain::EvmChainConfig {
+    fn from(config: warpdrive_types::EvmChainConfig) -> Self {
         Self {
             chain_id: config.chain_id.to_string(),
             ws_endpoints: config.ws_endpoints,

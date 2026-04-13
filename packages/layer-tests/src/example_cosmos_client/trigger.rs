@@ -1,6 +1,6 @@
 use anyhow::Result;
 use cosmwasm_std::{Empty, Uint64};
-use cw_wavs_trigger_api::simple::{ExecuteMsg, PushMessageEvent};
+use cw_warpdrive_trigger_api::simple::{ExecuteMsg, PushMessageEvent};
 use layer_climb::prelude::*;
 
 pub struct SimpleCosmosTriggerClient {

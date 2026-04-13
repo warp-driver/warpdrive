@@ -4,13 +4,13 @@ use std::{path::Path, sync::RwLock};
 use tracing::{event, instrument, span};
 use utils::storage::db::WavsDb;
 use utils::telemetry::EngineMetrics;
-use wavs_engine::bindings::aggregator::world::wavs::types::chain::AnyTxHash;
-use wavs_engine::{
+use warpdrive_engine::bindings::aggregator::world::wavs::types::chain::AnyTxHash;
+use warpdrive_engine::{
     backend::wasi_keyvalue::context::KeyValueCtx,
     common::base_engine::{BaseEngine, BaseEngineConfig},
     worlds::instance::{HostComponentLogger, InstanceDepsBuilder},
 };
-use wavs_types::{
+use warpdrive_types::{
     AggregatorAction, AggregatorInput, ChainConfigs, ComponentDigest, ComponentSource, EventId,
     Service, ServiceId, TriggerAction, WasmResponse, WorkflowId,
 };
@@ -140,7 +140,7 @@ impl<S: CAStorage + Send + Sync + 'static> WasmEngine<S> {
             service,
             workflow_id: trigger_action.config.workflow_id.clone(),
             component,
-            data: wavs_engine::worlds::instance::InstanceData::new_operator(
+            data: warpdrive_engine::worlds::instance::InstanceData::new_operator(
                 trigger_action.data.clone(),
             ),
             engine: &self.engine.wasm_engine,
@@ -161,7 +161,7 @@ impl<S: CAStorage + Send + Sync + 'static> WasmEngine<S> {
             std::thread::sleep(std::time::Duration::from_secs(6));
         }
 
-        let results = wavs_engine::worlds::operator::execute::execute(
+        let results = warpdrive_engine::worlds::operator::execute::execute(
             &mut instance_deps,
             trigger_action,
             self.max_payload_size,
@@ -225,7 +225,7 @@ impl<S: CAStorage + Send + Sync + 'static> WasmEngine<S> {
         let start_time = Instant::now();
 
         let results =
-            wavs_engine::worlds::aggregator::execute::execute_input(&mut instance_deps, input)
+            warpdrive_engine::worlds::aggregator::execute::execute_input(&mut instance_deps, input)
                 .await;
 
         let final_fuel = instance_deps.store.get_fuel().unwrap_or(0);
@@ -288,7 +288,7 @@ impl<S: CAStorage + Send + Sync + 'static> WasmEngine<S> {
         let initial_fuel = instance_deps.store.get_fuel().unwrap_or(0);
         let start_time = Instant::now();
 
-        let results = wavs_engine::worlds::aggregator::execute::execute_timer_callback(
+        let results = warpdrive_engine::worlds::aggregator::execute::execute_timer_callback(
             &mut instance_deps,
             input,
         )
@@ -354,7 +354,7 @@ impl<S: CAStorage + Send + Sync + 'static> WasmEngine<S> {
         let initial_fuel = instance_deps.store.get_fuel().unwrap_or(0);
         let start_time = Instant::now();
 
-        let result = wavs_engine::worlds::aggregator::execute::execute_submit_callback(
+        let result = warpdrive_engine::worlds::aggregator::execute::execute_submit_callback(
             &mut instance_deps,
             input,
             tx_result,
@@ -416,8 +416,8 @@ impl<S: CAStorage + Send + Sync + 'static> WasmEngine<S> {
             })?;
 
         let digest = match &workflow.submit {
-            wavs_types::Submit::Aggregator { component, .. } => component.source.digest().clone(),
-            wavs_types::Submit::None => {
+            warpdrive_types::Submit::Aggregator { component, .. } => component.source.digest().clone(),
+            warpdrive_types::Submit::None => {
                 tracing::info!("Submit is None for service_id: {}", service.id(),);
                 return Ok(None);
             }
@@ -431,7 +431,7 @@ impl<S: CAStorage + Send + Sync + 'static> WasmEngine<S> {
             keyvalue_ctx: KeyValueCtx::new(self.engine.db.clone(), service.id().to_string()),
             workflow_id: trigger_action.config.workflow_id.clone(),
             component,
-            data: wavs_engine::worlds::instance::InstanceData::new_aggregator(event_id),
+            data: warpdrive_engine::worlds::instance::InstanceData::new_aggregator(event_id),
             engine: &self.engine.wasm_engine,
             data_dir: self
                 .engine
@@ -478,7 +478,7 @@ impl<S: CAStorage + Send + Sync + 'static> WasmEngine<S> {
 }
 
 struct AggregatorDeps {
-    instance_deps: wavs_engine::worlds::instance::InstanceDeps,
+    instance_deps: warpdrive_engine::worlds::instance::InstanceDeps,
     input: AggregatorInput,
 }
 
@@ -486,7 +486,7 @@ fn log_operator(
     service_id: &ServiceId,
     workflow_id: &WorkflowId,
     digest: &ComponentDigest,
-    level: wavs_engine::bindings::operator::world::host::LogLevel,
+    level: warpdrive_engine::bindings::operator::world::host::LogLevel,
     message: String,
 ) {
     let span = span!(
@@ -498,19 +498,19 @@ fn log_operator(
     );
 
     match level {
-        wavs_engine::bindings::operator::world::host::LogLevel::Error => {
+        warpdrive_engine::bindings::operator::world::host::LogLevel::Error => {
             event!(parent: &span, tracing::Level::ERROR, service_id = %service_id, workflow_id = %workflow_id, digest = %digest, "{}", message)
         }
-        wavs_engine::bindings::operator::world::host::LogLevel::Warn => {
+        warpdrive_engine::bindings::operator::world::host::LogLevel::Warn => {
             event!(parent: &span, tracing::Level::WARN, service_id = %service_id, workflow_id = %workflow_id, digest = %digest, "{}", message)
         }
-        wavs_engine::bindings::operator::world::host::LogLevel::Info => {
+        warpdrive_engine::bindings::operator::world::host::LogLevel::Info => {
             event!(parent: &span, tracing::Level::INFO, service_id = %service_id, workflow_id = %workflow_id, digest = %digest, "{}", message)
         }
-        wavs_engine::bindings::operator::world::host::LogLevel::Debug => {
+        warpdrive_engine::bindings::operator::world::host::LogLevel::Debug => {
             event!(parent: &span, tracing::Level::DEBUG, service_id = %service_id, workflow_id = %workflow_id, digest = %digest, "{}", message)
         }
-        wavs_engine::bindings::operator::world::host::LogLevel::Trace => {
+        warpdrive_engine::bindings::operator::world::host::LogLevel::Trace => {
             event!(parent: &span, tracing::Level::TRACE, service_id = %service_id, workflow_id = %workflow_id, digest = %digest, "{}", message)
         }
     }
@@ -520,7 +520,7 @@ fn log_aggregator(
     service_id: &ServiceId,
     workflow_id: &WorkflowId,
     digest: &ComponentDigest,
-    level: wavs_engine::bindings::aggregator::world::host::LogLevel,
+    level: warpdrive_engine::bindings::aggregator::world::host::LogLevel,
     message: String,
 ) {
     let span = span!(
@@ -532,19 +532,19 @@ fn log_aggregator(
     );
 
     match level {
-        wavs_engine::bindings::aggregator::world::host::LogLevel::Error => {
+        warpdrive_engine::bindings::aggregator::world::host::LogLevel::Error => {
             event!(parent: &span, tracing::Level::ERROR, service_id = %service_id, workflow_id = %workflow_id, digest = %digest, "{}", message)
         }
-        wavs_engine::bindings::aggregator::world::host::LogLevel::Warn => {
+        warpdrive_engine::bindings::aggregator::world::host::LogLevel::Warn => {
             event!(parent: &span, tracing::Level::WARN, service_id = %service_id, workflow_id = %workflow_id, digest = %digest, "{}", message)
         }
-        wavs_engine::bindings::aggregator::world::host::LogLevel::Info => {
+        warpdrive_engine::bindings::aggregator::world::host::LogLevel::Info => {
             event!(parent: &span, tracing::Level::INFO, service_id = %service_id, workflow_id = %workflow_id, digest = %digest, "{}", message)
         }
-        wavs_engine::bindings::aggregator::world::host::LogLevel::Debug => {
+        warpdrive_engine::bindings::aggregator::world::host::LogLevel::Debug => {
             event!(parent: &span, tracing::Level::DEBUG, service_id = %service_id, workflow_id = %workflow_id, digest = %digest, "{}", message)
         }
-        wavs_engine::bindings::aggregator::world::host::LogLevel::Trace => {
+        warpdrive_engine::bindings::aggregator::world::host::LogLevel::Trace => {
             event!(parent: &span, tracing::Level::TRACE, service_id = %service_id, workflow_id = %workflow_id, digest = %digest, "{}", message)
         }
     }
@@ -558,7 +558,7 @@ pub mod tests {
         service::DEFAULT_IPFS_GATEWAY, storage::memory::MemoryStorage,
         test_utils::address::rand_address_evm,
     };
-    use wavs_types::{
+    use warpdrive_types::{
         ServiceId, Submit, Trigger, TriggerConfig, TriggerData, Workflow, WorkflowId,
     };
 
@@ -669,15 +669,15 @@ pub mod tests {
 
         let workflow = Workflow {
             trigger: Trigger::evm_contract_event(rand_address_evm(), "evm:anvil", rand_event_evm()),
-            component: wavs_types::Component::new(ComponentSource::Digest(digest.clone())),
+            component: warpdrive_types::Component::new(ComponentSource::Digest(digest.clone())),
             submit: Submit::None,
         };
 
-        let service = wavs_types::Service {
+        let service = warpdrive_types::Service {
             name: "Exec Service".to_string(),
             workflows: BTreeMap::from([(WorkflowId::default(), workflow)]),
-            status: wavs_types::ServiceStatus::Active,
-            manager: wavs_types::ServiceManager::Evm {
+            status: warpdrive_types::ServiceStatus::Active,
+            manager: warpdrive_types::ServiceManager::Evm {
                 chain: "evm:anvil".parse().unwrap(),
                 address: Default::default(),
             },
@@ -729,18 +729,18 @@ pub mod tests {
             .unwrap();
         let mut workflow = Workflow {
             trigger: Trigger::Manual,
-            component: wavs_types::Component::new(ComponentSource::Digest(digest.clone())),
+            component: warpdrive_types::Component::new(ComponentSource::Digest(digest.clone())),
             submit: Submit::None,
         };
 
         workflow.component.env_keys = ["WAVS_ENV_TEST".to_string()].into_iter().collect();
         workflow.component.config = [("foo".to_string(), "bar".to_string())].into();
 
-        let service = wavs_types::Service {
+        let service = warpdrive_types::Service {
             name: "Exec Service".to_string(),
             workflows: BTreeMap::from([(WorkflowId::default(), workflow)]),
-            status: wavs_types::ServiceStatus::Active,
-            manager: wavs_types::ServiceManager::Evm {
+            status: warpdrive_types::ServiceStatus::Active,
+            manager: warpdrive_types::ServiceManager::Evm {
                 chain: "evm:anvil".parse().unwrap(),
                 address: Default::default(),
             },
@@ -802,7 +802,7 @@ pub mod tests {
 
         assert!(matches!(
             result,
-            EngineError::Engine(wavs_engine::utils::error::EngineError::ExecResult(_))
+            EngineError::Engine(warpdrive_engine::utils::error::EngineError::ExecResult(_))
         ));
     }
 
@@ -829,18 +829,18 @@ pub mod tests {
             .unwrap();
         let mut workflow = Workflow {
             trigger: Trigger::Manual,
-            component: wavs_types::Component::new(ComponentSource::Digest(digest.clone())),
+            component: warpdrive_types::Component::new(ComponentSource::Digest(digest.clone())),
             submit: Submit::None,
         };
 
         workflow.component.config =
             [("event-id-salt".to_string(), "hello world!".to_string())].into();
 
-        let service = wavs_types::Service {
+        let service = warpdrive_types::Service {
             name: "Exec Service".to_string(),
             workflows: BTreeMap::from([(WorkflowId::default(), workflow)]),
-            status: wavs_types::ServiceStatus::Active,
-            manager: wavs_types::ServiceManager::Evm {
+            status: warpdrive_types::ServiceStatus::Active,
+            manager: warpdrive_types::ServiceManager::Evm {
                 chain: "evm:anvil".parse().unwrap(),
                 address: Default::default(),
             },
@@ -892,7 +892,7 @@ pub mod tests {
             .unwrap();
         let mut workflow = Workflow {
             trigger: Trigger::Manual,
-            component: wavs_types::Component::new(ComponentSource::Digest(digest.clone())),
+            component: warpdrive_types::Component::new(ComponentSource::Digest(digest.clone())),
             submit: Submit::None,
         };
 
@@ -903,11 +903,11 @@ pub mod tests {
         .into_iter()
         .collect();
 
-        let service = wavs_types::Service {
+        let service = warpdrive_types::Service {
             name: "Exec Service".to_string(),
             workflows: BTreeMap::from([(WorkflowId::default(), workflow)]),
-            status: wavs_types::ServiceStatus::Active,
-            manager: wavs_types::ServiceManager::Evm {
+            status: warpdrive_types::ServiceStatus::Active,
+            manager: warpdrive_types::ServiceManager::Evm {
                 chain: "evm:anvil".parse().unwrap(),
                 address: Default::default(),
             },
@@ -980,17 +980,17 @@ pub mod tests {
             .unwrap();
         let mut workflow = Workflow {
             trigger: Trigger::Manual,
-            component: wavs_types::Component::new(ComponentSource::Digest(digest.clone())),
+            component: warpdrive_types::Component::new(ComponentSource::Digest(digest.clone())),
             submit: Submit::None,
         };
 
         workflow.component.fuel_limit = Some(low_fuel_limit);
 
-        let service = wavs_types::Service {
+        let service = warpdrive_types::Service {
             name: "Exec Service".to_string(),
             workflows: BTreeMap::from([(WorkflowId::default(), workflow)]),
-            status: wavs_types::ServiceStatus::Active,
-            manager: wavs_types::ServiceManager::Evm {
+            status: warpdrive_types::ServiceStatus::Active,
+            manager: warpdrive_types::ServiceManager::Evm {
                 chain: "evm:anvil".parse().unwrap(),
                 address: Default::default(),
             },
@@ -1016,7 +1016,7 @@ pub mod tests {
 
         assert!(matches!(
             err,
-            EngineError::Engine(wavs_engine::utils::error::EngineError::OutOfFuel(_, _))
+            EngineError::Engine(warpdrive_engine::utils::error::EngineError::OutOfFuel(_, _))
         ));
     }
 
@@ -1097,7 +1097,7 @@ pub mod tests {
             .unwrap();
         let mut workflow = Workflow {
             trigger: Trigger::Manual,
-            component: wavs_types::Component::new(ComponentSource::Digest(digest.clone())),
+            component: warpdrive_types::Component::new(ComponentSource::Digest(digest.clone())),
             submit: Submit::None,
         };
 
@@ -1112,11 +1112,11 @@ pub mod tests {
             .config
             .insert("sleep-kind".to_string(), "async".to_string());
 
-        let service = wavs_types::Service {
+        let service = warpdrive_types::Service {
             name: "Exec Service".to_string(),
             workflows: BTreeMap::from([(WorkflowId::default(), workflow.clone())]),
-            status: wavs_types::ServiceStatus::Active,
-            manager: wavs_types::ServiceManager::Evm {
+            status: warpdrive_types::ServiceStatus::Active,
+            manager: warpdrive_types::ServiceManager::Evm {
                 chain: "evm:anvil".parse().unwrap(),
                 address: Default::default(),
             },
@@ -1150,11 +1150,11 @@ pub mod tests {
             .config
             .insert("sleep-kind".to_string(), "sync".to_string());
 
-        let service = wavs_types::Service {
+        let service = warpdrive_types::Service {
             name: "Exec Service".to_string(),
             workflows: BTreeMap::from([(WorkflowId::default(), workflow.clone())]),
-            status: wavs_types::ServiceStatus::Active,
-            manager: wavs_types::ServiceManager::Evm {
+            status: warpdrive_types::ServiceStatus::Active,
+            manager: warpdrive_types::ServiceManager::Evm {
                 chain: "evm:anvil".parse().unwrap(),
                 address: Default::default(),
             },
@@ -1188,11 +1188,11 @@ pub mod tests {
             .config
             .insert("sleep-kind".to_string(), "async".to_string());
 
-        let service = wavs_types::Service {
+        let service = warpdrive_types::Service {
             name: "Exec Service".to_string(),
             workflows: BTreeMap::from([(WorkflowId::default(), workflow.clone())]),
-            status: wavs_types::ServiceStatus::Active,
-            manager: wavs_types::ServiceManager::Evm {
+            status: warpdrive_types::ServiceStatus::Active,
+            manager: warpdrive_types::ServiceManager::Evm {
                 chain: "evm:anvil".parse().unwrap(),
                 address: Default::default(),
             },
@@ -1217,7 +1217,7 @@ pub mod tests {
 
         assert!(matches!(
             err,
-            EngineError::Engine(wavs_engine::utils::error::EngineError::OutOfTime(_, _))
+            EngineError::Engine(warpdrive_engine::utils::error::EngineError::OutOfTime(_, _))
         ));
 
         // and same thing with sync sleep
@@ -1231,11 +1231,11 @@ pub mod tests {
             .config
             .insert("sleep-kind".to_string(), "sync".to_string());
 
-        let service = wavs_types::Service {
+        let service = warpdrive_types::Service {
             name: "Exec Service".to_string(),
             workflows: BTreeMap::from([(WorkflowId::default(), workflow)]),
-            status: wavs_types::ServiceStatus::Active,
-            manager: wavs_types::ServiceManager::Evm {
+            status: warpdrive_types::ServiceStatus::Active,
+            manager: warpdrive_types::ServiceManager::Evm {
                 chain: "evm:anvil".parse().unwrap(),
                 address: Default::default(),
             },
@@ -1260,7 +1260,7 @@ pub mod tests {
 
         assert!(matches!(
             err,
-            EngineError::Engine(wavs_engine::utils::error::EngineError::OutOfTime(_, _))
+            EngineError::Engine(warpdrive_engine::utils::error::EngineError::OutOfTime(_, _))
         ));
     }
 }

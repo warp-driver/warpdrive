@@ -1,5 +1,5 @@
-use wavs_cli::clients::HttpClient;
-use wavs_types::ComponentDigest;
+use warpdrive_cli::clients::HttpClient;
+use warpdrive_types::ComponentDigest;
 
 use crate::service::{create_service, WAVS_COMPONENT_BYTES};
 

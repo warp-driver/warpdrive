@@ -8,7 +8,7 @@ use example_types::{
     PermissionsResponse, SquareRequest, SquareResponse,
 };
 use regex::Regex;
-use wavs_types::{ChainKey, Trigger, WorkflowId};
+use warpdrive_types::{ChainKey, Trigger, WorkflowId};
 
 use crate::e2e::components::{
     AggregatorComponent, ComponentName, ComponentSources, OperatorComponent,

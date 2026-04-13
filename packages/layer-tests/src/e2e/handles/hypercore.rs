@@ -15,7 +15,7 @@ use std::sync::{
 use tempfile::TempDir;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
-use wavs::subsystems::trigger::streams::hypercore_protocol;
+use warpdrive::subsystems::trigger::streams::hypercore_protocol;
 
 /// Test client for creating and managing hypercore feeds in e2e tests.
 pub struct HypercoreTestClient {

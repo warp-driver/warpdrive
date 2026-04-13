@@ -1,19 +1,19 @@
 [package]
-name = "wavs-app"
+name = "warpdrive-app"
 version.workspace = true
 edition.workspace = true
 
 [lib]
-name = "wavs_app_lib"
+name = "warpdrive_app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { workspace = true }
 
 [dependencies]
-wavs = { workspace = true, features = ["gui"] }
-wavs-types = { workspace = true, features = ["full"] }
-wavs-gui-shared = { workspace = true, features = ["backend"] }
+warpdrive = { workspace = true, features = ["gui"] }
+warpdrive-types = { workspace = true, features = ["full"] }
+warpdrive-gui-shared = { workspace = true, features = ["backend"] }
 utils = { workspace = true }
 tauri = { workspace = true }
 tauri-plugin-dialog = { workspace = true }

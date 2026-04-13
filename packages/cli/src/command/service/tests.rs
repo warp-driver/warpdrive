@@ -9,7 +9,7 @@ use tempfile::tempdir;
 use utils::init_tracing_tests;
 use utils::service::DEFAULT_IPFS_GATEWAY;
 use wasm_pkg_client::PackageRef;
-use wavs_types::{Builder, ComponentDigest, SignatureKind, Submit};
+use warpdrive_types::{Builder, ComponentDigest, SignatureKind, Submit};
 
 use crate::service_json::ServiceJsonExt;
 
@@ -1028,7 +1028,7 @@ async fn test_service_validation() {
     let trigger = Trigger::EvmContractEvent {
         address: evm_address,
         chain: evm_chain.clone(),
-        event_hash: wavs_types::ByteArray::new([1u8; 32]),
+        event_hash: warpdrive_types::ByteArray::new([1u8; 32]),
     };
 
     let submit = Submit::Aggregator {
@@ -1368,7 +1368,7 @@ async fn test_set_component_source_registry() {
     add_workflow(&file_path, Some(workflow_id.clone())).unwrap();
 
     // Test setting a component source to a registry
-    let package = PackageRef::try_from("wavs-tests:square".to_string()).unwrap();
+    let package = PackageRef::try_from("warpdrive-tests:square".to_string()).unwrap();
 
     // Use wa.dev as the registry domain (WAVS default)
     let registry_domain = "wa.dev".to_string();

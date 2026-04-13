@@ -1,5 +1,5 @@
 use axum::{extract::State, response::IntoResponse, Json};
-use wavs_types::Credential;
+use warpdrive_types::Credential;
 
 use crate::{config::Config, http::state::HttpState};
 

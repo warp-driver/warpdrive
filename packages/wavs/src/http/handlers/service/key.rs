@@ -1,6 +1,6 @@
 use crate::http::{error::HttpResult, state::HttpState};
 use axum::{extract::State, response::IntoResponse, Json};
-use wavs_types::{GetSignerRequest, ServiceId, ServiceManager, SignerResponse};
+use warpdrive_types::{GetSignerRequest, ServiceId, ServiceManager, SignerResponse};
 
 #[utoipa::path(
     post,

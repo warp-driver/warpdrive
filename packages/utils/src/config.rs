@@ -2,14 +2,14 @@ use anyhow::{bail, Context, Result};
 use figment::{providers::Format, Figment};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{marker::PhantomData, path::PathBuf};
-use wavs_types::{Credential, EvmChainConfig};
+use warpdrive_types::{Credential, EvmChainConfig};
 
 use crate::{
     error::EvmClientError,
     evm_client::{EvmEndpoint, EvmSigningClientConfig},
 };
 
-pub use wavs_types::WAVS_ENV_PREFIX;
+pub use warpdrive_types::WAVS_ENV_PREFIX;
 
 /// The builder we use to build Config
 #[derive(Debug)]
@@ -306,7 +306,7 @@ mod test {
     use std::{collections::BTreeMap, path::PathBuf, sync::LazyLock};
 
     use serde::{Deserialize, Serialize};
-    use wavs_types::{
+    use warpdrive_types::{
         AnyChainConfig, ChainConfigError, ChainConfigs, ChainKey, CosmosChainConfig,
         CosmosChainConfigBuilder, EvmChainConfig, EvmChainConfigBuilder,
     };

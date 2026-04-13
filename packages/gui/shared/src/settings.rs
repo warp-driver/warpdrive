@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
-use wavs_types::{Service, ServiceManager};
+use warpdrive_types::{Service, ServiceManager};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SavedRegistry {

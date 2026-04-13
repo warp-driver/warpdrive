@@ -2,7 +2,7 @@ use futures::{Stream, StreamExt};
 use layer_climb::prelude::*;
 use std::pin::Pin;
 use utils::telemetry::TriggerMetrics;
-use wavs_types::ChainKey;
+use warpdrive_types::ChainKey;
 
 use crate::subsystems::trigger::error::TriggerError;
 

@@ -841,7 +841,7 @@ export function Settings() {
 `{
   "mcpServers": {
     "wavs": {
-      "command": "${mcpBinaryPath ?? '/path/to/wavs-mcp'}",
+      "command": "${mcpBinaryPath ?? '/path/to/warpdrive-mcp'}",
       "args": ["--wavs-url", "${wavsUrl}"${mcpToken.trim() ? `,\n               "--token", "${mcpToken.trim()}"` : ''}]
     }
   }
@@ -849,7 +849,7 @@ export function Settings() {
           }</pre>
           {!mcpBinaryPath && (
             <p className="text-tan-muted text-xs mt-1">
-              Binary not found. Build it with: <span className="font-mono">cargo build --release -p wavs-mcp</span>
+              Binary not found. Build it with: <span className="font-mono">cargo build --release -p warpdrive-mcp</span>
             </p>
           )}
         </div>
@@ -858,7 +858,7 @@ export function Settings() {
         <div className="flex flex-col gap-2">
           <label className="text-tan-muted text-xs font-medium">Register with Claude Code</label>
           <p className="text-tan-muted text-xs">
-            Add wavs-mcp to a Claude Code project so MCP tools are available there.
+            Add warpdrive-mcp to a Claude Code project so MCP tools are available there.
           </p>
           <div className="flex gap-2">
             <input

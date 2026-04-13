@@ -1,7 +1,7 @@
 use std::{str::FromStr, sync::Arc};
 
 use chrono::Utc;
-use wavs_types::Timestamp;
+use warpdrive_types::Timestamp;
 
 use crate::subsystems::trigger::{error::TriggerError, lookup::LookupId};
 

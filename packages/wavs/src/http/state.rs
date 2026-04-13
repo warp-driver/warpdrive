@@ -5,7 +5,7 @@ use utils::{
     storage::{db::WavsDb, fs::FileStorage},
     telemetry::HttpMetrics,
 };
-use wavs_types::{Service, ServiceDigest, ServiceId};
+use warpdrive_types::{Service, ServiceDigest, ServiceId};
 
 use crate::{
     config::Config, dispatcher::Dispatcher, health::SharedHealthStatus, log_buffer::LogBuffer,
@@ -85,7 +85,7 @@ impl HttpState {
         })
     }
 
-    pub fn load_service(&self, service_id: &ServiceId) -> anyhow::Result<wavs_types::Service> {
+    pub fn load_service(&self, service_id: &ServiceId) -> anyhow::Result<warpdrive_types::Service> {
         match self.dispatcher.services.get(service_id) {
             Ok(service) => Ok(service),
             _ => Err(anyhow::anyhow!(
@@ -97,7 +97,7 @@ impl HttpState {
     pub fn load_service_by_hash(
         &self,
         service_hash: &ServiceDigest,
-    ) -> anyhow::Result<wavs_types::Service> {
+    ) -> anyhow::Result<warpdrive_types::Service> {
         let key: [u8; 32] = service_hash
             .as_ref()
             .try_into()

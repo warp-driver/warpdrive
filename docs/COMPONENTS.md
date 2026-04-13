@@ -21,13 +21,13 @@ Module path: `github.com/Lay3rLabs/wavs/wasi/go`
 
 ### wasi-utils Crate
 
-The `packages/wasi-utils/` directory contains the `wavs-wasi-utils` Rust crate, which provides utility functions for building WASI components:
+The `packages/wasi-utils/` directory contains the `warpdrive-wasi-utils` Rust crate, which provides utility functions for building WASI components:
 
 - HTTP client utilities for making outbound requests from components
 - EVM provider and event helpers for interacting with Ethereum chains
 - Numeric conversion utilities
 
-Published to [crates.io](https://crates.io/crates/wavs-wasi-utils) as `wavs-wasi-utils`.
+Published to [crates.io](https://crates.io/crates/warpdrive-wasi-utils) as `warpdrive-wasi-utils`.
 
 ### Using WIT Definitions in Your Own Project
 

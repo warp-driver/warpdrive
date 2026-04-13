@@ -5,7 +5,7 @@ use dashmap::mapref::multiple::RefMulti;
 use dashmap::DashMap;
 use tracing::instrument;
 
-use wavs_types::{QuorumQueue, QuorumQueueId, Service, ServiceId};
+use warpdrive_types::{QuorumQueue, QuorumQueueId, Service, ServiceId};
 
 /// Main database struct with hardcoded tables for better type safety and performance
 #[derive(Clone)]
@@ -266,13 +266,13 @@ mod tests {
         let db = WavsDb::new().unwrap();
 
         // Test basic operations with a simple test struct instead of Service
-        use wavs_types::ServiceId;
+        use warpdrive_types::ServiceId;
         let service_id = ServiceId::hash(b"test-service");
         let service = Service {
             name: "test-service".to_string(),
             workflows: std::collections::BTreeMap::new(),
-            status: wavs_types::ServiceStatus::Active,
-            manager: wavs_types::ServiceManager::Evm {
+            status: warpdrive_types::ServiceStatus::Active,
+            manager: warpdrive_types::ServiceManager::Evm {
                 chain: "evm:anvil".parse().unwrap(),
                 address: alloy_primitives::Address::ZERO,
             },

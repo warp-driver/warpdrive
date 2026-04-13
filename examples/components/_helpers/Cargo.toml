@@ -7,7 +7,7 @@ rust-version.workspace = true
 repository.workspace = true
 
 [dependencies]
-wavs-wasi-utils = { workspace = true }
+warpdrive-wasi-utils = { workspace = true }
 alloy-primitives = { workspace = true }
 alloy-provider = { workspace = true }
 alloy-contract = { workspace = true }
@@ -18,8 +18,8 @@ serde = { workspace = true }
 anyhow = { workspace = true }
 cosmwasm-std = { workspace = true }
 wit-bindgen = { workspace = true }
-cw-wavs-trigger-api = {workspace = true}
-cw-wavs-mock-api = {workspace = true}
+cw-warpdrive-trigger-api = {workspace = true}
+cw-warpdrive-mock-api = {workspace = true}
 wasip2 = {workspace = true}
 
 [lib]

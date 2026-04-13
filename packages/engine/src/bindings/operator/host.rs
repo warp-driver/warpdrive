@@ -1,4 +1,4 @@
-use wavs_types::{ChainKey, EventIdSalt};
+use warpdrive_types::{ChainKey, EventIdSalt};
 
 use crate::worlds::operator::component::OperatorHostComponent;
 
@@ -63,7 +63,7 @@ impl super::world::host::Host for OperatorHostComponent {
             None => EventIdSalt::Trigger(&self.trigger_data),
         };
 
-        wavs_types::EventId::new(&self.service.id(), &self.workflow_id, salt)
+        warpdrive_types::EventId::new(&self.service.id(), &self.workflow_id, salt)
             .unwrap() // very unlikely to happen, would be a bincode error
             .as_bytes()
             .to_vec()

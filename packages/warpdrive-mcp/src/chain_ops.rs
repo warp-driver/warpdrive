@@ -10,7 +10,7 @@ use tokio::{fs, process::Command};
 use utils::evm_client::{
     signing::make_signer, EvmEndpoint, EvmSigningClient, EvmSigningClientConfig,
 };
-use wavs_types::{Credential, ServiceManager};
+use warpdrive_types::{Credential, ServiceManager};
 
 sol! {
     #[allow(missing_docs)]

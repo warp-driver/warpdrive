@@ -5,7 +5,7 @@ use http_body_util::BodyExt;
 use serde::de::DeserializeOwned;
 use utils::{context::AppContext, storage::fs::FileStorage, telemetry::HttpMetrics};
 
-use wavs::dispatcher::Dispatcher;
+use warpdrive::dispatcher::Dispatcher;
 
 use super::{app::TestApp, mock_app::MockE2ETestRunner};
 
@@ -13,7 +13,7 @@ use super::{app::TestApp, mock_app::MockE2ETestRunner};
 pub struct TestHttpApp {
     pub inner: TestApp,
     pub ctx: AppContext,
-    pub log_buffer: wavs::log_buffer::LogBuffer,
+    pub log_buffer: warpdrive::log_buffer::LogBuffer,
     _temp_data_dir: Option<Arc<tempfile::TempDir>>,
     _http_router: axum::Router,
 }
@@ -49,10 +49,10 @@ impl TestHttpApp {
         let meter = opentelemetry::global::meter("wavs_test_metrics");
         let metrics = HttpMetrics::new(meter);
 
-        let log_buffer = wavs::log_buffer::LogBufferInner::new();
+        let log_buffer = warpdrive::log_buffer::LogBufferInner::new();
         ctx.clone().rt.block_on(async move {
-            let health_status = wavs::health::SharedHealthStatus::new();
-            let http_router = wavs::http::server::make_router(
+            let health_status = warpdrive::health::SharedHealthStatus::new();
+            let http_router = warpdrive::http::server::make_router(
                 inner.config.as_ref().clone(),
                 dispatcher,
                 true,

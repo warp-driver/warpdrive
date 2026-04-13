@@ -1,4 +1,4 @@
-# wavs-mcp
+# warpdrive-mcp
 
 [Model Context Protocol](https://modelcontextprotocol.io) server for the WAVS platform.
 
@@ -11,7 +11,7 @@ Exposes WAVS operations to AI assistants (Claude, Cursor, VS Code Copilot, etc.)
 ### One-command setup (recommended)
 
 ```bash
-npx @wavs/mcp@latest
+npx @warpdrive/mcp@latest
 ```
 
 Interactive wizard: installs the binary, prompts for URL + token + credentials, writes `~/.claude.json` and `~/.wavs/wavs.toml`, and installs Claude Code skill files.
@@ -19,7 +19,7 @@ Interactive wizard: installs the binary, prompts for URL + token + credentials, 
 ### Global install
 
 ```bash
-npm install -g @wavs/mcp
+npm install -g @warpdrive/mcp
 ```
 
 The postinstall script downloads the correct pre-built binary for your platform.
@@ -27,8 +27,8 @@ The postinstall script downloads the correct pre-built binary for your platform.
 ### Build from source
 
 ```bash
-cargo build --release -p wavs-mcp
-# Binary: ./target/release/wavs-mcp
+cargo build --release -p warpdrive-mcp
+# Binary: ./target/release/warpdrive-mcp
 ```
 
 ---
@@ -36,7 +36,7 @@ cargo build --release -p wavs-mcp
 ## Running
 
 ```bash
-wavs-mcp --wavs-url http://localhost:8000 --token <your-token>
+warpdrive-mcp --wavs-url http://localhost:8000 --token <your-token>
 ```
 
 ### All flags
@@ -64,7 +64,7 @@ mcp_chain_credential = "0x<private-key>"
 signing_mnemonic = "word1 word2 ... word12"
 ```
 
-`wavs-mcp` reads this file automatically. Only `~/.wavs/wavs.toml` is searched — project-local `wavs.toml` files are intentionally skipped to prevent accidental credential commits.
+`warpdrive-mcp` reads this file automatically. Only `~/.wavs/wavs.toml` is searched — project-local `wavs.toml` files are intentionally skipped to prevent accidental credential commits.
 
 The WAVS desktop app's "Register with Claude" button and `just setup-claude-mcp` write this file automatically.
 
@@ -80,7 +80,7 @@ export WAVS_SIGNING_MNEMONIC="word1 word2 ... word12"
 ### 3. CLI flags (avoid — visible in `ps aux`)
 
 ```bash
-wavs-mcp --mcp-chain-credential 0x... --signing-mnemonic "word1 ..."
+warpdrive-mcp --mcp-chain-credential 0x... --signing-mnemonic "word1 ..."
 ```
 
 ---
@@ -91,7 +91,7 @@ wavs-mcp --mcp-chain-credential 0x... --signing-mnemonic "word1 ..."
 
 ```bash
 # One-command setup (recommended)
-npx @wavs/mcp@latest
+npx @warpdrive/mcp@latest
 
 # From the WAVS repo
 just setup-claude-mcp /path/to/your-project
@@ -105,7 +105,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 {
   "mcpServers": {
     "wavs": {
-      "command": "wavs-mcp",
+      "command": "warpdrive-mcp",
       "args": ["--wavs-url", "http://localhost:8000", "--token", "your-token"]
     }
   }
@@ -126,7 +126,7 @@ Edit `.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (global):
 {
   "mcpServers": {
     "wavs": {
-      "command": "wavs-mcp",
+      "command": "warpdrive-mcp",
       "args": ["--wavs-url", "http://localhost:8000", "--token", "your-token"]
     }
   }
@@ -142,7 +142,7 @@ Edit `.vscode/mcp.json`:
   "servers": {
     "wavs": {
       "type": "stdio",
-      "command": "wavs-mcp",
+      "command": "warpdrive-mcp",
       "args": ["--wavs-url", "http://localhost:8000", "--token", "your-token"]
     }
   }

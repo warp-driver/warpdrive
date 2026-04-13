@@ -11,7 +11,7 @@ use axum_extra::{
     TypedHeader,
 };
 use subtle::ConstantTimeEq;
-use wavs_types::Credential;
+use warpdrive_types::Credential;
 
 // Shared bearer token middleware with realm support
 // State is a tuple: (token, realm)
@@ -58,7 +58,7 @@ mod tests {
         Router,
     };
     use tower::util::ServiceExt;
-    use wavs_types::Credential; // for `oneshot`
+    use warpdrive_types::Credential; // for `oneshot`
 
     fn app_with_auth(token: &str, realm: &str) -> Router {
         let protected = Router::new().route("/protected", get(|| async { "ok" }));

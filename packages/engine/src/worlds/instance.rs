@@ -7,7 +7,7 @@ use wasmtime::{component::Linker, Engine as WTEngine};
 use wasmtime_wasi::{DirPerms, FilePerms, WasiCtxBuilder, WasiView};
 use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
 use wasmtime_wasi_tls::{WasiTls, WasiTlsCtxBuilder};
-use wavs_types::{
+use warpdrive_types::{
     AllowedHostPermission, ChainConfigs, EventId, Permissions, Service, TriggerData, Workflow,
     WorkflowId,
 };
@@ -192,8 +192,8 @@ impl<P: AsRef<Path>> InstanceDepsBuilder<'_, P> {
                     .unwrap();
 
                     let component = match &workflow.submit {
-                        wavs_types::Submit::None => unreachable!(),
-                        wavs_types::Submit::Aggregator { component, .. } => (**component).clone(),
+                        warpdrive_types::Submit::None => unreachable!(),
+                        warpdrive_types::Submit::Aggregator { component, .. } => (**component).clone(),
                     };
                     configure_linker(&mut linker, &component.permissions)?;
 

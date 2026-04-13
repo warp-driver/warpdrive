@@ -6,8 +6,8 @@ use std::sync::Arc;
 use error::EngineError;
 use tracing::instrument;
 use utils::storage::CAStorage;
-use wavs_engine::bindings::aggregator::world::AnyTxHash;
-use wavs_types::{AggregatorAction, Service, Submission, Submit, TriggerAction};
+use warpdrive_engine::bindings::aggregator::world::AnyTxHash;
+use warpdrive_types::{AggregatorAction, Service, Submission, Submit, TriggerAction};
 
 use crate::dispatcher::DispatcherCommand;
 use crate::services::Services;

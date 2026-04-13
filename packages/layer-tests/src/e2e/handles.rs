@@ -14,10 +14,10 @@ use utils::{
         evm::EvmMiddleware,
     },
 };
-use wavs::dispatcher::{Dispatcher, TauriHandle};
-use wavs::subsystems::aggregator::p2p::P2pConfig;
-use wavs_cli::clients::HttpClient;
-use wavs_types::{ChainKey, ChainKeyNamespace};
+use warpdrive::dispatcher::{Dispatcher, TauriHandle};
+use warpdrive::subsystems::aggregator::p2p::P2pConfig;
+use warpdrive_cli::clients::HttpClient;
+use warpdrive_types::{ChainKey, ChainKeyNamespace};
 
 use crate::config::TestP2pMode;
 
@@ -138,7 +138,7 @@ impl AppHandles {
     /// Spawn a single WAVS operator
     fn spawn_wavs_operator(
         ctx: &AppContext,
-        wavs_config: &wavs::config::Config,
+        wavs_config: &warpdrive::config::Config,
         metrics: &Metrics,
         operator_index: usize,
     ) -> std::thread::JoinHandle<()> {
@@ -158,14 +158,14 @@ impl AppHandles {
                     operator_index,
                     config.port
                 );
-                let health_status = wavs::health::SharedHealthStatus::new();
-                wavs::run_server(
+                let health_status = warpdrive::health::SharedHealthStatus::new();
+                warpdrive::run_server(
                     ctx,
                     config,
                     dispatcher,
                     http_metrics,
                     health_status,
-                    wavs::log_buffer::LogBufferInner::new(),
+                    warpdrive::log_buffer::LogBufferInner::new(),
                 );
             }
         })

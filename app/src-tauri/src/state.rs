@@ -3,13 +3,13 @@ use std::{path::PathBuf, sync::Arc, thread::JoinHandle};
 use opentelemetry_sdk::metrics::SdkMeterProvider;
 use tauri::{AppHandle, Manager};
 use utils::{config::ConfigBuilder, storage::fs::FileStorage};
-use wavs::{dispatcher::Dispatcher, log_buffer::LogBuffer};
-use wavs_gui_shared::{
+use warpdrive::{dispatcher::Dispatcher, log_buffer::LogBuffer};
+use warpdrive_gui_shared::{
     error::{AppError, AppResult},
     event::{SettingsEvent, TauriEventEmitterExt},
     settings::Settings,
 };
-use wavs_types::{ChainConfigs, Credential};
+use warpdrive_types::{ChainConfigs, Credential};
 
 pub struct SettingsState {
     pub path: PathBuf,
@@ -77,7 +77,7 @@ impl SettingsState {
 
 #[derive(Default)]
 pub struct WavsConfigState {
-    pub inner: std::sync::RwLock<Option<wavs::config::Config>>,
+    pub inner: std::sync::RwLock<Option<warpdrive::config::Config>>,
 }
 
 impl WavsConfigState {
@@ -109,20 +109,20 @@ impl WavsConfigState {
         self.inner.read().unwrap().is_some()
     }
 
-    pub fn get_cloned(&self) -> Option<wavs::config::Config> {
+    pub fn get_cloned(&self) -> Option<warpdrive::config::Config> {
         self.inner.read().unwrap().clone()
     }
 
     #[allow(clippy::field_reassign_with_default)]
-    async fn _load_inner(path: PathBuf) -> AppResult<wavs::config::Config> {
-        let mut args = wavs::args::CliArgs::default();
+    async fn _load_inner(path: PathBuf) -> AppResult<warpdrive::config::Config> {
+        let mut args = warpdrive::args::CliArgs::default();
         args.home = Some(path.clone());
 
         std::env::remove_var("WAVS_HOME");
         std::env::remove_var("WAVS_DOTENV");
         std::env::remove_var("WAVS_DATA");
 
-        let config: wavs::config::Config = ConfigBuilder::new(args)
+        let config: warpdrive::config::Config = ConfigBuilder::new(args)
             .build()
             .map_err(|e| AppError::WavsConfig(e.to_string()))?;
 
