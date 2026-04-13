@@ -12,10 +12,10 @@ use alloy_provider::RootProvider;
 use alloy_sol_types::SolValue;
 use anyhow::Result;
 use cosmwasm_std::HexBinary;
-use cw_wavs_mock_api::message_with_id::MessageWithId;
+use cw_warpdrive_mock_api::message_with_id::MessageWithId;
 use example_submit::DataWithId;
 use example_trigger::{NewTrigger, SimpleTrigger, TriggerInfo};
-use wavs_wasi_utils::decode_event_log_data;
+use warpdrive_wasi_utils::decode_event_log_data;
 
 pub fn decode_trigger_event(trigger_data: component_input::TriggerData) -> Result<(u64, Vec<u8>)> {
     match trigger_data {
@@ -24,7 +24,7 @@ pub fn decode_trigger_event(trigger_data: component_input::TriggerData) -> Resul
             ..
         }) => {
             let event = cosmwasm_std::Event::from(event);
-            let event = cw_wavs_trigger_api::simple::PushMessageEvent::try_from(&event)?;
+            let event = cw_warpdrive_trigger_api::simple::PushMessageEvent::try_from(&event)?;
 
             Ok((event.trigger_id.u64(), event.data.to_vec()))
         }
@@ -116,7 +116,7 @@ impl ChainQuerierExt for layer_climb::prelude::QueryClient {
         let resp: HexBinary = self
             .contract_smart(
                 &address,
-                &cw_wavs_trigger_api::simple::QueryMsg::TriggerMessage {
+                &cw_warpdrive_trigger_api::simple::QueryMsg::TriggerMessage {
                     trigger_id: trigger_id.into(),
                 },
             )

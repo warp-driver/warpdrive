@@ -28,7 +28,7 @@ use std::{
 };
 use utils::{config::WAVS_ENV_PREFIX, service::fetch_bytes, wkg::WkgClient};
 use uuid::Uuid;
-use wavs_types::{
+use warpdrive_types::{
     AggregatorBuilder, AllowedHostPermission, AnyChainConfig, AtProtoAction, ByteArray, ChainKey,
     Component, ComponentBuilder, ComponentDigest, ComponentSource, Registry, ServiceBuilder,
     ServiceManager, ServiceManagerBuilder, ServiceStatus, SignatureKind, Submit, SubmitBuilder,

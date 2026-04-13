@@ -7,7 +7,7 @@ use futures::{Stream, StreamExt};
 use std::pin::Pin;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use utils::telemetry::TriggerMetrics;
-use wavs_types::ChainKey;
+use warpdrive_types::ChainKey;
 
 use crate::subsystems::trigger::error::TriggerError;
 

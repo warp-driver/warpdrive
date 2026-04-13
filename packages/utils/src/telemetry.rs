@@ -12,7 +12,7 @@ use opentelemetry_sdk::{
     trace::{self, Sampler, SdkTracerProvider},
 };
 use tracing_subscriber::layer::SubscriberExt;
-use wavs_types::{ChainKey, Service, WorkflowId};
+use warpdrive_types::{ChainKey, Service, WorkflowId};
 
 const DEFAULT_PROMETHEUS_PUSH_INTERVAL: u64 = 30; // seconds
 

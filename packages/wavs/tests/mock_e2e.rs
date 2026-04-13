@@ -14,9 +14,9 @@ use utils::{
 };
 mod wavs_systems;
 use alloy_sol_types::{sol, SolValue};
-use wavs::dispatcher::DispatcherCommand;
+use warpdrive::dispatcher::DispatcherCommand;
 use wavs_systems::{mock_app::MockE2ETestRunner, mock_submissions::wait_for_submission_messages};
-use wavs_types::{
+use warpdrive_types::{
     ChainKey, Component, ComponentSource, EventId, EventIdSalt, Service, ServiceManager,
     SignatureKind, Submit, Trigger, TriggerAction, TriggerConfig, TriggerData, Workflow,
     WorkflowId,
@@ -217,7 +217,7 @@ fn mock_e2e_same_tx_different_block_hash() {
         let bytes =
             const_hex::decode("86eacd23610d81706516de1ed0476c87772fdf939c7c771fbbd7f0230d619e68")
                 .unwrap();
-        wavs_types::ByteArray::try_from(bytes).unwrap()
+        warpdrive_types::ByteArray::try_from(bytes).unwrap()
     };
     let trigger = Trigger::EvmContractEvent {
         address: contract_address,
@@ -239,7 +239,7 @@ fn mock_e2e_same_tx_different_block_hash() {
             },
         )]
         .into(),
-        status: wavs_types::ServiceStatus::Active,
+        status: warpdrive_types::ServiceStatus::Active,
         manager: ServiceManager::Evm {
             chain: chain.clone(),
             address: rand_address_evm(),

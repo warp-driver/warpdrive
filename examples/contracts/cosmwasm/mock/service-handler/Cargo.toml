@@ -1,5 +1,5 @@
 [package]
-name = "cw-wavs-mock-service-handler"
+name = "cw-warpdrive-mock-service-handler"
 version = "0.0.0"
 edition = "2021"
 license = "Apache-2.0"
@@ -8,8 +8,8 @@ license = "Apache-2.0"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-cw-wavs-mock-api = { workspace = true }
-wavs-types = { workspace = true }
+cw-warpdrive-mock-api = { workspace = true }
+warpdrive-types = { workspace = true }
 cosmwasm-std = { workspace = true }
 anyhow = { workspace = true }
 cw-storage-plus = { workspace = true }

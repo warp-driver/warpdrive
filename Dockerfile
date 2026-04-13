@@ -15,7 +15,7 @@ FROM base AS cacher
 WORKDIR /myapp
 RUN cargo install cargo-chef
 COPY --from=planner /myapp/recipe.json recipe.json
-RUN cargo chef cook --release --recipe-path recipe.json -p wavs -p wavs-cli
+RUN cargo chef cook --release --recipe-path recipe.json -p wavs -p warpdrive-cli
 
 # This build step should just compile the local code and be faster
 FROM base AS builder
@@ -23,7 +23,7 @@ WORKDIR /myapp
 COPY . .
 # Copy over the cached dependencies
 COPY --from=cacher /myapp/target target
-RUN cargo build --release -p wavs -p wavs-cli
+RUN cargo build --release -p wavs -p warpdrive-cli
 
 ### PRODUCTION
 
@@ -40,7 +40,7 @@ RUN apt install -y libcurl4 jq
 COPY --from=builder /myapp/target/release/wavs /usr/local/bin/wavs
 COPY --from=builder /myapp/wavs.toml /var/wavs/wavs.toml
 
-COPY --from=builder /myapp/target/release/wavs-cli /usr/local/bin/wavs-cli
+COPY --from=builder /myapp/target/release/warpdrive-cli /usr/local/bin/warpdrive-cli
 
 # copy /usr/local/bin/forge, cast, anvil, and chisel from foundry
 COPY --from=foundry /usr/local/bin/forge /usr/local/bin/forge

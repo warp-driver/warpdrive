@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use wavs_types::{Service, Workflow, WorkflowId};
+use warpdrive_types::{Service, Workflow, WorkflowId};
 
 #[derive(Clone, Debug)]
 pub struct ServiceDeployment {

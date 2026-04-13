@@ -6,7 +6,7 @@ use axum::{
     Json,
 };
 use std::path::{Path as FsPath, PathBuf};
-use wavs_types::ServiceId;
+use warpdrive_types::ServiceId;
 
 use crate::http::state::HttpState;
 

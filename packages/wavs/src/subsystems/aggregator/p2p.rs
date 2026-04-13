@@ -40,7 +40,7 @@ use libp2p::{
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 use utils::context::AppContext;
-use wavs_types::{P2pStatus, ServiceId, Submission};
+use warpdrive_types::{P2pStatus, ServiceId, Submission};
 
 use super::{error::AggregatorError, peer::Peer, AggregatorCommand};
 

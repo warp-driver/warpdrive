@@ -9,8 +9,8 @@ use utils::test_utils::{
     },
     mock_service_manager::MockEvmServiceManager,
 };
-use wavs_cli::command::deploy_service::DeployService;
-use wavs_types::{
+use warpdrive_cli::command::deploy_service::DeployService;
+use warpdrive_types::{
     ChainKey, ChainKeyNamespace, Service, ServiceManager, ServiceStatus, SignerResponse,
 };
 

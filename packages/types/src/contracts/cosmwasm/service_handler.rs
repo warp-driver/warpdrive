@@ -9,8 +9,8 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 ///
 /// ```rust
 /// use cosmwasm_schema::cw_serde;
-/// use wavs_types::contracts::cosmwasm::service_handler::ServiceHandlerQueryMessages;
-/// use wavs_types::contracts::cosmwasm::service_handler::ServiceHandlerExecuteMessages;
+/// use warpdrive_types::contracts::cosmwasm::service_handler::ServiceHandlerQueryMessages;
+/// use warpdrive_types::contracts::cosmwasm::service_handler::ServiceHandlerExecuteMessages;
 ///
 /// #[cw_serde]
 /// #[schemaifier(mute_warnings)]

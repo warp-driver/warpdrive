@@ -1,5 +1,5 @@
 use alloy_primitives::Address;
-use wavs_types::{
+use warpdrive_types::{
     IWavsServiceHandler, IWavsServiceHandlerQueryT, IWavsServiceHandlerSigningT,
     IWavsServiceManager, IWavsServiceManagerQueryT, IWavsServiceManagerSigningT,
 };

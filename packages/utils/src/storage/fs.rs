@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::{fs::File, str::FromStr};
 
 use tracing::instrument;
-use wavs_types::AnyDigest;
+use warpdrive_types::AnyDigest;
 
 use super::prelude::*;
 

@@ -18,4 +18,4 @@ example-types = { workspace = true }
 crate-type = ["rlib", "cdylib"]
 
 [package.metadata.component]
-package = "wavs-tests:cosmos-query"
+package = "warpdrive-tests:cosmos-query"

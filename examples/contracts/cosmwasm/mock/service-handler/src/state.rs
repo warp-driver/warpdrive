@@ -1,7 +1,7 @@
 use cosmwasm_std::{Addr, HexBinary, Uint64};
 use cw_storage_plus::{Item, Map};
-use cw_wavs_mock_api::message_with_id::MessageWithId;
-use wavs_types::contracts::cosmwasm::service_handler::{WavsEnvelope, WavsSignatureData};
+use cw_warpdrive_mock_api::message_with_id::MessageWithId;
+use warpdrive_types::contracts::cosmwasm::service_handler::{WavsEnvelope, WavsSignatureData};
 
 pub const SERVICE_MANAGER: Item<Addr> = Item::new("service-manager");
 

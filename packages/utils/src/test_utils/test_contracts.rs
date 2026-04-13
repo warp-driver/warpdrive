@@ -2,7 +2,7 @@ use alloy_node_bindings::AnvilInstance;
 use alloy_primitives::Address;
 use alloy_provider::DynProvider;
 use tempfile::TempDir;
-use wavs_types::{ChainKey, Credential};
+use warpdrive_types::{ChainKey, Credential};
 
 use crate::{
     evm_client::{EvmSigningClient, EvmSigningClientConfig},

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
-use wavs_types::{
+use warpdrive_types::{
     ByteArray, ChainKey, DevTriggerStreamInfo, DevTriggerStreamSubscriptionKind,
     DevTriggerStreamsInfo, SimulatedTriggerRequest, TriggerAction, TriggerConfig,
 };

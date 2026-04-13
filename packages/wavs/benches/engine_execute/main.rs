@@ -4,8 +4,8 @@ mod setup;
 use criterion::{criterion_group, criterion_main};
 use setup::ExecuteSetup;
 use std::sync::Arc;
-use wavs_benchmark_common::app_context::APP_CONTEXT;
-use wavs_types::WasmResponse;
+use warpdrive_benchmark_common::app_context::APP_CONTEXT;
+use warpdrive_types::WasmResponse;
 
 /// Execute the configured number of engine executions
 ///
@@ -22,7 +22,7 @@ pub fn run_simulation(setup: Arc<ExecuteSetup>) {
             let mut deps = setup.engine_setup.create_instance_deps(&trigger_action);
 
             // Execute the component and measure performance
-            match wavs_engine::worlds::operator::execute::execute(
+            match warpdrive_engine::worlds::operator::execute::execute(
                 &mut deps,
                 trigger_action,
                 WasmResponse::DEFAULT_MAX_PAYLOAD_SIZE,

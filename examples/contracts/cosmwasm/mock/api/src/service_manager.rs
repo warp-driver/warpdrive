@@ -1,7 +1,7 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Empty, Uint256};
 use layer_climb_address::EvmAddr;
-use wavs_types::contracts::cosmwasm::service_manager::{
+use warpdrive_types::contracts::cosmwasm::service_manager::{
     ServiceManagerExecuteMessages, ServiceManagerQueryMessages,
 };
 

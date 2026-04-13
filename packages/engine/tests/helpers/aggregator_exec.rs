@@ -1,11 +1,11 @@
 use utils::storage::db::WavsDb;
 use wasmtime::{component::Component as WasmtimeComponent, Config as WTConfig, Engine as WTEngine};
-use wavs_engine::{
+use warpdrive_engine::{
     backend::wasi_keyvalue::context::KeyValueCtx,
     bindings::aggregator::world::{host::LogLevel, wavs::aggregator::output::AggregatorAction},
     worlds::instance::{HostComponentLogger, InstanceData, InstanceDepsBuilder},
 };
-use wavs_types::{
+use warpdrive_types::{
     AggregatorInput, ChainConfigs, ComponentDigest, EvmChainConfig, Service, ServiceId, WorkflowId,
 };
 
@@ -55,7 +55,7 @@ pub async fn execute_aggregator_component(
     .unwrap();
 
     let aggregator_world =
-        wavs_engine::bindings::aggregator::world::AggregatorWorld::instantiate_async(
+        warpdrive_engine::bindings::aggregator::world::AggregatorWorld::instantiate_async(
             instance_deps.store.as_aggregator_mut(),
             &instance_deps.component,
             instance_deps.linker.as_aggregator_ref(),

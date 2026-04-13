@@ -1,7 +1,7 @@
 use anyhow::Result;
-use cw_wavs_mock_api::service_handler::TriggerMessageResponse;
+use cw_warpdrive_mock_api::service_handler::TriggerMessageResponse;
 use layer_climb::{pool::SigningClientPoolManager, prelude::*};
-use wavs_types::contracts::cosmwasm::service_handler::WavsSignatureData;
+use warpdrive_types::contracts::cosmwasm::service_handler::WavsSignatureData;
 
 pub struct SimpleCosmosSubmitClient {
     pub signing_client: deadpool::managed::Object<SigningClientPoolManager>,
@@ -30,7 +30,7 @@ impl SimpleCosmosSubmitClient {
                 None,
                 code_id,
                 label,
-                &cw_wavs_mock_api::service_handler::InstantiateMsg {
+                &cw_warpdrive_mock_api::service_handler::InstantiateMsg {
                     service_manager: service_manager.to_string(),
                 },
                 Vec::new(),
@@ -46,7 +46,7 @@ impl SimpleCosmosSubmitClient {
             .querier
             .contract_smart(
                 &self.contract_address,
-                &cw_wavs_mock_api::service_handler::QueryMsg::TriggerValidated {
+                &cw_warpdrive_mock_api::service_handler::QueryMsg::TriggerValidated {
                     trigger_id: trigger_id.into(),
                 },
             )
@@ -61,7 +61,7 @@ impl SimpleCosmosSubmitClient {
             .querier
             .contract_smart(
                 &self.contract_address,
-                &cw_wavs_mock_api::service_handler::QueryMsg::SignatureData {
+                &cw_warpdrive_mock_api::service_handler::QueryMsg::SignatureData {
                     trigger_id: trigger_id.into(),
                 },
             )
@@ -74,7 +74,7 @@ impl SimpleCosmosSubmitClient {
             .querier
             .contract_smart(
                 &self.contract_address,
-                &cw_wavs_mock_api::service_handler::QueryMsg::TriggerMessage {
+                &cw_warpdrive_mock_api::service_handler::QueryMsg::TriggerMessage {
                     trigger_id: trigger_id.into(),
                 },
             )

@@ -12,7 +12,7 @@ use crate::subsystems::trigger::{
 use super::{error::TriggerError, lookup::LookupId};
 use futures::{stream::SelectAll, Stream};
 use std::pin::Pin;
-use wavs_types::{ChainKey, Timestamp};
+use warpdrive_types::{ChainKey, Timestamp};
 
 /// Represents a cron trigger firing event at a specific scheduled time.
 /// Multiple lookup IDs can fire at the same timestamp.

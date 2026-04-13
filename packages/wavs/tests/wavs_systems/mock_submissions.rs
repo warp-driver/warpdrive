@@ -6,9 +6,9 @@ use std::{
 use alloy_primitives::FixedBytes;
 use thiserror::Error;
 use utils::{context::AppContext, telemetry::Metrics};
-use wavs_types::{EventId, EventOrder, Service, TriggerAction, WasmResponse};
+use warpdrive_types::{EventId, EventOrder, Service, TriggerAction, WasmResponse};
 
-use wavs::{
+use warpdrive::{
     config::Config,
     services::Services,
     subsystems::submission::{
@@ -55,12 +55,12 @@ pub enum WaitError {
 pub fn mock_submission_request(service: &Service, payload: &str) -> SubmissionRequest {
     SubmissionRequest {
         trigger_action: TriggerAction {
-            config: wavs_types::TriggerConfig {
+            config: warpdrive_types::TriggerConfig {
                 service_id: service.id(),
                 workflow_id: service.workflows.keys().next().unwrap().clone(),
                 trigger: service.workflows.values().next().unwrap().trigger.clone(),
             },
-            data: wavs_types::TriggerData::default(),
+            data: warpdrive_types::TriggerData::default(),
         },
         operator_response: WasmResponse {
             payload: payload.as_bytes().to_vec(),

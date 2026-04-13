@@ -5,7 +5,7 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 
 use crate::state;
-use cw_wavs_trigger_api::simple::{ExecuteMsg, PushMessageEvent, QueryMsg};
+use cw_warpdrive_trigger_api::simple::{ExecuteMsg, PushMessageEvent, QueryMsg};
 
 // version info for migration info
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");

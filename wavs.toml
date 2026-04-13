@@ -247,8 +247,8 @@ dev_endpoints_enabled = true
 # WAVS node HTTP endpoint. Default: "http://127.0.0.1:8000"
 # wavs_endpoint = "http://127.0.0.1:8000"
 
-# Directory for CLI data storage. Default: "/var/wavs-cli"
-# data = "/var/wavs-cli"
+# Directory for CLI data storage. Default: "/var/warpdrive-cli"
+# data = "/var/warpdrive-cli"
 
 # Log level for the CLI. Default: ["info"]
 # log_level = ["info"]

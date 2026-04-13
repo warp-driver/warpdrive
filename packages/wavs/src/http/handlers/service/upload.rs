@@ -1,6 +1,6 @@
 use crate::http::{error::HttpResult, state::HttpState};
 use axum::{body::Bytes, extract::State, response::IntoResponse, Json};
-use wavs_types::UploadComponentResponse;
+use warpdrive_types::UploadComponentResponse;
 
 #[utoipa::path(
     post,

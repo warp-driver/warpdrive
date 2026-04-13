@@ -1,7 +1,7 @@
 #![cfg(feature = "dev")]
 use std::time::Duration;
 
-use wavs::subsystems::submission::SubmissionCommand;
+use warpdrive::subsystems::submission::SubmissionCommand;
 
 use utils::{context::AppContext, telemetry::Metrics};
 

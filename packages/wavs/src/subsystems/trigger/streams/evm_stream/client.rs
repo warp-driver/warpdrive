@@ -33,7 +33,7 @@ pub struct EvmTriggerStreamsController {
 impl EvmTriggerStreams {
     pub fn new(
         ws_endpoints: Vec<String>,
-        chain_key: wavs_types::ChainKey,
+        chain_key: warpdrive_types::ChainKey,
         ws_priority_endpoint_index: Option<usize>,
         metrics: EvmStreamMetrics,
     ) -> Self {

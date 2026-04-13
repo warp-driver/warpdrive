@@ -1,3 +1,4 @@
+# This can run on every commit in a PR to do some quicker tests
 on: [pull_request]
 
 name: Basic Checks
@@ -7,84 +8,16 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  CARGO_INCREMENTAL: 0
+  # CARGO_INCREMENTAL: 0
   RUST_BACKTRACE: short
   CARGO_TERM_COLOR: always
   WAVS_SUBMISSION_MNEMONIC: "test test test test test test test test test test test junk"
   WAVS_AGGREGATOR_EVM_CREDENTIAL: "test test test test test test test test test test test junk"
-  WAVS_CLI_EVM_CREDENTIAL: "test test test test test test test test test test test junk"
-  WAVS_COSMOS_SUBMISSION_MNEMONIC: "reward index time stem expire cheap worth fence coil option treat ensure install entry zone mule benefit success remain rebuild inherit eyebrow cluster sheriff"
-  WAVS_CLI_COSMOS_MNEMONIC: "reward index time stem expire cheap worth fence coil option treat ensure install entry zone mule benefit success remain rebuild inherit eyebrow cluster sheriff"
+  # WAVS_CLI_EVM_CREDENTIAL: "test test test test test test test test test test test junk"
+  # WAVS_COSMOS_SUBMISSION_MNEMONIC: "reward index time stem expire cheap worth fence coil option treat ensure install entry zone mule benefit success remain rebuild inherit eyebrow cluster sheriff"
+  # WAVS_CLI_COSMOS_MNEMONIC: "reward index time stem expire cheap worth fence coil option treat ensure install entry zone mule benefit success remain rebuild inherit eyebrow cluster sheriff"
 
 jobs:
-  # test-eigenlayer:
-  #   name: Test Suite (EigenLayer)
-  #   runs-on: ubuntu-24.04
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: ./.github/actions/setup
-
-  #     - name: Configure EigenLayer middleware
-  #       run: |
-  #         sed -i 's/evm_middleware_type = ".*"/evm_middleware_type = "eigenlayer"/' packages/layer-tests/layer-tests.toml
-
-  #     - name: Build tests first
-  #       run: cargo test --workspace --no-run --locked
-
-  #     - name: Run tests
-  #       run: cargo test --workspace --locked --all-features -- --nocapture --test-threads=4
-  #       env:
-  #         RUST_LOG: info
-
-  test-poa:
-    name: Test Suite (POA)
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup
-      
-      - name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@main
-        with:
-          # this might remove tools that are actually needed,
-          # if set to "true" but frees about 6 GB
-          tool-cache: false
-          
-          # all of these default to true, but feel free to set to
-          # "false" if necessary for your workflow
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: false
-          swap-storage: true
-
-      - name: Configure POA middleware
-        run: |
-          sed -i 's/evm_middleware_type = ".*"/evm_middleware_type = "poa"/' packages/layer-tests/layer-tests.toml
-
-      - name: Build tests first
-        run: cargo test --workspace --no-run --locked
-
-      - name: Run tests
-        run: cargo test --workspace --locked --all-features -- --nocapture --test-threads=4 --skip concurrency
-        env:
-          RUST_LOG: info
-
-  # test-suite:
-  #   name: Test Suite
-  #   runs-on: ubuntu-latest
-  #   needs: [test-eigenlayer, test-poa]
-  #   if: always()
-  #   steps:
-  #     - name: Check test results
-  #       run: |
-  #         if [ "${{ needs.test-eigenlayer.result }}" != "success" ] || [ "${{ needs.test-poa.result }}" != "success" ]; then
-  #           echo "One or more test jobs failed"
-  #           exit 1
-  #         fi
-  #         echo "All test jobs passed"
-
   lint:
     name: Lint
     runs-on: ubuntu-24.04
@@ -95,19 +28,28 @@ jobs:
       - name: Check formatting
         run: cargo fmt --all -- --check
 
-      - name: Check compilations
-        run: cargo check --all-targets --all-features
-
       - name: Run clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
 
+      # - name: Check compilations
+      #   run: cargo check --all-targets --all-features
 
-  wasi:
-    name: Build WASI Components
+  test:
+    name: Basic Unit Tests
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
 
-      - name: Build WASI components
-        run: just wasi-build
+      - name: Test WarpDrive CLI
+        run: cargo test -p warpdrive-cli --lib -- --skip test_set_component_source_registry
+
+      - name: Test WarpDrive Types
+        run: cargo test -p warpdrive-types --lib
+
+      - name: Test WarpDrive Engine
+        run: cargo test -p warpdrive-engine --lib
+
+      - name: Test WarpDrive (no anvil, cosmos)
+        run: cargo test -p warpdrive --lib -- --skip evm_stream
+

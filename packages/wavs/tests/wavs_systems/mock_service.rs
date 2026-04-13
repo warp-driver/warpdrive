@@ -1,18 +1,18 @@
 use utils::{storage::db::WavsDb, test_utils::address::rand_address_evm};
-use wavs::services::Services;
-use wavs_types::{
+use warpdrive::services::Services;
+use warpdrive_types::{
     Component, ComponentDigest, ComponentSource, Service, ServiceManager, SignatureKind, Submit,
     Trigger, Workflow,
 };
 
 pub fn mock_services() -> Services {
-    wavs::services::Services::new(WavsDb::new().unwrap())
+    warpdrive::services::Services::new(WavsDb::new().unwrap())
 }
 
 pub fn mock_service() -> Service {
-    wavs_types::Service {
+    warpdrive_types::Service {
         name: "serv1".to_string(),
-        status: wavs_types::ServiceStatus::Active,
+        status: warpdrive_types::ServiceStatus::Active,
         manager: ServiceManager::Evm {
             chain: "evm:anvil".parse().unwrap(),
             address: rand_address_evm(),

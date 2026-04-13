@@ -4,7 +4,7 @@ use utils::{
     init_tracing_tests,
     test_utils::anvil::safe_spawn_anvil,
 };
-use wavs_types::Credential;
+use warpdrive_types::Credential;
 
 #[tokio::test]
 async fn client_sign_message() {

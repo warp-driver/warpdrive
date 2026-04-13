@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 
 use utils::storage::db::{WavsDb, WavsDbTable};
 use utils::test_utils::address::rand_address_evm;
-use wavs_types::{
+use warpdrive_types::{
     Component, ComponentDigest, ComponentSource, Service, ServiceManager, ServiceStatus, Submit,
     Workflow, WorkflowId,
 };

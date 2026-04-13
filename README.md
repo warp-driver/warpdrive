@@ -40,7 +40,7 @@ This project uses [just](https://github.com/casey/just) for managing releases. H
    just push-tag v2.7.0
    ```
 
-This creates both a standard tag (`v2.7.0`) and a Go module tag (`wasi/go/v2.7.0`). The standard tag triggers CI to publish the `wavs-types` and `wavs-wasi-utils` crates to crates.io, WASM components to wa.dev, and TypeScript bindings to NPM.
+This creates both a standard tag (`v2.7.0`) and a Go module tag (`wasi/go/v2.7.0`). The standard tag triggers CI to publish the `warpdrive-types` and `warpdrive-wasi-utils` crates to crates.io, WASM components to wa.dev, and TypeScript bindings to NPM.
 
 ---
 
@@ -51,7 +51,7 @@ WAVS ships with a `/wavs` skill for [Claude Code](https://claude.ai/code) that g
 Full Claude Code integration requires two independent steps:
 
 1. **Install the skill** — teaches Claude the WAVS workflow and tool reference.
-2. **Register `wavs-mcp`** — connects Claude Code to a live WAVS node so MCP tools actually work.
+2. **Register `warpdrive-mcp`** — connects Claude Code to a live WAVS node so MCP tools actually work.
 
 ### Step 1: Install the skill
 
@@ -69,12 +69,12 @@ bash <(curl -fsSL https://raw.githubusercontent.com/Lay3rLabs/wavs/main/.claude/
 
 After installation, restart Claude Code to pick up the skill.
 
-### Step 2: Register wavs-mcp with Claude Code
+### Step 2: Register warpdrive-mcp with Claude Code
 
-The skill's MCP tools require `wavs-mcp` to be running and registered for each project. Run once per project directory:
+The skill's MCP tools require `warpdrive-mcp` to be running and registered for each project. Run once per project directory:
 
 ```bash
-# From the WAVS repo — auto-detects the running wavs-mcp process:
+# From the WAVS repo — auto-detects the running warpdrive-mcp process:
 just setup-claude-mcp /path/to/your-project
 ```
 

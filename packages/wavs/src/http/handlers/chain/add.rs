@@ -1,5 +1,5 @@
 use axum::{extract::State, response::IntoResponse, Json};
-use wavs_types::{AddChainRequest, AnyChainConfig, ChainKey};
+use warpdrive_types::{AddChainRequest, AnyChainConfig, ChainKey};
 
 use crate::{
     http::{error::HttpResult, state::HttpState},

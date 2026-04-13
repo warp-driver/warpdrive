@@ -2,8 +2,8 @@ use anyhow::Result;
 use std::collections::{BTreeMap, BTreeSet};
 use std::time::Instant;
 use utils::config::WAVS_ENV_PREFIX;
-use wavs_engine::worlds::instance::{HostComponentLogger, InstanceData, InstanceDepsBuilder};
-use wavs_types::{
+use warpdrive_engine::worlds::instance::{HostComponentLogger, InstanceData, InstanceDepsBuilder};
+use warpdrive_types::{
     AggregatorAction, AggregatorInput, AllowedHostPermission, Component, ComponentDigest,
     ComponentSource, Permissions, Service, ServiceManager, ServiceStatus, SignatureKind, Submit,
     Trigger, TriggerAction, TriggerConfig, WasmResponse, Workflow, WorkflowId,
@@ -60,7 +60,7 @@ fn create_dummy_input(service: &Service) -> AggregatorInput {
                 workflow_id: service.workflows.keys().next().cloned().unwrap(),
                 trigger: service.workflows.values().next().unwrap().trigger.clone(),
             },
-            data: wavs_types::TriggerData::default(),
+            data: warpdrive_types::TriggerData::default(),
         },
         operator_response: WasmResponse {
             event_id_salt: None,
@@ -132,25 +132,25 @@ impl ExecAggregator {
             log: HostComponentLogger::AggregatorHostComponentLogger(
                 |_service_id, _workflow_id, _digest, level, message| {
                     match level {
-                wavs_engine::bindings::aggregator::world::wavs::types::core::LogLevel::Error => {
+                warpdrive_engine::bindings::aggregator::world::wavs::types::core::LogLevel::Error => {
                     tracing::error!("{}", message)
                 }
-                wavs_engine::bindings::aggregator::world::wavs::types::core::LogLevel::Warn => {
+                warpdrive_engine::bindings::aggregator::world::wavs::types::core::LogLevel::Warn => {
                     tracing::warn!("{}", message)
                 }
-                wavs_engine::bindings::aggregator::world::wavs::types::core::LogLevel::Info => {
+                warpdrive_engine::bindings::aggregator::world::wavs::types::core::LogLevel::Info => {
                     tracing::info!("{}", message)
                 }
-                wavs_engine::bindings::aggregator::world::wavs::types::core::LogLevel::Debug => {
+                warpdrive_engine::bindings::aggregator::world::wavs::types::core::LogLevel::Debug => {
                     tracing::debug!("{}", message)
                 }
-                wavs_engine::bindings::aggregator::world::wavs::types::core::LogLevel::Trace => {
+                warpdrive_engine::bindings::aggregator::world::wavs::types::core::LogLevel::Trace => {
                     tracing::trace!("{}", message)
                 }
             }
                 },
             ),
-            keyvalue_ctx: wavs_engine::backend::wasi_keyvalue::context::KeyValueCtx::new(
+            keyvalue_ctx: warpdrive_engine::backend::wasi_keyvalue::context::KeyValueCtx::new(
                 utils::storage::db::WavsDb::new()?,
                 service.id().to_string(),
             ),
@@ -161,7 +161,7 @@ impl ExecAggregator {
         let initial_fuel = instance_deps.store.get_fuel()?;
         let start_time = Instant::now();
         let actions =
-            wavs_engine::worlds::aggregator::execute::execute_input(&mut instance_deps, input)
+            warpdrive_engine::worlds::aggregator::execute::execute_input(&mut instance_deps, input)
                 .await?;
         let fuel_used = initial_fuel - instance_deps.store.get_fuel()?;
         let time_elapsed = start_time.elapsed().as_millis();
@@ -169,7 +169,7 @@ impl ExecAggregator {
         Ok(ExecAggregatorResult::Packet {
             actions: actions
                 .into_iter()
-                .map(wavs_types::AggregatorAction::try_from)
+                .map(warpdrive_types::AggregatorAction::try_from)
                 .collect::<Result<Vec<AggregatorAction>>>()?,
             fuel_used,
             time_elapsed,
@@ -216,14 +216,14 @@ mod test {
     use std::io::Write;
     use tempfile::NamedTempFile;
     use utils::filesystem::workspace_path;
-    use wavs_types::{
+    use warpdrive_types::{
         AllowedHostPermission, EvmChainConfig, Service, ServiceManager, ServiceStatus, Submit,
         Trigger, Workflow, WorkflowId,
     };
 
     fn create_test_service(component_path: &str) -> Service {
         let wasm_bytes = read_component(component_path).unwrap();
-        let digest = wavs_types::ComponentDigest::hash(&wasm_bytes);
+        let digest = warpdrive_types::ComponentDigest::hash(&wasm_bytes);
 
         let component = Component {
             source: ComponentSource::Digest(digest),
@@ -270,15 +270,15 @@ mod test {
 
     fn create_test_input(service: &Service) -> AggregatorInput {
         AggregatorInput {
-            trigger_action: wavs_types::TriggerAction {
-                config: wavs_types::TriggerConfig {
+            trigger_action: warpdrive_types::TriggerAction {
+                config: warpdrive_types::TriggerConfig {
                     service_id: service.id(),
                     workflow_id: service.workflows.keys().next().cloned().unwrap(),
                     trigger: service.workflows.values().next().unwrap().trigger.clone(),
                 },
-                data: wavs_types::TriggerData::default(),
+                data: warpdrive_types::TriggerData::default(),
             },
-            operator_response: wavs_types::WasmResponse {
+            operator_response: warpdrive_types::WasmResponse {
                 event_id_salt: None,
                 ordering: None,
                 payload: b"test data".to_vec(),
@@ -344,8 +344,8 @@ mod test {
             ExecAggregatorResult::Packet { actions, .. } => {
                 assert_eq!(actions.len(), 1);
                 match &actions[0] {
-                    wavs_types::AggregatorAction::Submit(submit) => match submit {
-                        wavs_types::SubmitAction::Evm(evm_submit) => {
+                    warpdrive_types::AggregatorAction::Submit(submit) => match submit {
+                        warpdrive_types::SubmitAction::Evm(evm_submit) => {
                             assert_eq!(evm_submit.chain, "evm:31337".parse().unwrap());
                             assert_eq!(evm_submit.address, EvmAddr::new([0u8; 20]));
                         }
@@ -407,8 +407,8 @@ mod test {
             ExecAggregatorResult::Packet { actions, .. } => {
                 assert_eq!(actions.len(), 1);
                 match &actions[0] {
-                    wavs_types::AggregatorAction::Submit(submit) => match submit {
-                        wavs_types::SubmitAction::Evm(evm_submit) => {
+                    warpdrive_types::AggregatorAction::Submit(submit) => match submit {
+                        warpdrive_types::SubmitAction::Evm(evm_submit) => {
                             assert_eq!(evm_submit.chain, "evm:31337".parse().unwrap());
                             assert_eq!(evm_submit.address, EvmAddr::new([0u8; 20]));
                         }

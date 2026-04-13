@@ -18,8 +18,8 @@ use crate::contracts::cosmwasm::{
 ///
 /// ```rust
 /// use cosmwasm_schema::cw_serde;
-/// use wavs_types::contracts::cosmwasm::service_manager::ServiceManagerQueryMessages;
-/// use wavs_types::contracts::cosmwasm::service_manager::ServiceManagerExecuteMessages;
+/// use warpdrive_types::contracts::cosmwasm::service_manager::ServiceManagerQueryMessages;
+/// use warpdrive_types::contracts::cosmwasm::service_manager::ServiceManagerExecuteMessages;
 ///
 /// #[cw_serde]
 /// #[schemaifier(mute_warnings)]

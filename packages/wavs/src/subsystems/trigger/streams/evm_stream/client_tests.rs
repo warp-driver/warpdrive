@@ -40,7 +40,7 @@ async fn block_height_stream() {
         ..
     } = EvmTriggerStreams::new(
         vec![anvil.ws_endpoint()],
-        wavs_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
+        warpdrive_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
         None,
         test_evm_stream_metrics(),
     );
@@ -85,7 +85,7 @@ async fn simple_log_stream() {
         ..
     } = EvmTriggerStreams::new(
         vec![anvil.ws_endpoint()],
-        wavs_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
+        warpdrive_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
         None,
         test_evm_stream_metrics(),
     );
@@ -188,7 +188,7 @@ async fn multi_log_stream(add_kind: AddKind) {
         ..
     } = EvmTriggerStreams::new(
         vec![anvil.ws_endpoint()],
-        wavs_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
+        warpdrive_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
         None,
         test_evm_stream_metrics(),
     );
@@ -332,7 +332,7 @@ async fn multi_contract_log_stream() {
         ..
     } = EvmTriggerStreams::new(
         vec![anvil.ws_endpoint()],
-        wavs_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
+        warpdrive_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
         None,
         test_evm_stream_metrics(),
     );
@@ -466,7 +466,7 @@ async fn fallback_chain_log_stream() {
         ..
     } = EvmTriggerStreams::new(
         vec![anvil_1.ws_endpoint(), anvil_2.ws_endpoint()],
-        wavs_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
+        warpdrive_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
         None,
         test_evm_stream_metrics(),
     );
@@ -589,7 +589,7 @@ async fn unsubscribe_log_stream(wait_for_subscriptions: bool) {
         ..
     } = EvmTriggerStreams::new(
         vec![anvil.ws_endpoint()],
-        wavs_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
+        warpdrive_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
         None,
         test_evm_stream_metrics(),
     );
@@ -710,7 +710,7 @@ async fn controller_drop() {
         ..
     } = EvmTriggerStreams::new(
         vec![anvil.ws_endpoint()],
-        wavs_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
+        warpdrive_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
         None,
         test_evm_stream_metrics(),
     );
@@ -764,7 +764,7 @@ async fn all_log_stream() {
         ..
     } = EvmTriggerStreams::new(
         vec![anvil.ws_endpoint()],
-        wavs_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
+        warpdrive_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
         None,
         test_evm_stream_metrics(),
     );
@@ -858,7 +858,7 @@ async fn unsubscribe_all_log_stream(explicit: bool) {
         ..
     } = EvmTriggerStreams::new(
         vec![anvil.ws_endpoint()],
-        wavs_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
+        warpdrive_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
         None,
         test_evm_stream_metrics(),
     );
@@ -937,7 +937,7 @@ async fn multiple_clients() {
         ..
     } = EvmTriggerStreams::new(
         vec![anvil_1.ws_endpoint()],
-        wavs_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
+        warpdrive_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
         None,
         test_evm_stream_metrics(),
     );
@@ -948,7 +948,7 @@ async fn multiple_clients() {
         ..
     } = EvmTriggerStreams::new(
         vec![anvil_2.ws_endpoint()],
-        wavs_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
+        warpdrive_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
         None,
         test_evm_stream_metrics(),
     );
@@ -1097,7 +1097,7 @@ async fn multiple_clients_drop_one() {
         ..
     } = EvmTriggerStreams::new(
         vec![anvil_1.ws_endpoint()],
-        wavs_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
+        warpdrive_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
         None,
         test_evm_stream_metrics(),
     );
@@ -1108,7 +1108,7 @@ async fn multiple_clients_drop_one() {
         ..
     } = EvmTriggerStreams::new(
         vec![anvil_2.ws_endpoint()],
-        wavs_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
+        warpdrive_types::ChainKey::new("evm:31337").expect("Invalid chain key format"),
         None,
         test_evm_stream_metrics(),
     );

@@ -4,7 +4,7 @@ use std::ops::Bound;
 use thiserror::Error;
 use tracing::instrument;
 use utils::storage::db::{DBError, WavsDb};
-use wavs_types::{Service, ServiceId, ServiceStatus, Workflow, WorkflowId};
+use warpdrive_types::{Service, ServiceId, ServiceStatus, Workflow, WorkflowId};
 
 type Result<T> = std::result::Result<T, ServicesError>;
 

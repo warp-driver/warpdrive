@@ -4,7 +4,7 @@ use std::{
     path::PathBuf,
 };
 use wasm_pkg_client::{PackageRef, Version};
-use wavs_types::{
+use warpdrive_types::{
     ChainKey, ComponentDigest, Permissions, ServiceBuilder, ServiceStatus, Trigger, WorkflowId,
 };
 
@@ -347,7 +347,7 @@ impl ComponentOperationResult {
     }
 
     /// Get the workflow ID from any variant (extracts from context)
-    pub fn workflow_id(&self) -> &wavs_types::WorkflowId {
+    pub fn workflow_id(&self) -> &warpdrive_types::WorkflowId {
         match self {
             ComponentOperationResult::SourceUrl { context, .. } => match context {
                 ComponentContext::Workflow { workflow_id } => workflow_id,

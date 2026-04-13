@@ -5,14 +5,14 @@ use opentelemetry::global::meter;
 use utils::service::DEFAULT_IPFS_GATEWAY;
 use utils::storage::{db::WavsDb, fs::FileStorage};
 use utils::telemetry::Metrics;
-use wavs::dispatcher::DispatcherCommand;
-use wavs::subsystems::engine::EngineCommand;
-use wavs::{
+use warpdrive::dispatcher::DispatcherCommand;
+use warpdrive::subsystems::engine::EngineCommand;
+use warpdrive::{
     services::Services,
     subsystems::engine::{wasm_engine::WasmEngine, EngineManager},
 };
-use wavs_benchmark_common::{app_context::APP_CONTEXT, engine_setup::EngineSetup};
-use wavs_types::{Service, TriggerAction, WasmResponse};
+use warpdrive_benchmark_common::{app_context::APP_CONTEXT, engine_setup::EngineSetup};
+use warpdrive_types::{Service, TriggerAction, WasmResponse};
 
 /// Configuration for the system benchmark (MultiEngineRunner)
 #[derive(Clone, Copy)]

@@ -7,11 +7,11 @@ use alloy_primitives::FixedBytes;
 use anyhow::{Context, Result};
 use utils::{config::WAVS_ENV_PREFIX, storage::db::WavsDb};
 use wasmtime::{component::Component as WasmtimeComponent, Config as WTConfig, Engine as WTEngine};
-use wavs_engine::{
+use warpdrive_engine::{
     bindings::operator::world::host::LogLevel,
     worlds::instance::{HostComponentLogger, InstanceData, InstanceDepsBuilder},
 };
-use wavs_types::{
+use warpdrive_types::{
     AllowedHostPermission, ChainKey, ComponentDigest, ComponentSource, Permissions, ServiceId,
     Submit, Timestamp, Trigger, TriggerAction, TriggerConfig, TriggerData, WasmResponse, Workflow,
     WorkflowId,
@@ -123,7 +123,7 @@ impl ExecComponent {
 
         let workflow = Workflow {
             trigger: Trigger::Manual,
-            component: wavs_types::Component {
+            component: warpdrive_types::Component {
                 source: ComponentSource::Digest(ComponentDigest::hash(&wasm_bytes)),
                 permissions: Permissions {
                     allowed_http_hosts: AllowedHostPermission::All,
@@ -140,11 +140,11 @@ impl ExecComponent {
         };
 
         let chain: ChainKey = "evm:exec".parse().unwrap();
-        let service = wavs_types::Service {
+        let service = warpdrive_types::Service {
             name: "Exec Service".to_string(),
             workflows: BTreeMap::from([(WorkflowId::default(), workflow)]),
-            status: wavs_types::ServiceStatus::Active,
-            manager: wavs_types::ServiceManager::Evm {
+            status: warpdrive_types::ServiceStatus::Active,
+            manager: warpdrive_types::ServiceManager::Evm {
                 chain: chain.clone(),
                 address: Default::default(),
             },
@@ -209,7 +209,7 @@ impl ExecComponent {
             data_dir: tempfile::tempdir()?.keep(),
             chain_configs: &cli_config.chains.read().unwrap(),
             log: HostComponentLogger::OperatorHostComponentLogger(log_wasi),
-            keyvalue_ctx: wavs_engine::backend::wasi_keyvalue::context::KeyValueCtx::new(
+            keyvalue_ctx: warpdrive_engine::backend::wasi_keyvalue::context::KeyValueCtx::new(
                 WavsDb::new().unwrap(),
                 "exec_component".to_string(),
             ),
@@ -222,7 +222,7 @@ impl ExecComponent {
             .get_fuel()
             .context("Failed to get initial fuel value from the instance store")?;
         let start_time = Instant::now();
-        let wasm_responses = match wavs_engine::worlds::operator::execute::execute(
+        let wasm_responses = match warpdrive_engine::worlds::operator::execute::execute(
             &mut instance_deps,
             trigger_action,
             WasmResponse::DEFAULT_MAX_PAYLOAD_SIZE,

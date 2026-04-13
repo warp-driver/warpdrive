@@ -5,7 +5,7 @@ use std::{
 };
 use utils::{config::ConfigExt, service::DEFAULT_IPFS_GATEWAY};
 use utoipa::ToSchema;
-use wavs_types::{ChainConfigs, Credential, WasmResponse, Workflow};
+use warpdrive_types::{ChainConfigs, Credential, WasmResponse, Workflow};
 
 use crate::subsystems::aggregator::p2p::P2pConfig;
 

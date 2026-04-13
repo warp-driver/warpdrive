@@ -8,7 +8,7 @@ use crate::{
     error::EvmClientError,
     evm_client::{EvmEndpoint, EvmQueryClient},
 };
-use wavs_types::{AnyChainConfig, ChainKey, CosmosChainConfig, EvmChainConfig};
+use warpdrive_types::{AnyChainConfig, ChainKey, CosmosChainConfig, EvmChainConfig};
 
 pub async fn health_check_single_chain(
     key: &ChainKey,

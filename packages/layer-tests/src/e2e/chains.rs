@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use wavs_types::{ChainConfigs, ChainKey, ChainKeyNamespace};
+use warpdrive_types::{ChainConfigs, ChainKey, ChainKeyNamespace};
 
 /// Structure to hold the different chain keys for test configuration
 #[derive(Debug, Default, Clone)]

@@ -3,7 +3,7 @@ use anyhow::Result;
 use layer_climb::{prelude::CosmosAddr, querier::QueryClient as CosmosQueryClient};
 use reqwest::Client;
 use std::collections::HashMap;
-use wavs_types::{ChainKey, ServiceManager, Trigger, WorkflowId};
+use warpdrive_types::{ChainKey, ServiceManager, Trigger, WorkflowId};
 
 /// Validate a workflow trigger using a Cosmos query client
 pub async fn validate_workflow_trigger(

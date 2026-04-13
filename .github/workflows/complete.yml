@@ -1,0 +1,68 @@
+# Run this when we merge to main for a sanity check, as it is very expensive to run
+on:
+  push:
+    branches:
+      - main
+
+
+name: Complete Checks
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_INCREMENTAL: 0
+  RUST_BACKTRACE: short
+  CARGO_TERM_COLOR: always
+  WAVS_SUBMISSION_MNEMONIC: "test test test test test test test test test test test junk"
+  WAVS_AGGREGATOR_EVM_CREDENTIAL: "test test test test test test test test test test test junk"
+  WAVS_CLI_EVM_CREDENTIAL: "test test test test test test test test test test test junk"
+  WAVS_COSMOS_SUBMISSION_MNEMONIC: "reward index time stem expire cheap worth fence coil option treat ensure install entry zone mule benefit success remain rebuild inherit eyebrow cluster sheriff"
+  WAVS_CLI_COSMOS_MNEMONIC: "reward index time stem expire cheap worth fence coil option treat ensure install entry zone mule benefit success remain rebuild inherit eyebrow cluster sheriff"
+
+jobs:
+  test-poa:
+    name: Test Suite (POA)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          # this might remove tools that are actually needed,
+          # if set to "true" but frees about 6 GB
+          tool-cache: false
+          
+          # all of these default to true, but feel free to set to
+          # "false" if necessary for your workflow
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false
+          swap-storage: true
+
+      - name: Configure POA middleware
+        run: |
+          sed -i 's/evm_middleware_type = ".*"/evm_middleware_type = "poa"/' packages/layer-tests/layer-tests.toml
+
+      - name: Build tests first
+        run: cargo test --workspace --no-run --locked
+
+      - name: Run tests
+        run: cargo test --workspace --locked --all-features -- --nocapture --test-threads=4 --skip concurrency
+        env:
+          RUST_LOG: info
+
+  wasi:
+    name: Build WASI Components
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - name: Build WASI components
+        run: just wasi-build

@@ -11,7 +11,7 @@ use layer_climb::prelude::*;
 use serde::{Deserialize, Serialize};
 use tempfile::TempDir;
 use tokio::process::Command;
-use wavs_types::{ChainConfigs, ChainKeyNamespace, CosmosChainConfig, CosmosChainConfigBuilder};
+use warpdrive_types::{ChainConfigs, ChainKeyNamespace, CosmosChainConfig, CosmosChainConfigBuilder};
 
 use crate::test_utils::middleware::operator::AvsOperator;
 
@@ -218,7 +218,7 @@ impl CosmosMiddlewareInner {
                 self.signing_client
                     .contract_execute(
                         &service_manager_addr.into(),
-                        &cw_wavs_mock_api::service_manager::ExecuteMsg::SetSigningKey {
+                        &cw_warpdrive_mock_api::service_manager::ExecuteMsg::SetSigningKey {
                             operator: operator.operator.into(),
                             signing_key: operator.signer.into(),
                             weight: operator.weight.into(),
@@ -385,7 +385,7 @@ mod tests {
     use layer_climb::{prelude::TxSigner, querier::QueryClient};
     use layer_climb_cli::handle::CosmosInstance;
     use rand::prelude::*;
-    use wavs_types::{
+    use warpdrive_types::{
         contracts::cosmwasm::service_manager::ServiceManagerQueryMessages, CosmosChainConfig,
         CosmosChainConfigBuilder,
     };

@@ -3,7 +3,7 @@ use std::time::Duration;
 use alloy_provider::DynProvider;
 use anyhow::{Context, Result};
 use layer_climb::{prelude::CosmosAddr, signing::SigningClient};
-use wavs_types::{
+use warpdrive_types::{
     contracts::cosmwasm::service_manager::ServiceManagerExecuteMessages, AddServiceRequest,
     ChainKey, ComponentDigest, DeleteServicesRequest, DevTriggerStreamsInfo, GetSignerRequest,
     IWavsServiceManager::IWavsServiceManagerInstance, P2pStatus, SaveServiceResponse, Service,
@@ -49,7 +49,7 @@ impl HttpClient {
         Ok(response.digest)
     }
 
-    pub async fn simulate_trigger(&self, req: wavs_types::SimulatedTriggerRequest) -> Result<()> {
+    pub async fn simulate_trigger(&self, req: warpdrive_types::SimulatedTriggerRequest) -> Result<()> {
         let url = format!("{}/dev/triggers", self.endpoint);
 
         let response = self

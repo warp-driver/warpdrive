@@ -12,8 +12,8 @@ use utils::{
         mock_engine::COMPONENT_SQUARE_BYTES,
     },
 };
-use wavs::dispatcher::DispatcherCommand;
-use wavs_types::{
+use warpdrive::dispatcher::DispatcherCommand;
+use warpdrive_types::{
     Component, ComponentSource, Service, ServiceManager, ServiceStatus, SignatureKind, Submit,
     Workflow, WorkflowId,
 };

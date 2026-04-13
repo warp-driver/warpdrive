@@ -31,9 +31,9 @@ fn main() {
 fn create_package_json(version: &str) -> String {
     format!(
         r#"{{
-  "name": "@wavs/types",
+  "name": "@warpdrive/types",
   "version": "{version}",
-  "description": "TypeScript type definitions for WAVS",
+  "description": "TypeScript type definitions for WarpDrive",
   "main": "index.js",
   "types": "index.ts",
   "files": [

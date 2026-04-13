@@ -5,7 +5,7 @@ use std::{
 };
 use tokio_stream::wrappers::IntervalStream;
 use utils::telemetry::TriggerMetrics;
-use wavs_types::Timestamp;
+use warpdrive_types::Timestamp;
 
 use crate::subsystems::trigger::{
     error::TriggerError,

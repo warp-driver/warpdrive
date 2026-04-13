@@ -7,7 +7,7 @@ use crate::http::{
 use anyhow::anyhow;
 use axum::{extract::State, response::IntoResponse, Json};
 use layer_climb::prelude::CosmosAddr;
-use wavs_types::{AnyChainConfig, ChainKey, ServiceDigest, ServiceId, ServiceManager};
+use warpdrive_types::{AnyChainConfig, ChainKey, ServiceDigest, ServiceId, ServiceManager};
 
 #[utoipa::path(
     get,
@@ -17,7 +17,7 @@ use wavs_types::{AnyChainConfig, ChainKey, ServiceDigest, ServiceId, ServiceMana
         ("address" = String, Path, description = "Service contract address")
     ),
     responses(
-        (status = 200, description = "Service found", body = wavs_types::Service),
+        (status = 200, description = "Service found", body = warpdrive_types::Service),
         (status = 404, description = "Service not found"),
         (status = 500, description = "Internal server error")
     ),
@@ -73,7 +73,7 @@ pub async fn handle_get_service(
 async fn get_service_inner(
     state: &HttpState,
     service_manager: ServiceManager,
-) -> HttpResult<wavs_types::Service> {
+) -> HttpResult<warpdrive_types::Service> {
     Ok(state.load_service(&ServiceId::from(&service_manager))?)
 }
 
@@ -84,7 +84,7 @@ async fn get_service_inner(
         ("service_hash" = String, Path, description = "Unique hash of the service")
     ),
     responses(
-        (status = 200, description = "Service found", body = wavs_types::Service),
+        (status = 200, description = "Service found", body = warpdrive_types::Service),
         (status = 404, description = "Service not found"),
         (status = 500, description = "Internal server error")
     ),
@@ -104,7 +104,7 @@ pub async fn handle_get_service_by_hash(
 pub async fn get_service_inner_hash(
     state: &HttpState,
     service_hash: String,
-) -> HttpResult<wavs_types::Service> {
+) -> HttpResult<warpdrive_types::Service> {
     let service_hash = ServiceDigest::from_str(&service_hash)?;
 
     Ok(state.load_service_by_hash(&service_hash)?)

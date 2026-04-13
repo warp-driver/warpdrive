@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use wavs_types::ServiceManager;
+use warpdrive_types::ServiceManager;
 
 const REGISTRY_FILENAME: &str = "service_registry.json";
 const REGISTRY_VERSION: u32 = 1;
@@ -154,7 +154,7 @@ impl ServiceRegistry {
 mod tests {
     use super::*;
     use tempfile::TempDir;
-    use wavs_types::ChainKey;
+    use warpdrive_types::ChainKey;
 
     fn test_sm(addr: &str) -> ServiceManager {
         ServiceManager::Evm {

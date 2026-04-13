@@ -1,6 +1,6 @@
 use alloy_network::Ethereum;
 use alloy_provider::Provider;
-use wavs_wasi_utils::evm::new_evm_provider;
+use warpdrive_wasi_utils::evm::new_evm_provider;
 use wstd::runtime::block_on;
 
 use crate::world::{

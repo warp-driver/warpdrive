@@ -3,7 +3,7 @@ use alloy_rpc_types_eth::TransactionReceipt;
 use layer_climb::prelude::CosmosAddr;
 use serde::{Deserialize, Serialize};
 use utils::evm_client::EvmSigningClient;
-use wavs_types::{
+use warpdrive_types::{
     contracts::cosmwasm::{
         service_handler::{ServiceHandlerExecuteMessages, ServiceHandlerQueryMessages},
         service_manager::{

@@ -3,7 +3,7 @@ use alloy_provider::DynProvider;
 use anyhow::{Context, Result};
 use iri_string::types::UriString;
 use layer_climb::signing::SigningClient;
-use wavs_types::{Service, ServiceManager};
+use warpdrive_types::{Service, ServiceManager};
 
 pub struct DeployService {
     pub args: DeployServiceArgs,

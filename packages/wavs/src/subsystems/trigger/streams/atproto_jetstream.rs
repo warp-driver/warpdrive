@@ -10,7 +10,7 @@ use url::Url;
 use crate::subsystems::trigger::error::TriggerError;
 use crate::subsystems::trigger::streams::StreamTriggers;
 use utils::telemetry::TriggerMetrics;
-use wavs_types::AtProtoAction;
+use warpdrive_types::AtProtoAction;
 
 /// Configuration for ATProto Jetstream connection
 #[derive(Debug, Clone)]

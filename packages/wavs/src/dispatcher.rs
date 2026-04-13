@@ -36,13 +36,13 @@ use utils::error::EvmClientError;
 use utils::service::fetch_service;
 use utils::storage::fs::FileStorage;
 use utils::telemetry::{DispatcherMetrics, WavsMetrics};
-use wavs_types::contracts::cosmwasm::service_manager::ServiceManagerQueryMessages;
-use wavs_types::IWavsServiceManager::IWavsServiceManagerInstance;
-use wavs_types::{
+use warpdrive_types::contracts::cosmwasm::service_manager::ServiceManagerQueryMessages;
+use warpdrive_types::IWavsServiceManager::IWavsServiceManagerInstance;
+use warpdrive_types::{
     AnyChainConfig, ChainConfigError, ChainConfigs, ChainKey, ComponentDigest, ServiceManager,
     Submission, Submit, WorkflowIdError,
 };
-use wavs_types::{Service, ServiceError, ServiceId, SignerResponse, TriggerAction};
+use warpdrive_types::{Service, ServiceError, ServiceId, SignerResponse, TriggerAction};
 
 use crate::config::Config;
 use crate::service_registry::{RegistryError, ServiceRegistry};

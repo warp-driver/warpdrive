@@ -15,11 +15,11 @@ use utils::{
     telemetry::{EngineMetrics, Metrics},
 };
 use utils::{storage::db::WavsDb, test_utils::address::rand_address_evm};
-use wavs::{
+use warpdrive::{
     dispatcher::{Dispatcher, DispatcherCommand},
     subsystems::engine::wasm_engine::WasmEngine,
 };
-use wavs_types::{
+use warpdrive_types::{
     ChainKey, ChainKeyError, Component, ComponentSource, Credential, DeleteServicesRequest,
     ListServicesResponse, Service, ServiceId, ServiceManager, SignatureKind, Submit, WasmResponse,
     WorkflowId, WorkflowIdError,
@@ -37,7 +37,7 @@ pub struct MockE2ETestRunner {
 impl MockE2ETestRunner {
     #[instrument(skip(config, metrics))]
     pub fn create_engine(
-        config: Option<wavs::config::Config>,
+        config: Option<warpdrive::config::Config>,
         metrics: Option<EngineMetrics>,
     ) -> WasmEngine<MemoryStorage> {
         let config = config.unwrap_or_default();
@@ -65,12 +65,12 @@ impl MockE2ETestRunner {
         _ctx: AppContext,
         data_dir: impl AsRef<std::path::Path>,
     ) -> Dispatcher<FileStorage> {
-        let config = wavs::config::Config {
+        let config = warpdrive::config::Config {
             signing_mnemonic: Some(Credential::new(
                 "test test test test test test test test test test test junk".to_string(),
             )),
             data: data_dir.as_ref().to_path_buf(),
-            ..wavs::config::Config::default()
+            ..warpdrive::config::Config::default()
         };
         let meter = opentelemetry::global::meter("wavs_metrics");
         let metrics = Metrics::new(meter);

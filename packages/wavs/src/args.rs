@@ -2,7 +2,7 @@ use clap::Parser;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use utils::{config::CliEnvExt, serde::deserialize_vec_string};
-use wavs_types::Credential;
+use warpdrive_types::Credential;
 
 /// This struct is used for both args and environment variables
 /// the basic idea is that every env var can be overriden by a cli arg

@@ -4,8 +4,8 @@ use std::{sync::Arc, time::Duration};
 use deadpool::managed::Pool;
 use layer_climb::pool::{SigningClientPool, SigningClientPoolManager};
 use utils::{config::EvmChainConfigExt, evm_client::EvmSigningClient};
-use wavs_cli::clients::HttpClient;
-use wavs_types::ChainKey;
+use warpdrive_cli::clients::HttpClient;
+use warpdrive_types::ChainKey;
 
 use super::config::Configs;
 
@@ -13,7 +13,7 @@ use super::config::Configs;
 pub struct Clients {
     /// HTTP clients for each WAVS operator instance (one per port)
     pub http_clients: Vec<HttpClient>,
-    pub cli_ctx: Arc<wavs_cli::context::CliContext>,
+    pub cli_ctx: Arc<warpdrive_cli::context::CliContext>,
     pub evm_clients: Arc<HashMap<ChainKey, EvmSigningClient>>,
     pub cosmos_client_pools: Arc<HashMap<ChainKey, SigningClientPool>>,
 }
@@ -54,7 +54,7 @@ impl Clients {
         // fund all the EVM clients
         configs.mnemonics.fund(&chains).await;
 
-        let cli_ctx = wavs_cli::context::CliContext::new_deployment(
+        let cli_ctx = warpdrive_cli::context::CliContext::new_deployment(
             configs.cli_args.clone(),
             configs.cli.clone(),
             None,

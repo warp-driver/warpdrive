@@ -3,11 +3,11 @@ use std::{num::NonZero, sync::Arc};
 use opentelemetry::global::meter;
 use tempfile::TempDir;
 use utils::{storage::db::WavsDb, telemetry::Metrics};
-use wavs::{
+use warpdrive::{
     dispatcher::DispatcherCommand, services::Services, subsystems::trigger::TriggerManager,
 };
-use wavs_benchmark_common::app_context::APP_CONTEXT;
-use wavs_types::{ChainKey, Trigger, TriggerConfig};
+use warpdrive_benchmark_common::app_context::APP_CONTEXT;
+use warpdrive_types::{ChainKey, Trigger, TriggerConfig};
 
 // This is a convenience struct to initialize stuff and make it easier to pass around
 pub struct Setup {
@@ -52,7 +52,7 @@ impl SetupConfig {
 
 impl Setup {
     pub fn new(setup_config: SetupConfig) -> Arc<Self> {
-        let config = wavs::config::Config::default();
+        let config = warpdrive::config::Config::default();
         let data_dir = tempfile::tempdir().unwrap();
         let metrics = Metrics::new(meter("wavs-benchmark"));
 
@@ -84,10 +84,10 @@ impl Setup {
                     trigger_manager
                         .get_lookup_maps()
                         .add_trigger(TriggerConfig {
-                            service_id: wavs_types::ServiceId::hash(format!(
+                            service_id: warpdrive_types::ServiceId::hash(format!(
                                 "wavs-benchmark-{trigger_id}"
                             )),
-                            workflow_id: wavs_types::WorkflowId::new(format!(
+                            workflow_id: warpdrive_types::WorkflowId::new(format!(
                                 "wavs-benchmark-{trigger_id}"
                             ))
                             .unwrap(),

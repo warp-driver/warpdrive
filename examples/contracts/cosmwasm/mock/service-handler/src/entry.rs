@@ -3,14 +3,14 @@ use cosmwasm_std::{
     StdResult,
 };
 use cw2::set_contract_version;
-use wavs_types::contracts::cosmwasm::service_handler::ServiceHandlerQueryMessages;
-use wavs_types::contracts::cosmwasm::service_manager::ServiceManagerQueryMessages;
-use wavs_types::contracts::cosmwasm::{
+use warpdrive_types::contracts::cosmwasm::service_handler::ServiceHandlerQueryMessages;
+use warpdrive_types::contracts::cosmwasm::service_manager::ServiceManagerQueryMessages;
+use warpdrive_types::contracts::cosmwasm::{
     service_handler::ServiceHandlerExecuteMessages, service_manager::WavsValidateResult,
 };
 
 use crate::state;
-use cw_wavs_mock_api::service_handler::{
+use cw_warpdrive_mock_api::service_handler::{
     ExecuteMsg, InstantiateMsg, QueryMsg, TriggerMessageResponse,
 };
 

@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use wavs_types::ComponentDigest;
+use warpdrive_types::ComponentDigest;
 
 use crate::{clients::HttpClient, config::Config, util::read_component};
 

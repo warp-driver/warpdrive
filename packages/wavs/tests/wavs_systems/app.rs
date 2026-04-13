@@ -2,7 +2,7 @@ use std::{path::PathBuf, sync::Arc};
 
 use utils::config::ConfigBuilder;
 
-use wavs::{args::CliArgs, config::Config};
+use warpdrive::{args::CliArgs, config::Config};
 
 use utils::test_utils::mock_chain_configs::mock_chain_configs;
 

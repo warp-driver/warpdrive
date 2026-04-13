@@ -5,7 +5,7 @@ on:
       - "v*"
 
 env:
-  CRATE_NAME: wavs-types
+  CRATE_NAME: warpdrive-types
   CRATE_PATH: packages/types
 
 permissions:
@@ -81,10 +81,10 @@ jobs:
           args: --manifest-path ${{ env.CRATE_PATH }}/Cargo.toml
 
   publish_wasi_utils:
-    name: Verify and Publish wavs-wasi-utils Crate
+    name: Verify and Publish warpdrive-wasi-utils Crate
     runs-on: ubuntu-latest
     env:
-      WASI_CRATE_NAME: wavs-wasi-utils
+      WASI_CRATE_NAME: warpdrive-wasi-utils
       WASI_CRATE_PATH: packages/wasi-utils
     steps:
       - name: Checkout the repo
@@ -206,7 +206,7 @@ jobs:
         id: npm_exists
         shell: bash
         run: |
-          PACKAGE_NAME="@wavs/types"
+          PACKAGE_NAME="@warpdrive/types"
           VERSION="${{ steps.version.outputs.version }}"
 
           # Check if package version exists on NPM

@@ -5,7 +5,7 @@ use anyhow::Result;
 use std::time::Duration;
 use tokio::time::sleep;
 
-use wavs_types::IWavsServiceManager::IWavsServiceManagerInstance;
+use warpdrive_types::IWavsServiceManager::IWavsServiceManagerInstance;
 
 use crate::{
     evm_client::EvmSigningClient,

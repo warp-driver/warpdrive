@@ -1,4 +1,4 @@
-use wavs_types::{QuorumQueue, QuorumQueueId, Submission};
+use warpdrive_types::{QuorumQueue, QuorumQueueId, Submission};
 
 use crate::subsystems::aggregator::{error::AggregatorError, Aggregator};
 

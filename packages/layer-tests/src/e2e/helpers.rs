@@ -9,9 +9,9 @@ use std::{collections::BTreeMap, num::NonZero, sync::Arc, time::Duration};
 use utils::evm_client::AnyNonceManager;
 use utils::{config::WAVS_ENV_PREFIX, evm_client::EvmSigningClient, filesystem::workspace_path};
 use uuid::Uuid;
-use wavs_cli::clients::HttpClient;
+use warpdrive_cli::clients::HttpClient;
 
-use wavs_types::{
+use warpdrive_types::{
     AllowedHostPermission, ByteArray, ChainKey, Component, DevTriggerStreamSubscriptionKind,
     Permissions, Service, ServiceManager, ServiceStatus, SignatureKind, Submit, Trigger, Workflow,
 };
@@ -246,7 +246,7 @@ pub async fn create_trigger_from_config(
                     Trigger::CosmosContractEvent {
                         chain: chain.clone(),
                         address: contract.contract_address.try_into().unwrap(),
-                        event_type: cw_wavs_trigger_api::simple::PushMessageEvent::EVENT_TYPE
+                        event_type: cw_warpdrive_trigger_api::simple::PushMessageEvent::EVENT_TYPE
                             .to_string(),
                     }
                 }
@@ -437,7 +437,7 @@ pub async fn get_cosmos_code_id(
                 .join("examples")
                 .join("build")
                 .join("contracts")
-                .join("cw_wavs_trigger_simple.wasm");
+                .join("cw_warpdrive_trigger_simple.wasm");
 
             if !wasm_path.exists() {
                 panic!(
@@ -453,7 +453,7 @@ pub async fn get_cosmos_code_id(
                 .join("examples")
                 .join("build")
                 .join("contracts")
-                .join("cw_wavs_mock_service_handler.wasm");
+                .join("cw_warpdrive_mock_service_handler.wasm");
 
             if !wasm_path.exists() {
                 panic!(
