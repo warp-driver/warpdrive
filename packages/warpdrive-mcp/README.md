@@ -1,8 +1,8 @@
 # warpdrive-mcp
 
-[Model Context Protocol](https://modelcontextprotocol.io) server for the WAVS platform.
+[Model Context Protocol](https://modelcontextprotocol.io) server for the WarpDrive platform.
 
-Exposes WAVS operations to AI assistants (Claude, Cursor, VS Code Copilot, etc.) — scaffold and build WASM components, upload binaries, deploy services, simulate triggers, and query a live WAVS node, all from natural language.
+Exposes WarpDrive operations to AI assistants (Claude, Cursor, VS Code Copilot, etc.) — scaffold and build WASM components, upload binaries, deploy services (Vectr circuits), simulate triggers, and query a live WarpDrive node, all from natural language.
 
 ---
 
@@ -43,10 +43,10 @@ warpdrive-mcp --wavs-url http://localhost:8000 --token <your-token>
 
 | Flag | Env var | Default | Description |
 |------|---------|---------|-------------|
-| `--wavs-url` | `WAVS_URL` | `http://localhost:8000` | WAVS node HTTP API URL |
+| `--wavs-url` | `WAVS_URL` | `http://localhost:8000` | WarpDrive node HTTP API URL |
 | `--token` | `WAVS_TOKEN` | — | Bearer token for write operations |
 | `--mcp-chain-credential` | `WAVS_MCP_CHAIN_CREDENTIAL` | — | Private key (`0x…`) or BIP39 mnemonic for on-chain transactions |
-| `--signing-mnemonic` | `WAVS_SIGNING_MNEMONIC` | — | BIP39 mnemonic for the WAVS node signing key |
+| `--signing-mnemonic` | `WAVS_SIGNING_MNEMONIC` | — | BIP39 mnemonic for the WarpDrive node (Vectr) signing key |
 
 All flags can be set as environment variables — useful for running standalone without exposing secrets in `ps aux`.
 
@@ -66,7 +66,7 @@ signing_mnemonic = "word1 word2 ... word12"
 
 `warpdrive-mcp` reads this file automatically. Only `~/.wavs/wavs.toml` is searched — project-local `wavs.toml` files are intentionally skipped to prevent accidental credential commits.
 
-The WAVS desktop app's "Register with Claude" button and `just setup-claude-mcp` write this file automatically.
+The WarpDrive desktop app's "Register with Claude" button and `just setup-claude-mcp` write this file automatically.
 
 ### 2. Environment variables (per-client overrides)
 
@@ -93,7 +93,7 @@ warpdrive-mcp --mcp-chain-credential 0x... --signing-mnemonic "word1 ..."
 # One-command setup (recommended)
 npx @warpdrive/mcp@latest
 
-# From the WAVS repo
+# From the WarpDrive repo
 just setup-claude-mcp /path/to/your-project
 ```
 
@@ -161,7 +161,7 @@ Edit `.vscode/mcp.json`:
 | **Chain-write** | `wavs_deploy_service_manager`, `wavs_deploy_poa_service_manager`, `wavs_register_operator`, `wavs_set_service_uri` | `mcp_chain_credential` |
 | **Local** | `wavs_get_wit_interface`, `wavs_scaffold_component`, `wavs_build_component`, `wavs_get_service_schema` | None |
 
-Local tools run entirely on the client machine — no running WAVS node needed.
+Local tools run entirely on the client machine — no running WarpDrive node needed.
 
 ---
 

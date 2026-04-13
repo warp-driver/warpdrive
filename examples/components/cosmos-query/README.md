@@ -4,15 +4,17 @@
 starship start --config ./starship.yaml
 ```
 
-## (re)build component
-in repo root:
+## (Re)build component
+
+In repo root:
 
 ```bash
 just wasi-build
 ```
 
-## Run via wavs test
-in repo `packages/wavs`:
+## Run via WarpDrive test
+
+In repo `packages/wavs`:
 
 ```bash
 RUST_LOG="info,wavs=debug" cargo test --workspace -- --nocapture

@@ -1,8 +1,10 @@
-# WAVS Documentation
+# WarpDrive Documentation
 
-This source documentation provides discussion and overview of WAVS, details on its architecture, and guides on how to run and use WAVS.
+WarpDrive is the trusted compute layer for Stellar — cryptographically verifiable off-chain compute that settles back to Soroban with EigenLayer-grade security. See the root [README](../README.md) for the product overview.
 
-Most of the developer tasks are executed via justfiles. Run `just` to see a full list.
+This folder holds implementation-level documentation: discussion and overviews, architecture details, and guides for running and using WarpDrive.
+
+Most developer tasks are executed via justfiles. Run `just` to see a full list.
 
 ## Contents
 
@@ -13,7 +15,7 @@ Most of the developer tasks are executed via justfiles. Run `just` to see a full
 - [Contracts](CONTRACTS.md)
 
 ### Documents
-- [WAVS API](API.md)
+- [WarpDrive API](API.md)
 - [Components](COMPONENTS.md)
 - [Wit Authoring Notes](WIT_AUTHORING_NOTES.md)
 - [Async notes](./ASYNC_NOTES.md)
