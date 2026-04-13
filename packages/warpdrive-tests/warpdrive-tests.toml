@@ -1,7 +1,7 @@
 [default]
 log_level = ["info", "warpdrive=debug"]
 
-[layer-tests]
+[warpdrive-tests]
 wavs_concurrency = true
 middleware_concurrency = true
 grouping = false

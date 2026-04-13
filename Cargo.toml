@@ -5,7 +5,7 @@ members = [
     "packages/dev-tool",
     "packages/engine",
     "packages/gui/shared",
-    "packages/layer-tests",
+    "packages/warpdrive-tests",
     "packages/types",
     "packages/utils",
     "packages/version-pins",

@@ -23,9 +23,9 @@ Organized by category. Each entry lists the scope, the reason it's suspected dea
   - `packages/engine/src/bindings/**/host.rs` (`CosmosChainConfig` bindings)
   - `packages/cli/src/clients.rs`, `packages/cli/src/command/service.rs` (Cosmos chain branches)
 - Tests:
-  - `packages/layer-tests/src/example_cosmos_client/` (entire dir)
-  - `packages/layer-tests/src/e2e/handles/cosmos.rs`
-  - Cosmos assertions across `packages/layer-tests/src/e2e/*`
+  - `packages/warpdrive-tests/src/example_cosmos_client/` (entire dir)
+  - `packages/warpdrive-tests/src/e2e/handles/cosmos.rs`
+  - Cosmos assertions across `packages/warpdrive-tests/src/e2e/*`
   - `packages/utils/src/test_utils/middleware/cosmos.rs`
 - Types:
   - `packages/types/src/contracts/cosmwasm/` (entire subtree)
@@ -45,7 +45,7 @@ Soroban is Stellar-native and is its own thing. Cosmos SDK / CosmWasm is a separ
 
 - `cosmwasm` is the **default feature** on `warpdrive-types`, so every downstream crate pulls the Cosmos types whether it uses them or not.
 - All trigger/submission enums carry Cosmos variants, forcing exhaustive-match churn whenever any handler changes.
-- Test matrix in `layer-tests.toml` combines Cosmos × EVM × P2P modes; dropping Cosmos cuts the e2e runtime substantially.
+- Test matrix in `warpdrive-tests.toml` combines Cosmos × EVM × P2P modes; dropping Cosmos cuts the e2e runtime substantially.
 - `rust-version = "1.86.0"` on `warpdrive-types` is pinned *only* because of a CosmWasm compat issue (see comment in `packages/types/Cargo.toml:7`).
 
 **Next action (when approved)**
@@ -151,7 +151,7 @@ Pick one of the two PoA flavors. The simpler `SimpleServiceManager` matches the 
 
 **Why suspected dead weight — partial**
 
-Multiple components are variations on the same "echo X" template that exist only so `layer-tests` can exercise a trigger kind. A realistic sample set for Stellar devs is probably 2–3 components (one Stellar event → submit, one cron → submit, one composition workflow). The current 10-component zoo is mostly historical.
+Multiple components are variations on the same "echo X" template that exist only so `warpdrive-tests` can exercise a trigger kind. A realistic sample set for Stellar devs is probably 2–3 components (one Stellar event → submit, one cron → submit, one composition workflow). The current 10-component zoo is mostly historical.
 
 **Next action**
 
@@ -185,11 +185,11 @@ Keep: 1 chain-event component (rewritten for Soroban), 1 cron component, 1 aggre
 
 These mocks re-implement subsystem traits to let tests exercise node wiring without spinning up a real node. Either:
 - they're load-bearing and should stay (keep), or
-- they've been superseded by `layer-tests/` (which uses real nodes over real chains) and should go.
+- they've been superseded by `warpdrive-tests/` (which uses real nodes over real chains) and should go.
 
-The rename touched 7 files in this directory. Worth auditing for actual coverage contribution: if the same paths are already hit by `layer-tests`, delete the mocks.
+The rename touched 7 files in this directory. Worth auditing for actual coverage contribution: if the same paths are already hit by `warpdrive-tests`, delete the mocks.
 
-**Next action**: Coverage diff between `cargo test -p warpdrive` and `cargo test -p layer-tests`. Keep only what adds unique coverage.
+**Next action**: Coverage diff between `cargo test -p warpdrive` and `cargo test -p warpdrive-tests`. Keep only what adds unique coverage.
 
 ---
 

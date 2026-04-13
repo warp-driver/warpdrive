@@ -25,10 +25,10 @@ pub struct TestArgs {
 
 impl CliEnvExt for TestArgs {
     const ENV_VAR_PREFIX: &'static str = "WARPDRIVE_LAYER_TESTS";
-    const TOML_IDENTIFIER: &'static str = "layer-tests";
+    const TOML_IDENTIFIER: &'static str = "warpdrive-tests";
 
     fn home_dir(&self) -> Option<PathBuf> {
-        Some(workspace_path().join("packages").join("layer-tests"))
+        Some(workspace_path().join("packages").join("warpdrive-tests"))
     }
 
     fn dotenv_path(&self) -> Option<PathBuf> {

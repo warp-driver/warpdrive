@@ -1,6 +1,6 @@
 [package]
-name = "layer-tests"
-description = "Layer end-to-end tests"
+name = "warpdrive-tests"
+description = "WarpDrive end-to-end tests"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true

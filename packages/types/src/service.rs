@@ -682,7 +682,7 @@ pub enum WasmResponseSizeError {
 }
 
 // TODO - these shouldn't be needed in main code... gate behind `debug_assertions`
-// will need to go through use-cases of `test-utils`, maybe move into layer-tests or something
+// will need to go through use-cases of `test-utils`, maybe move into warpdrive-tests or something
 mod test_ext {
     use std::{
         collections::{BTreeMap, BTreeSet},
