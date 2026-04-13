@@ -51,14 +51,14 @@ Open the Jaeger UI in your browser:
 ```
 http://localhost:16686
 ```
-- select the service name `wavs-tests` from the dropdown
+- select the service name `warpdrive-tests` from the dropdown
 - search for traces and inspect them, for example, the `execute` trace is what happens when a trigger gets executed by the engine.
 
 
 ### For production usage
 
 - Setup Jaeger to use a persistent storage backend (e.g., Elasticsearch, Cassandra, etc.) instead of the default in-memory storage.
-- The service name will be `wavs`
+- The service name will be `warpdrive`
 
 ---
 

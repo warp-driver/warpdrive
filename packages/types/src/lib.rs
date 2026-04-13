@@ -12,7 +12,7 @@ mod signing;
 mod solidity_types;
 mod submission;
 mod time;
-pub const WAVS_ENV_PREFIX: &str = "WAVS_ENV";
+pub const WARPDRIVE_ENV_PREFIX: &str = "WARPDRIVE_ENV";
 pub use aggregator_types::*;
 pub use bytes::*;
 pub use chain_config::*;

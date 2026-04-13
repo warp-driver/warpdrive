@@ -1,6 +1,6 @@
 [package]
 name = "warpdrive-wasi-utils"
-description = "WAVS WASI utils"
+description = "WarpDrive WASI utils"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true

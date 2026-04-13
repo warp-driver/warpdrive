@@ -42,7 +42,7 @@ wkg wit build
 cd go/
 
 # generate the Go/ bindings
-# if `error: error executing wasm-tools: module closed with exit_code(1)`, set WAVS_PACKAGE
+# if `error: error executing wasm-tools: module closed with exit_code(1)`, set WARPDRIVE_PACKAGE
 wit-bindgen-go generate -o . ../wit-definitions/operator/wavs:operator@0.6.0-alpha.6.wasm
 
 go mod tidy

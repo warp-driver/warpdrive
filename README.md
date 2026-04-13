@@ -1,18 +1,18 @@
 # WarpDrive
 
-![Banner](docs/images/wavs.png)
+![Banner](docs/images/warpdrive.png)
 
 [![Project Status: Active -- The project has reached a stable, usable state and is being actively developed.](https://img.shields.io/badge/repo%20status-Active-green.svg?style=flat-square)](https://www.repostatus.org/#active)
 
 **WarpDrive delivers enterprise-grade, verifiable off-chain compute to the Stellar ecosystem.**
 
-WarpDrive is a trusted compute layer that turns arbitrary off-chain data and processes into provably correct on-chain actions. It leverages Soroban's smart-contract capabilities, modern WASI execution, and flexible operator governance to create a scalable, composable platform for real-world financial and compliance use cases.
+WarpDrive is a trusted compute layer that turns arbitrary off-chain data and processes into provably correct on-chain actions. It leverages Soroban's smart-contract capabilities, modern WASI execution, and flexible vector governance to create a scalable, composable platform for real-world financial and compliance use cases.
 
 Run bots, oracles, automation, and more on Stellar with EigenLayer-grade security.
 
 ## What WarpDrive Does
 
-Smart contracts can't reach beyond the ledger — they can't fetch external data, react to real-world events, or coordinate complex multi-step processes without trusting a single operator. WarpDrive removes that constraint by providing cryptographically verifiable off-chain compute that settles back to Stellar.
+Smart contracts can't reach beyond the ledger — they can't fetch external data, react to real-world events, or coordinate complex multi-step processes without trusting a single vector. WarpDrive removes that constraint by providing cryptographically verifiable off-chain compute that settles back to Stellar.
 
 **Core building blocks:**
 
@@ -22,7 +22,7 @@ Smart contracts can't reach beyond the ledger — they can't fetch external data
 - **Circuits** — a full unit of off-chain work: an input (on-chain event, cron tick, web2 API), a transform (WASI component in Rust/Go/JS), and an output (Soroban verification contract, EVM chain, IPFS, or another circuit for multi-stage workflows).
 - **Aggregator** — collects attestations from Vectrs and batches them into a single on-chain submission. Cannot forge signatures; multiple aggregators can run to remove censorship concerns.
 - **Verification Module** — Soroban contract that validates attestation proofs and translates verified payloads into contract calls on the Stellar ledger.
-- **Security Module** — defines who can attest and with what weight. Supports PoA (fixed trusted operator set), PoS / EigenLayer-style restaking, or any custom algorithm that maps public keys to weights.
+- **Security Module** — defines who can attest and with what weight. Supports PoA (fixed trusted vector set), PoS / EigenLayer-style restaking, or any custom algorithm that maps public keys to weights.
 - **Composable Workflows** — chain circuits together off-chain without touching the blockchain between stages. Multi-stage computations keep the same security guarantees as simple circuits; only the final result settles on-chain.
 
 ## Use Cases
@@ -100,7 +100,7 @@ The skill's MCP tools require `warpdrive-mcp` to be running and registered for e
 just setup-claude-mcp /path/to/your-project
 ```
 
-This writes the `mcpServers.wavs` entry into `~/.claude.json` for that project. Restart Claude Code (or reload MCP servers) afterwards.
+This writes the `mcpServers.warp-drive` entry into `~/.claude.json` for that project. Restart Claude Code (or reload MCP servers) afterwards.
 
 See [MCP.md](MCP.md) for full setup and configuration details.
 

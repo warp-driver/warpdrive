@@ -37,7 +37,7 @@ pub enum Command {
     /// # Prerequisites
     /// - Core contracts must have been previously deployed via the CLI
     /// - Service components must already be uploaded
-    /// - Operators must already be registered on the contracts
+    /// - Vectors must already be registered on the contracts
     ///
     /// # Parameters
     /// * `service_uri`: URI pointing to the JSON service definition
@@ -54,8 +54,8 @@ pub enum Command {
         args: CliArgs,
     },
 
-    /// Execute a component directly, without going through WAVS
-    /// Env vars starting with the "WAVS_ENV" prefix will be picked up by the component.
+    /// Execute a component directly, without going through WarpDrive
+    /// Env vars starting with the "WARPDRIVE_ENV" prefix will be picked up by the component.
     Exec {
         /// Path to the WASI component
         /// The component must implement the trigger-world WIT
@@ -97,11 +97,11 @@ pub enum Command {
         #[clap(long, requires_all = &["submit_chain", "operator_credential"])]
         submit_handler: Option<alloy_primitives::Address>,
 
-        /// Operator credential for envelope signing (required for submission)
+        /// Vector credential for envelope signing (required for submission)
         #[clap(long, requires_all = &["submit_chain", "submit_handler"])]
         operator_credential: Option<Credential>,
 
-        /// Operator HD index for envelope signing
+        /// Vector HD index for envelope signing
         #[clap(long, requires = "operator_credential")]
         operator_hd_index: Option<u32>,
 
@@ -254,7 +254,7 @@ pub enum ComponentCommand {
     },
     /// Manage the workflow component env
     Env {
-        /// Env values staring with 'WAVS_ENV'
+        /// Env values staring with 'WARPDRIVE_ENV'
         #[clap(long)]
         values: Option<Vec<String>>,
     },
@@ -425,7 +425,7 @@ impl Command {
 /// This struct is used for both args and environment variables
 /// the basic idea is that every env var can be overriden by a cli arg
 /// and these override the config file
-/// env vars follow the pattern of WAVS_CLI_{UPPERCASE_ARG_NAME}
+/// env vars follow the pattern of WARPDRIVE_CLI_{UPPERCASE_ARG_NAME}
 #[derive(Clone, Debug, Parser, Serialize, Deserialize, Default)]
 #[command(version, about, long_about = None)]
 #[serde(default)]
@@ -436,7 +436,7 @@ pub struct CliArgs {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub home: Option<PathBuf>,
 
-    /// The WAVS endpoint. Default is `http://127.0.0.1:8000`
+    /// The WarpDrive endpoint. Default is `http://127.0.0.1:8000`
     #[arg(long)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub wavs_endpoint: Option<PathBuf>,
@@ -493,7 +493,7 @@ pub struct CliArgs {
 }
 
 impl CliEnvExt for CliArgs {
-    const ENV_VAR_PREFIX: &'static str = "WAVS_CLI";
+    const ENV_VAR_PREFIX: &'static str = "WARPDRIVE_CLI";
     const TOML_IDENTIFIER: &'static str = "cli";
 
     fn home_dir(&self) -> Option<PathBuf> {

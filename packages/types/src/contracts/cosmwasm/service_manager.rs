@@ -44,11 +44,11 @@ use crate::contracts::cosmwasm::{
 /// }
 /// ```
 ///
-/// This allows WAVS to call your contract with the `ServiceManager` messages,
+/// This allows WarpDrive to call your contract with the `ServiceManager` messages,
 /// without needing to know your full `QueryMsg` or `ExecuteMsg` types
 #[cw_serde]
 pub enum ServiceManagerExecuteMessages {
-    /// Set the service URI for the WAVS service manager
+    /// Set the service URI for the WarpDrive service manager
     WavsSetServiceUri { service_uri: String },
     /// Update quorum threshold
     WavsSetQuorumThreshold {
@@ -60,9 +60,9 @@ pub enum ServiceManagerExecuteMessages {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum ServiceManagerQueryMessages {
-    /// Get the given operator's current weight
+    /// Get the given vector's current weight
     #[returns(cosmwasm_std::Uint256)]
-    WavsOperatorWeight { operator_address: EvmAddr },
+    WavsOperatorWeight { vector_address: EvmAddr },
 
     /// Validate a signed envelope
     #[returns(WavsValidateResult)]
@@ -75,7 +75,7 @@ pub enum ServiceManagerQueryMessages {
     #[returns(String)]
     WavsServiceUri {},
 
-    /// Get the latest operator address for a given signing key address
+    /// Get the latest vector address for a given signing key address
     #[returns(Option<EvmAddr>)]
     WavsLatestOperatorForSigningKey { signing_key_addr: EvmAddr },
 
@@ -157,7 +157,7 @@ mod tests {
             },
         );
         let expected_msg_1 =
-            format!(r#"{{"wavs_set_service_uri":{{"service_uri":"{service_uri}"}}}}"#);
+            format!(r#"{{"warpdrive_set_service_uri":{{"service_uri":"{service_uri}"}}}}"#);
 
         let msg_2 = ExampleServiceManagerExecuteMsg::MyCustomMessage {
             my_field: "Hello".to_string(),

@@ -1,6 +1,6 @@
 [package]
 name = "warpdrive-engine"
-description = "WAVS Engine"
+description = "WarpDrive Engine"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true

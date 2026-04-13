@@ -1,5 +1,5 @@
 [default]
-log_level = ["info", "wavs=debug"]
+log_level = ["info", "warpdrive=debug"]
 
 [layer-tests]
 wavs_concurrency = true
@@ -16,7 +16,7 @@ p2p = "mdns"              # "mdns" (local) or "kademlia" (remote)
 # mode = { "isolated" = [{ evm = "multi_operator" }] }
 # mode = {"isolated" = [
 #     {evm = "echo_data"},
-#     {evm = "multi_operator"},
+#     {evm = "multi_vector"},
 #     {cosmos = "permissions"},
 # ]}
 
@@ -29,7 +29,7 @@ mode = "all_eth"
 # Run a few specific tests
 # mode = {"isolated" = [
 #     {evm = "echo_data"},
-#     {evm = "multi_operator"},
+#     {evm = "multi_vector"},
 #     {cosmos = "permissions"},
 # ]}
 

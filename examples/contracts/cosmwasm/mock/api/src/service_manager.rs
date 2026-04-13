@@ -12,7 +12,7 @@ pub type InstantiateMsg = Empty;
 pub enum ExecuteMsg {
     /// Mock contracts get superpowers
     SetSigningKey {
-        operator: EvmAddr,
+        vector: EvmAddr,
         signing_key: EvmAddr,
         weight: Uint256,
     },

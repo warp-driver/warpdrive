@@ -254,29 +254,29 @@ async fn run_test(
     component_sources: &ComponentSources,
     _registry: &TestRegistry,
 ) -> anyhow::Result<()> {
-    // For multi-operator tests, wait for P2P mesh to form before triggering
-    if test.multi_operator && clients.http_clients.len() > 1 {
+    // For multi-vector tests, wait for P2P mesh to form before triggering
+    if test.multi_vector && clients.http_clients.len() > 1 {
         let expected_peers = clients.http_clients.len() - 1;
         tracing::info!(
-            "Multi-operator test: waiting for P2P mesh formation ({} expected peers)",
+            "Multi-vector test: waiting for P2P mesh formation ({} expected peers)",
             expected_peers
         );
 
-        // Wait for all operators to have connected to peers
+        // Wait for all vectors to have connected to peers
         for (idx, http_client) in clients.http_clients.iter().enumerate() {
             let status = http_client
                 .wait_for_p2p_ready(expected_peers, Some(Duration::from_secs(30)))
                 .await
                 .map_err(|e| {
                     anyhow!(
-                        "Operator {} P2P readiness check failed: {}. \
-                         Multi-operator tests require P2P mesh to be ready.",
+                        "Vector {} P2P readiness check failed: {}. \
+                         Multi-vector tests require P2P mesh to be ready.",
                         idx,
                         e
                     )
                 })?;
             tracing::info!(
-                "Operator {} P2P ready: {} connected peers",
+                "Vector {} P2P ready: {} connected peers",
                 idx,
                 status.connected_peers
             );
@@ -436,7 +436,7 @@ async fn run_test(
                 let record_payload = input_bytes.clone().unwrap_or_default();
                 let record_text = String::from_utf8_lossy(&record_payload).to_string();
 
-                // Send simulated trigger to all WAVS instances
+                // Send simulated trigger to all WarpDrive instances
                 for http_client in clients.http_clients.iter() {
                     let atproto_data = TriggerData::AtProtoEvent {
                         sequence: sequence as i64,
@@ -618,7 +618,7 @@ async fn run_test(
         tracing::info!("Test completed successfully!");
     }
 
-    // Wait for the aggregator submit callback to complete on all WAVS instances
+    // Wait for the aggregator submit callback to complete on all WarpDrive instances
     // before cleaning up the service. This ensures the after-submit callback
     // has finished writing to the KV store.
     // Only do this if:
@@ -657,7 +657,7 @@ async fn run_test(
         "Cleaning up service: {0:?}",
         service_deployment.service.manager
     );
-    // Delete service from all WAVS instances
+    // Delete service from all WarpDrive instances
     for http_client in clients.http_clients.iter() {
         http_client
             .delete_service(vec![service_deployment.service.manager.clone()])

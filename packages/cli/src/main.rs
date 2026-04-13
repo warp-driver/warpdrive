@@ -290,7 +290,7 @@ async fn main() {
                             }
                         };
 
-                        // Get operator EVM client for envelope signing
+                        // Get vector EVM client for envelope signing
                         let operator_evm_client = match new_evm_client_with_credential(
                             &ctx,
                             chain_key.id.clone(),
@@ -301,12 +301,12 @@ async fn main() {
                         {
                             Ok(client) => client,
                             Err(e) => {
-                                eprintln!("Failed to create operator EVM client: {e}");
+                                eprintln!("Failed to create vector EVM client: {e}");
                                 std::process::exit(1);
                             }
                         };
 
-                        // Create signature using the operator EVM client's signer
+                        // Create signature using the vector EVM client's signer
                         let signature = envelope
                             .sign(&operator_evm_client.signer, SignatureKind::evm_default())
                             .await

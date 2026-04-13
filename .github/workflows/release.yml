@@ -14,7 +14,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: lay3rlabs/wavs
+  IMAGE_NAME: warp-driver/warpdrive
 
 jobs:
   build_amd64:
@@ -46,7 +46,7 @@ jobs:
       - name: Fetch WIT dependencies
         run: |
           cd wit-definitions/types && wkg wit fetch
-          cd ../../wit-definitions/operator && wkg wit fetch
+          cd ../../wit-definitions/vector && wkg wit fetch
           cd ../../wit-definitions/aggregator && wkg wit fetch
 
       - name: Set IMAGE_TAG
@@ -108,7 +108,7 @@ jobs:
       - name: Fetch WIT dependencies
         run: |
           cd wit-definitions/types && wkg wit fetch
-          cd ../../wit-definitions/operator && wkg wit fetch
+          cd ../../wit-definitions/vector && wkg wit fetch
           cd ../../wit-definitions/aggregator && wkg wit fetch
 
       - name: Set IMAGE_TAG

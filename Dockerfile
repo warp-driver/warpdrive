@@ -37,8 +37,8 @@ WORKDIR /wavs
 RUN apt-get update && apt-get upgrade -y
 RUN apt install -y libcurl4 jq
 
-COPY --from=builder /myapp/target/release/wavs /usr/local/bin/wavs
-COPY --from=builder /myapp/wavs.toml /var/wavs/wavs.toml
+COPY --from=builder /myapp/target/release/warpdrive /usr/local/bin/warpdrive
+COPY --from=builder /myapp/warpdrive.toml /var/warpdrive/warpdrive.toml
 
 COPY --from=builder /myapp/target/release/warpdrive-cli /usr/local/bin/warpdrive-cli
 
@@ -49,4 +49,4 @@ COPY --from=foundry /usr/local/bin/anvil /usr/local/bin/anvil
 COPY --from=foundry /usr/local/bin/chisel /usr/local/bin/chisel
 
 EXPOSE 8000 8001
-CMD ["/usr/local/bin/wavs"]
+CMD ["/usr/local/bin/warpdrive"]

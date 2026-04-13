@@ -23,7 +23,7 @@ use crate::config::TestP2pMode;
 use super::config::Configs;
 
 pub struct AppHandles {
-    /// One handle per WAVS operator instance
+    /// One handle per WarpDrive vector instance
     pub wavs_handles: Vec<std::thread::JoinHandle<()>>,
     pub evm_middleware: Option<EvmMiddleware>,
     pub cosmos_middlewares: CosmosMiddlewares,
@@ -68,19 +68,19 @@ impl AppHandles {
             }
         }
 
-        // Spawn one WAVS instance per operator
-        let mut wavs_handles = Vec::with_capacity(configs.num_operators());
+        // Spawn one WarpDrive instance per vector
+        let mut wavs_handles = Vec::with_capacity(configs.num_vectors());
 
         // Check if we're using Remote P2P mode (Kademlia)
 
-        if configs.p2p == TestP2pMode::Kademlia && configs.num_operators() > 1 {
-            // Remote mode: start operator 0 first, get bootstrap address, then start others
-            wavs_handles = Self::start_wavs_remote_mode(ctx, configs, &metrics)
-                .expect("Failed to start operators in remote mode");
+        if configs.p2p == TestP2pMode::Kademlia && configs.num_vectors() > 1 {
+            // Remote mode: start vector 0 first, get bootstrap address, then start others
+            wavs_handles = Self::start_warpdrive_remote_mode(ctx, configs, &metrics)
+                .expect("Failed to start vectors in remote mode");
         } else {
-            // Local mode or single operator: start all at once
-            for (operator_index, wavs_config) in configs.wavs_configs.iter().enumerate() {
-                let handle = Self::spawn_wavs_operator(ctx, wavs_config, &metrics, operator_index);
+            // Local mode or single vector: start all at once
+            for (vector_index, warpdrive_config) in configs.warpdrive_configs.iter().enumerate() {
+                let handle = Self::spawn_wavs_operator(ctx, warpdrive_config, &metrics, vector_index);
                 wavs_handles.push(handle);
             }
         }
@@ -108,25 +108,25 @@ impl AppHandles {
         results
     }
 
-    /// Spawn a single WAVS operator
+    /// Spawn a single WarpDrive vector
     fn spawn_wavs_operator(
         ctx: &AppContext,
-        wavs_config: &warpdrive::config::Config,
+        warpdrive_config: &warpdrive::config::Config,
         metrics: &Metrics,
-        operator_index: usize,
+        vector_index: usize,
     ) -> std::thread::JoinHandle<()> {
-        let dispatcher = Arc::new(Dispatcher::new(wavs_config, metrics.wavs.clone()).unwrap());
+        let dispatcher = Arc::new(Dispatcher::new(warpdrive_config, metrics.warpdrive.clone()).unwrap());
 
         std::thread::spawn({
             let dispatcher = dispatcher.clone();
             let ctx = ctx.clone();
-            let config = wavs_config.clone();
+            let config = warpdrive_config.clone();
             let http_metrics = metrics.http.clone();
 
             move || {
                 tracing::info!(
-                    "Starting WAVS operator {} on port {}",
-                    operator_index,
+                    "Starting WarpDrive vector {} on port {}",
+                    vector_index,
                     config.port
                 );
                 let health_status = warpdrive::health::SharedHealthStatus::new();
@@ -142,21 +142,21 @@ impl AppHandles {
         })
     }
 
-    /// Start WAVS operators in Remote P2P mode (Kademlia)
-    /// Operator 0 starts first as bootstrap server, others connect to it
-    fn start_wavs_remote_mode(
+    /// Start WarpDrive vectors in Remote P2P mode (Kademlia)
+    /// Vector 0 starts first as bootstrap server, others connect to it
+    fn start_warpdrive_remote_mode(
         ctx: &AppContext,
         configs: &Configs,
         metrics: &Metrics,
     ) -> Result<Vec<std::thread::JoinHandle<()>>, anyhow::Error> {
-        let mut handles = Vec::with_capacity(configs.num_operators());
+        let mut handles = Vec::with_capacity(configs.num_vectors());
 
-        // Start operator 0 (bootstrap server)
-        let op0_config = &configs.wavs_configs[0];
-        tracing::info!("Starting operator 0 as bootstrap server");
+        // Start vector 0 (bootstrap server)
+        let op0_config = &configs.warpdrive_configs[0];
+        tracing::info!("Starting vector 0 as bootstrap server");
         handles.push(Self::spawn_wavs_operator(ctx, op0_config, metrics, 0));
 
-        // Wait for operator 0 to be ready and get its bootstrap address
+        // Wait for vector 0 to be ready and get its bootstrap address
         let op0_url = format!("http://127.0.0.1:{}", op0_config.port);
         let bootstrap_addr = ctx.rt.block_on(async {
             let client = HttpClient::new(op0_url);
@@ -179,18 +179,18 @@ impl AppHandles {
                             .cloned();
 
                         if let Some(addr) = addr {
-                            tracing::info!("Got bootstrap address from operator 0: {}", addr);
+                            tracing::info!("Got bootstrap address from vector 0: {}", addr);
                             return Ok(addr);
                         }
                     }
                     Err(e) => {
-                        tracing::debug!("Waiting for operator 0 P2P status: {:?}", e);
+                        tracing::debug!("Waiting for vector 0 P2P status: {:?}", e);
                     }
                 }
 
                 if start.elapsed() >= timeout {
                     return Err(anyhow::anyhow!(
-                        "Timed out waiting for operator 0 bootstrap address after 30s"
+                        "Timed out waiting for vector 0 bootstrap address after 30s"
                     ));
                 }
 
@@ -199,10 +199,10 @@ impl AppHandles {
             }
         })?;
 
-        // Start remaining operators with the bootstrap address
-        for (operator_index, wavs_config) in configs.wavs_configs.iter().enumerate().skip(1) {
+        // Start remaining vectors with the bootstrap address
+        for (vector_index, warpdrive_config) in configs.warpdrive_configs.iter().enumerate().skip(1) {
             // Clone and modify config to add bootstrap address
-            let mut config = wavs_config.clone();
+            let mut config = warpdrive_config.clone();
             if let P2pConfig::Remote {
                 listen_port,
                 bootstrap_nodes: _,
@@ -236,15 +236,15 @@ impl AppHandles {
             }
 
             tracing::info!(
-                "Starting operator {} with bootstrap: {}",
-                operator_index,
+                "Starting vector {} with bootstrap: {}",
+                vector_index,
                 bootstrap_addr
             );
             handles.push(Self::spawn_wavs_operator(
                 ctx,
                 &config,
                 metrics,
-                operator_index,
+                vector_index,
             ));
         }
 

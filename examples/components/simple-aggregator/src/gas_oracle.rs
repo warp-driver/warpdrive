@@ -3,7 +3,7 @@ use serde::Deserialize;
 use warpdrive_wasi_utils::http::{fetch_json, http_request_get};
 use wstd::runtime::block_on;
 
-pub const ETHERSCAN_API_KEY_ENV: &str = "WAVS_ENV_ETHERSCAN_API_KEY";
+pub const ETHERSCAN_API_KEY_ENV: &str = "WARPDRIVE_ENV_ETHERSCAN_API_KEY";
 
 #[derive(Deserialize)]
 struct EtherscanGasOracleResponse {
