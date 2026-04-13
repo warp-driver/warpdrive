@@ -1,6 +1,6 @@
-# wavs-go
+# warpdrive-go
 
-[WAVS](https://wavs.xyz) go-lang bindings for [components](https://github.com/Lay3rLabs/wavs-foundry-template).
+[WarpDrive](https://wavs.xyz) Go bindings for WASI [components](https://github.com/Lay3rLabs/wavs-foundry-template) — lets you write Vectr circuits in Go instead of Rust.
 
 ## Install Wit Bindgen for Go
 
@@ -35,7 +35,7 @@ sudo pacman -Sy tinygo
 tinygo version
 wkg --version
 
-# build the wavs package if you have not already
+# build the warpdrive package if you have not already
 wkg wit build
 
 # move into the golang directory
