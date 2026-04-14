@@ -333,11 +333,6 @@ pub enum Trigger {
         /// If None, will match all action types
         action: Option<AtProtoAction>,
     },
-    /// Hypercore append event trigger
-    HypercoreAppend {
-        /// Feed key to filter on.
-        feed_key: String,
-    },
     // not a real trigger, just for testing
     Manual,
 }
@@ -419,14 +414,6 @@ pub enum TriggerData {
         /// Index of the operation within the commit (0-based)
         op_index: Option<u32>,
     },
-    HypercoreAppend {
-        /// Hypercore feed key that emitted the append
-        feed_key: String,
-        /// Index of the appended entry
-        index: u64,
-        /// Raw entry data
-        data: Vec<u8>,
-    },
     Raw(Vec<u8>),
 }
 
@@ -448,7 +435,6 @@ impl TriggerData {
             TriggerData::BlockInterval { .. } => "block_interval",
             TriggerData::Cron { .. } => "cron",
             TriggerData::AtProtoEvent { .. } => "atproto_event",
-            TriggerData::HypercoreAppend { .. } => "hypercore_append",
             TriggerData::Raw(_) => "manual",
         }
     }
@@ -460,7 +446,6 @@ impl TriggerData {
             | TriggerData::BlockInterval { chain, .. } => Some(chain),
             TriggerData::Cron { .. }
             | TriggerData::AtProtoEvent { .. }
-            | TriggerData::HypercoreAppend { .. }
             | TriggerData::Raw(_) => None,
         }
     }

@@ -76,18 +76,13 @@ fn default_simulated_trigger_count() -> usize {
 #[derive(Debug, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct DevTriggerStreamsInfo {
     pub chains: HashMap<ChainKey, DevTriggerStreamInfo>,
-    #[serde(default)]
-    pub hypercore: HashMap<String, DevHypercoreStreamState>,
 }
 
 impl DevTriggerStreamsInfo {
     pub fn finalized(&self) -> bool {
         self.chains.values().all(|info| {
             !info.any_active_rpcs_in_flight && info.is_connected && info.current_endpoint.is_some()
-        }) && self
-            .hypercore
-            .values()
-            .all(|info| matches!(info, DevHypercoreStreamState::Connected))
+        })
     }
 
     pub fn any_active_subscriptions(&self) -> bool {
@@ -95,14 +90,6 @@ impl DevTriggerStreamsInfo {
             .values()
             .any(|info| !info.active_subscriptions.is_empty())
     }
-}
-
-#[derive(Debug, Serialize, Deserialize, utoipa::ToSchema, Clone, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum DevHypercoreStreamState {
-    Waiting,
-    Connecting,
-    Connected,
 }
 
 #[derive(Debug, Serialize, Deserialize, utoipa::ToSchema)]

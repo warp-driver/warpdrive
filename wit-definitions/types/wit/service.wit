@@ -93,7 +93,6 @@ interface service {
         block-interval(trigger-block-interval),
         cron(trigger-cron),
         atproto-event(trigger-atproto-event),
-        hypercore-append(trigger-hypercore-append),
         manual
     }
 
@@ -126,10 +125,6 @@ interface service {
         collection: string,
         repo-did: option<string>,
         action: option<string>
-    }
-
-    record trigger-hypercore-append {
-        feed-key: string
     }
 
 
