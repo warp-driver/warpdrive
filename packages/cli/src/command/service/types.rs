@@ -3,10 +3,10 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     path::PathBuf,
 };
-use wasm_pkg_client::{PackageRef, Version};
 use warpdrive_types::{
     ChainKey, ComponentDigest, Permissions, ServiceBuilder, ServiceStatus, Trigger, WorkflowId,
 };
+use wasm_pkg_client::{PackageRef, Version};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ChainType {

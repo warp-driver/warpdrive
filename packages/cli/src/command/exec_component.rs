@@ -6,7 +6,6 @@ use std::{
 use alloy_primitives::FixedBytes;
 use anyhow::{Context, Result};
 use utils::{config::WARPDRIVE_ENV_PREFIX, storage::db::WavsDb};
-use wasmtime::{component::Component as WasmtimeComponent, Config as WTConfig, Engine as WTEngine};
 use warpdrive_engine::{
     bindings::operator::world::host::LogLevel,
     worlds::instance::{HostComponentLogger, InstanceData, InstanceDepsBuilder},
@@ -16,6 +15,7 @@ use warpdrive_types::{
     Submit, Timestamp, Trigger, TriggerAction, TriggerConfig, TriggerData, WasmResponse, Workflow,
     WorkflowId,
 };
+use wasmtime::{component::Component as WasmtimeComponent, Config as WTConfig, Engine as WTEngine};
 
 use crate::{
     args::TriggerKind,

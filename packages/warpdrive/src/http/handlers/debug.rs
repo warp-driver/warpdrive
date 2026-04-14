@@ -135,8 +135,5 @@ pub async fn handle_dev_trigger_streams_info(State(state): State<HttpState>) -> 
         })
         .collect::<HashMap<ChainKey, DevTriggerStreamInfo>>();
 
-    Json(DevTriggerStreamsInfo {
-        chains,
-    })
-    .into_response()
+    Json(DevTriggerStreamsInfo { chains }).into_response()
 }

@@ -57,8 +57,8 @@ impl SystemSetup {
             app_storage,
             50, // LRU cache size for components
             Arc::new(RwLock::new(engine_setup.chain_configs.clone())),
-            None,                // No fuel limit for benchmarks
-            None,                // No time limit for benchmarks
+            None,                     // No fuel limit for benchmarks
+            None,                     // No time limit for benchmarks
             metrics.warpdrive.engine, // Engine metrics
             db_storage.clone(),
             DEFAULT_IPFS_GATEWAY.to_owned(),

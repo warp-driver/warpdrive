@@ -8,8 +8,8 @@ use layer_climb::querier::QueryClient as CosmosQueryClient;
 use tempfile::tempdir;
 use utils::init_tracing_tests;
 use utils::service::DEFAULT_IPFS_GATEWAY;
-use wasm_pkg_client::PackageRef;
 use warpdrive_types::{Builder, ComponentDigest, SignatureKind, Submit};
+use wasm_pkg_client::PackageRef;
 
 use crate::service_json::ServiceJsonExt;
 
@@ -528,7 +528,9 @@ async fn test_workflow_component_operations() {
         .unwrap();
 
     assert_eq!(component_with_env.env_keys.len(), 3);
-    assert!(component_with_env.env_keys.contains("WARPDRIVE_ENV_API_KEY"));
+    assert!(component_with_env
+        .env_keys
+        .contains("WARPDRIVE_ENV_API_KEY"));
     assert!(component_with_env
         .env_keys
         .contains("WARPDRIVE_ENV_SECRET_TOKEN"));
@@ -537,7 +539,10 @@ async fn test_workflow_component_operations() {
         .contains("WARPDRIVE_ENV_DATABASE_URL"));
 
     // Test validation of env keys
-    let invalid_env_keys = vec!["WARPDRIVE_ENV_VALID".to_string(), "INVALID_PREFIX".to_string()];
+    let invalid_env_keys = vec![
+        "WARPDRIVE_ENV_VALID".to_string(),
+        "INVALID_PREFIX".to_string(),
+    ];
 
     let invalid_result = update_workflow_component(
         DEFAULT_IPFS_GATEWAY,

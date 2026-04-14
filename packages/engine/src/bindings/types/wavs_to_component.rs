@@ -144,7 +144,9 @@ impl From<warpdrive_types::CosmosChainConfig>
     }
 }
 
-impl From<warpdrive_types::EvmChainConfig> for crate::bindings::operator::world::host::EvmChainConfig {
+impl From<warpdrive_types::EvmChainConfig>
+    for crate::bindings::operator::world::host::EvmChainConfig
+{
     fn from(config: warpdrive_types::EvmChainConfig) -> Self {
         Self {
             chain_id: config.chain_id.to_string(),
@@ -296,7 +298,9 @@ impl From<warpdrive_types::SignaturePrefix> for component_service::SignaturePref
 impl From<warpdrive_types::AllowedHostPermission> for component_service::AllowedHostPermission {
     fn from(src: warpdrive_types::AllowedHostPermission) -> Self {
         match src {
-            warpdrive_types::AllowedHostPermission::All => component_service::AllowedHostPermission::All,
+            warpdrive_types::AllowedHostPermission::All => {
+                component_service::AllowedHostPermission::All
+            }
             warpdrive_types::AllowedHostPermission::None => {
                 component_service::AllowedHostPermission::None
             }

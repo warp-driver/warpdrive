@@ -3,7 +3,6 @@ use std::collections::BTreeMap;
 use alloy_sol_types::SolValue;
 use serde::{de::DeserializeOwned, Serialize};
 use utils::{storage::db::WavsDb, test_utils::test_contracts::ISimpleSubmit::DataWithId};
-use wasmtime::{component::Component as WasmtimeComponent, Config as WTConfig, Engine as WTEngine};
 use warpdrive_engine::{
     backend::wasi_keyvalue::context::KeyValueCtx,
     bindings::operator::world::host::LogLevel,
@@ -11,6 +10,7 @@ use warpdrive_engine::{
     worlds::instance::{HostComponentLogger, InstanceData, InstanceDepsBuilder},
 };
 use warpdrive_types::{ComponentDigest, ServiceId, WasmResponse, WorkflowId};
+use wasmtime::{component::Component as WasmtimeComponent, Config as WTConfig, Engine as WTEngine};
 
 use crate::helpers::service::{make_service, make_trigger_action};
 

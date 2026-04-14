@@ -19,7 +19,6 @@ use alloy_transport::{
     utils::guess_local_url, BoxTransport, Pbf, TransportConnect, TransportError,
     TransportErrorKind, TransportFut,
 };
-use alloy_transport_http::{Http, HttpConnect};
 use futures_utils_wasm::impl_future;
 use tower_service::Service;
 use wstd::{

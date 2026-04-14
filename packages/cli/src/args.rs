@@ -10,10 +10,10 @@ use utils::{
     config::{CliEnvExt, ConfigBuilder},
     serde::deserialize_vec_string,
 };
-use wasm_pkg_client::{PackageRef, Version};
 use warpdrive_types::{
     AtProtoAction, ChainKey, ComponentDigest, Credential, ServiceStatus, Timestamp, WorkflowId,
 };
+use wasm_pkg_client::{PackageRef, Version};
 
 use crate::config::Config;
 
@@ -402,7 +402,6 @@ pub enum TriggerCommand {
         #[clap(long)]
         action: Option<AtProtoAction>,
     },
-
 }
 
 impl Command {

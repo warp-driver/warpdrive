@@ -112,9 +112,9 @@ impl<S: CAStorage + Send + Sync + 'static> EngineManager<S> {
                             Ok(messages) => {
                                 for msg in messages {
                                     if let Err(e) = _self.subsystem_to_dispatcher_tx.send(
-                                        DispatcherCommand::EngineResponse(
-                                            EngineResponse::Vector(msg),
-                                        ),
+                                        DispatcherCommand::EngineResponse(EngineResponse::Vector(
+                                            msg,
+                                        )),
                                     ) {
                                         tracing::error!(
                                             "Error sending message to dispatcher: {:?}",

@@ -42,7 +42,9 @@ use warpdrive_types::{
     AnyChainConfig, ChainConfigError, ChainConfigs, ChainKey, ComponentDigest, ServiceManager,
     Submission, Submit, TriggerData, WorkflowIdError,
 };
-use warpdrive_types::{Service, ServiceError, ServiceId, SignerResponse, TriggerAction, WorkflowId};
+use warpdrive_types::{
+    Service, ServiceError, ServiceId, SignerResponse, TriggerAction, WorkflowId,
+};
 
 use crate::config::Config;
 use crate::service_registry::{RegistryError, ServiceRegistry};
@@ -84,7 +86,6 @@ pub struct Dispatcher<S: CAStorage> {
     cosmos_query_clients: Arc<RwLock<HashMap<ChainKey, QueryClient>>>,
 }
 
-
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum DispatcherCommand {
@@ -108,10 +109,7 @@ pub enum DispatcherCommand {
 }
 
 impl Dispatcher<FileStorage> {
-    pub fn new(
-        config: &Config,
-        metrics: WarpdriveMetrics,
-    ) -> Result<Self, DispatcherError> {
+    pub fn new(config: &Config, metrics: WarpdriveMetrics) -> Result<Self, DispatcherError> {
         // Create all our channels for communication
         // except dispatcher_to_trigger calls its local stream channel
         let (subsystem_to_dispatcher_tx, subsystem_to_dispatcher_rx) =

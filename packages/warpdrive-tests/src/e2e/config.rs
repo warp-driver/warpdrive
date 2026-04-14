@@ -230,20 +230,22 @@ impl From<TestConfig> for Configs {
         // Create WarpDrive configs for each vector
         let mut warpdrive_configs = Vec::with_capacity(num_vectors);
         for vector_index in 0..num_vectors {
-            let mut warpdrive_config: warpdrive::config::Config = ConfigBuilder::new(warpdrive::args::CliArgs {
-                data: Some(tempfile::tempdir().unwrap().path().to_path_buf()),
-                home: Some(workspace_path()),
-                // deliberately point to a non-existing file
-                dotenv: Some(tempfile::NamedTempFile::new().unwrap().path().to_path_buf()),
-                ..Default::default()
-            })
-            .build()
-            .unwrap();
+            let mut warpdrive_config: warpdrive::config::Config =
+                ConfigBuilder::new(warpdrive::args::CliArgs {
+                    data: Some(tempfile::tempdir().unwrap().path().to_path_buf()),
+                    home: Some(workspace_path()),
+                    // deliberately point to a non-existing file
+                    dotenv: Some(tempfile::NamedTempFile::new().unwrap().path().to_path_buf()),
+                    ..Default::default()
+                })
+                .build()
+                .unwrap();
 
             warpdrive_config.chains = chain_configs.clone();
             // Each vector gets its own signing mnemonic for unique signing keys
             warpdrive_config.signing_mnemonic = Some(mnemonics.vectors[vector_index].clone());
-            warpdrive_config.aggregator_cosmos_credential = Some(mnemonics.aggregator_cosmos.clone());
+            warpdrive_config.aggregator_cosmos_credential =
+                Some(mnemonics.aggregator_cosmos.clone());
             warpdrive_config.aggregator_evm_credential = Some(mnemonics.aggregator_evm.clone());
             warpdrive_config.dev_endpoints_enabled = true;
             warpdrive_config.port = DEFAULT_WARPDRIVE_BASE_PORT + vector_index as u32;

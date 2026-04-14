@@ -16,7 +16,9 @@ use error::SubmissionError;
 use tracing::instrument;
 use utils::{evm_client::signing::make_signer, telemetry::SubmissionMetrics};
 use warpdrive_types::Submission;
-use warpdrive_types::{Credential, Envelope, EventOrder, ServiceId, SignerResponse, Submit, WavsSigner};
+use warpdrive_types::{
+    Credential, Envelope, EventOrder, ServiceId, SignerResponse, Submit, WavsSigner,
+};
 
 #[derive(Debug)]
 #[allow(clippy::large_enum_variant)]

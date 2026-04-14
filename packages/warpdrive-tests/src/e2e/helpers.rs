@@ -7,7 +7,9 @@ use layer_climb::pool::SigningClientPoolManager;
 use layer_climb::prelude::CosmosAddr;
 use std::{collections::BTreeMap, num::NonZero, sync::Arc, time::Duration};
 use utils::evm_client::AnyNonceManager;
-use utils::{config::WARPDRIVE_ENV_PREFIX, evm_client::EvmSigningClient, filesystem::workspace_path};
+use utils::{
+    config::WARPDRIVE_ENV_PREFIX, evm_client::EvmSigningClient, filesystem::workspace_path,
+};
 use uuid::Uuid;
 use warpdrive_cli::clients::HttpClient;
 
@@ -668,4 +670,3 @@ pub async fn wait_for_evm_trigger_streams_to_finalize(
     .await
     .unwrap();
 }
-

@@ -12,7 +12,7 @@ wit-bindgen = { workspace = true }
 alloy-primitives = { workspace = true }
 warpdrive-wasi-utils = { workspace = true }
 alloy-network = { workspace = true }
-alloy-provider = { workspace = true }
+alloy-provider = { version = "=1.8.3", default-features = false }
 wasip2 = { workspace = true }
 example-helpers = { workspace = true }
 example-types = { workspace = true }

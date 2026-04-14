@@ -370,9 +370,7 @@ impl WorkflowBuilder {
         if self.component.is_some() {
             panic!("Component already set");
         }
-        self.component = Some(ComponentDefinition::from(ComponentName::Vector(
-            component,
-        )));
+        self.component = Some(ComponentDefinition::from(ComponentName::Vector(component)));
         self
     }
 

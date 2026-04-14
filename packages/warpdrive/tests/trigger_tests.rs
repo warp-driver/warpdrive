@@ -1,7 +1,9 @@
 #![cfg(feature = "dev")]
 use std::num::NonZero;
 
-use warpdrive::{config::Config, dispatcher::DispatcherCommand, subsystems::trigger::TriggerManager};
+use warpdrive::{
+    config::Config, dispatcher::DispatcherCommand, subsystems::trigger::TriggerManager,
+};
 use warpdrive_types::{
     ChainKey, Component, ComponentDigest, ComponentSource, Service, ServiceId, ServiceManager,
     ServiceStatus, SignatureKind, Submit, Timestamp, Trigger, TriggerConfig, Workflow, WorkflowId,

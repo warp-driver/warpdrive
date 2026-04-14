@@ -223,7 +223,11 @@ impl ServiceManagers {
 
                 // Deploy the service on ALL WarpDrive instances
                 for (idx, http_client) in http_clients.iter().enumerate() {
-                    tracing::info!("Deploying service {} on WarpDrive instance {}", test.name, idx);
+                    tracing::info!(
+                        "Deploying service {} on WarpDrive instance {}",
+                        test.name,
+                        idx
+                    );
                     http_client
                         .create_service(service_manager.clone(), None)
                         .await
@@ -271,8 +275,7 @@ impl ServiceManagers {
                     .unwrap();
 
                 // unique HD index per test and vector to avoid nonce collisions
-                let operator_hd_index =
-                    (test_index * MULTI_VECTOR_COUNT + operator_offset) as u32;
+                let operator_hd_index = (test_index * MULTI_VECTOR_COUNT + operator_offset) as u32;
                 let operator_mnemonic = &self.configs.mnemonics.vectors[operator_offset];
                 let operator_signer = utils::evm_client::signing::make_signer(
                     operator_mnemonic,

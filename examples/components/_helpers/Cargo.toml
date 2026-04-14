@@ -9,7 +9,7 @@ repository.workspace = true
 [dependencies]
 warpdrive-wasi-utils = { workspace = true }
 alloy-primitives = { workspace = true }
-alloy-provider = { workspace = true }
+alloy-provider = { version = "=1.8.3", default-features = false }
 alloy-contract = { workspace = true }
 alloy-sol-macro = { workspace = true }
 alloy-sol-types = { workspace = true }

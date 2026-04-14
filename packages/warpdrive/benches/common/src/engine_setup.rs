@@ -2,7 +2,6 @@ use std::{collections::BTreeMap, sync::Arc};
 
 use tempfile::{tempdir, TempDir};
 use utils::{filesystem::workspace_path, storage::db::WavsDb};
-use wasmtime::{component::Component, Engine as WTEngine};
 use warpdrive_engine::worlds::instance::{
     HostComponentLogger, InstanceData, InstanceDeps, InstanceDepsBuilder,
 };
@@ -10,6 +9,7 @@ use warpdrive_types::{
     AllowedHostPermission, ChainConfigs, ComponentDigest, Service, TriggerAction, TriggerConfig,
     TriggerData, Workflow, WorkflowId,
 };
+use wasmtime::{component::Component, Engine as WTEngine};
 
 /// Handle provides the setup and infrastructure needed for engine benchmarks
 pub struct EngineSetup {
