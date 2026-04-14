@@ -36,14 +36,13 @@ use utils::error::EvmClientError;
 use utils::service::fetch_service;
 use utils::storage::fs::FileStorage;
 use utils::telemetry::{DispatcherMetrics, WavsMetrics};
-use wavs_gui_shared::event::TauriEventEmitterExt;
 use wavs_types::contracts::cosmwasm::service_manager::ServiceManagerQueryMessages;
 use wavs_types::IWavsServiceManager::IWavsServiceManagerInstance;
 use wavs_types::{
     AnyChainConfig, ChainConfigError, ChainConfigs, ChainKey, ComponentDigest, ServiceManager,
-    Submission, Submit, TriggerData, WorkflowIdError,
+    Submission, Submit, WorkflowIdError,
 };
-use wavs_types::{Service, ServiceError, ServiceId, SignerResponse, TriggerAction, WorkflowId};
+use wavs_types::{Service, ServiceError, ServiceId, SignerResponse, TriggerAction};
 
 use crate::config::Config;
 use crate::service_registry::{RegistryError, ServiceRegistry};
@@ -83,34 +82,6 @@ pub struct Dispatcher<S: CAStorage> {
     evm_http_providers: Arc<RwLock<HashMap<ChainKey, DynProvider>>>,
     /// Cached Cosmos query clients per chain to avoid creating new connections for each query
     cosmos_query_clients: Arc<RwLock<HashMap<ChainKey, QueryClient>>>,
-    pub tauri_handle: TauriHandle,
-}
-
-#[derive(Clone)]
-pub enum TauriHandle {
-    #[cfg(feature = "gui")]
-    Real(tauri::AppHandle),
-    Mock,
-}
-
-impl TauriEventEmitterExt for TauriHandle {
-    fn emit_ext<E: wavs_gui_shared::event::TauriEventExt>(
-        &self,
-        _event: E,
-    ) -> Result<(), wavs_gui_shared::error::AppError> {
-        match self {
-            #[cfg(feature = "gui")]
-            TauriHandle::Real(handle) => handle.emit_ext(_event),
-            TauriHandle::Mock => Ok(()),
-        }
-    }
-}
-
-#[cfg(feature = "gui")]
-impl From<tauri::AppHandle> for TauriHandle {
-    fn from(handle: tauri::AppHandle) -> Self {
-        TauriHandle::Real(handle)
-    }
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -128,19 +99,10 @@ pub enum DispatcherCommand {
         service: Service,
         kind: AggregatorExecuteKind,
     },
-    SubmissionConfirmed {
-        service_id: ServiceId,
-        workflow_id: WorkflowId,
-        trigger_data: TriggerData,
-    },
 }
 
 impl Dispatcher<FileStorage> {
-    pub fn new(
-        config: &Config,
-        metrics: WavsMetrics,
-        tauri_handle: impl Into<TauriHandle>,
-    ) -> Result<Self, DispatcherError> {
+    pub fn new(config: &Config, metrics: WavsMetrics) -> Result<Self, DispatcherError> {
         // Create all our channels for communication
         // except dispatcher_to_trigger calls its local stream channel
         let (subsystem_to_dispatcher_tx, subsystem_to_dispatcher_rx) =
@@ -223,7 +185,6 @@ impl Dispatcher<FileStorage> {
             dispatcher_to_aggregator_tx,
             evm_http_providers: Arc::new(RwLock::new(HashMap::new())),
             cosmos_query_clients: Arc::new(RwLock::new(HashMap::new())),
-            tauri_handle: tauri_handle.into(),
         })
     }
 }
@@ -338,15 +299,6 @@ impl<S: CAStorage + 'static> Dispatcher<S> {
                                 "Dispatcher received trigger action",
                             );
 
-                            if let Err(err) =
-                                _self
-                                    .tauri_handle
-                                    .emit_ext(wavs_gui_shared::event::TriggerEvent {
-                                        action: action.clone(),
-                                    })
-                            {
-                                tracing::error!("Error emitting trigger event to GUI: {:?}", err);
-                            }
                             if let Err(err) = _self
                                 .dispatcher_to_engine_tx
                                 .send(EngineCommand::ExecuteOperator { service, action })
@@ -449,24 +401,6 @@ impl<S: CAStorage + 'static> Dispatcher<S> {
                                 _self.metrics.channel_closed_errors.add(
                                     1,
                                     &[opentelemetry::KeyValue::new("channel", "engine_work")],
-                                );
-                            }
-                        }
-                        DispatcherCommand::SubmissionConfirmed {
-                            service_id,
-                            workflow_id,
-                            trigger_data,
-                        } => {
-                            if let Err(err) = _self.tauri_handle.emit_ext(
-                                wavs_gui_shared::event::SubmissionEvent {
-                                    service_id,
-                                    workflow_id,
-                                    trigger_data,
-                                },
-                            ) {
-                                tracing::error!(
-                                    "Error emitting submission event to GUI: {:?}",
-                                    err
                                 );
                             }
                         }

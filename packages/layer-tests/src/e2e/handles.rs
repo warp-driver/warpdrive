@@ -1,6 +1,5 @@
 mod cosmos;
 mod evm;
-pub mod hypercore;
 
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
@@ -14,17 +13,14 @@ use utils::{
         evm::EvmMiddleware,
     },
 };
-use wavs::dispatcher::{Dispatcher, TauriHandle};
+use wavs::dispatcher::Dispatcher;
 use wavs::subsystems::aggregator::p2p::P2pConfig;
 use wavs_cli::clients::HttpClient;
 use wavs_types::{ChainKey, ChainKeyNamespace};
 
 use crate::config::TestP2pMode;
 
-/// Default port for the hyperswarm bootstrap node
-//const HYPERSWARM_BOOTSTRAP_PORT: u16 = 49737;
 use super::config::Configs;
-//use super::matrix::EvmService;
 
 pub struct AppHandles {
     /// One handle per WAVS operator instance
@@ -33,34 +29,12 @@ pub struct AppHandles {
     pub cosmos_middlewares: CosmosMiddlewares,
     _evm_chains: Vec<EvmInstance>,
     _cosmos_chains: Vec<CosmosInstance>,
-    _hyperswarm_bootstrap: Option<async_std::task::JoinHandle<std::io::Result<()>>>,
 }
 
 pub type CosmosMiddlewares = Arc<HashMap<ChainKey, CosmosMiddleware>>;
 
 impl AppHandles {
     pub fn start(ctx: &AppContext, configs: &mut Configs, metrics: Metrics) -> Self {
-        let (bootstrap_addr, bootstrap_handle): (
-            Option<std::net::SocketAddr>,
-            Option<async_std::task::JoinHandle<std::io::Result<()>>>,
-        ) = {
-            // #[cfg(feature = "hypercore-tests")]
-            // {
-            //     if configs.matrix.evm.contains(&EvmService::HypercoreEchoData) {
-            //         Self::start_hyperswarm_bootstrap()
-            //     } else {
-            //         (None, None)
-            //     }
-            // }
-            (None, None)
-        };
-        if let Some(addr) = bootstrap_addr {
-            let addr = addr.to_string();
-            for wavs_config in configs.wavs_configs.iter_mut() {
-                wavs_config.hyperswarm_bootstrap = Some(addr.clone());
-            }
-        }
-
         let mut evm_chains = Vec::new();
         let mut cosmos_chains = Vec::new();
 
@@ -123,7 +97,6 @@ impl AppHandles {
             cosmos_middlewares: Arc::new(cosmos_middlewares),
             _evm_chains: evm_chains,
             _cosmos_chains: cosmos_chains,
-            _hyperswarm_bootstrap: bootstrap_handle,
         }
     }
 
@@ -142,9 +115,7 @@ impl AppHandles {
         metrics: &Metrics,
         operator_index: usize,
     ) -> std::thread::JoinHandle<()> {
-        let dispatcher = Arc::new(
-            Dispatcher::new(wavs_config, metrics.wavs.clone(), TauriHandle::Mock).unwrap(),
-        );
+        let dispatcher = Arc::new(Dispatcher::new(wavs_config, metrics.wavs.clone()).unwrap());
 
         std::thread::spawn({
             let dispatcher = dispatcher.clone();
@@ -279,32 +250,4 @@ impl AppHandles {
 
         Ok(handles)
     }
-
-    // fn start_hyperswarm_bootstrap() -> (
-    //     Option<SocketAddr>,
-    //     Option<async_std::task::JoinHandle<std::io::Result<()>>>,
-    // ) {
-    //     let bind_addr = SocketAddr::new(
-    //         std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)),
-    //         HYPERSWARM_BOOTSTRAP_PORT,
-    //     );
-
-    //     match async_std::task::block_on(hyperswarm::run_bootstrap_node(Some(bind_addr))) {
-    //         Ok((addr, handle)) => {
-    //             tracing::info!(
-    //                 "Bootstrap node bound to {}, listening for peer connections",
-    //                 addr
-    //             );
-
-    //             // Give the bootstrap node time to bind and initialize its DHT
-    //             std::thread::sleep(Duration::from_secs(5));
-
-    //             (Some(addr), Some(handle))
-    //         }
-    //         Err(err) => {
-    //             tracing::warn!("Failed to start hyperswarm bootstrap node: {err}");
-    //             (None, None)
-    //         }
-    //     }
-    // }
 }

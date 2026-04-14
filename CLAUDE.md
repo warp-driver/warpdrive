@@ -8,6 +8,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 WAVS (WebAssembly-based Actively Validated Services) is a platform for running Actively Validated Services (AVS). It executes AVS logic as sandboxed WebAssembly (WASI) components, bridges blockchain events (EVM and Cosmos) with off-chain computation, and coordinates multi-operator consensus.
 
+## Quick Check
+
+Run the following before each commit to ensure that the repo works.
+
+```bash
+just wasi-build
+cargo check --all-targets --all-features
+cargo build
+cargo test
+```
+
 ## Build, Lint, and Test Commands
 
 All build automation is in `justfile`. Run `just` to see all targets.

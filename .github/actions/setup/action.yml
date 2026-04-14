@@ -10,17 +10,6 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Install system dependencies (Linux only)
-      if: runner.os == 'Linux'
-      shell: bash
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          libwebkit2gtk-4.1-dev \
-          libappindicator3-dev \
-          librsvg2-dev \
-          patchelf
-
     - name: Install protoc
       uses: arduino/setup-protoc@v3
       with:
@@ -29,7 +18,7 @@ runs:
     - name: Install Rust
       uses: dtolnay/rust-toolchain@master
       with:
-        toolchain: 1.91.1
+        toolchain: 1.94.0
         components: rustfmt, clippy
         targets: wasm32-unknown-unknown
 

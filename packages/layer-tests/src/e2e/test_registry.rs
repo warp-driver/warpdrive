@@ -37,34 +37,10 @@ pub enum CosmosContractDefinition {
     Submit(CosmosSubmitDefinition),
 }
 
-use super::handles::hypercore::HypercoreTestClient;
-
-/// Factory data to create a hypercore test client
-#[derive(Clone)]
-pub struct HypercoreClientFactory {
-    pub test_name: String,
-    pub hyperswarm_bootstrap: Option<String>,
-    pub signing_key_bytes: Vec<u8>,
-}
-
 /// Registry for managing test definitions and their deployed services
+#[derive(Default)]
 pub struct TestRegistry {
     tests: Vec<TestDefinition>,
-    /// Map of test name to hypercore client factory for real hypercore e2e tests
-    /// Client is created just before test runs to avoid DHT announcement expiration
-    hypercore_client_factories: DashMap<String, HypercoreClientFactory>,
-    /// Map of test name to actually created hypercore test client
-    hypercore_clients: DashMap<String, Arc<HypercoreTestClient>>,
-}
-
-impl Default for TestRegistry {
-    fn default() -> Self {
-        Self {
-            tests: Vec::new(),
-            hypercore_client_factories: DashMap::new(),
-            hypercore_clients: DashMap::new(),
-        }
-    }
 }
 
 impl TestRegistry {
@@ -101,51 +77,12 @@ impl TestRegistry {
         self.tests.iter()
     }
 
-    /// Get a hypercore test client by test name
-    pub fn get_hypercore_client(&self, test_name: &str) -> Option<Arc<HypercoreTestClient>> {
-        self.hypercore_clients.get(test_name).map(|v| v.clone())
-    }
-
-    // Store a hypercore client factory for a test (client will be created later)
-    // pub fn insert_hypercore_client_factory(
-    //     &self,
-    //     test_name: String,
-    //     factory: HypercoreClientFactory,
-    // ) {
-    //     self.hypercore_client_factories.insert(test_name, factory);
-    // }
-
-    /// Create hypercore clients from factories for all tests that need them
-    /// Called right before tests run to ensure DHT announcements are fresh
-    pub async fn create_hypercore_clients(&self) -> anyhow::Result<()> {
-        for entry in self.hypercore_client_factories.iter() {
-            let test_name = entry.key();
-            let factory = entry.value();
-            if !self.hypercore_clients.contains_key(test_name) {
-                tracing::info!(
-                    "Creating hypercore client for test '{}' right before test execution",
-                    test_name
-                );
-                let client = HypercoreTestClient::new(
-                    &factory.test_name,
-                    factory.hyperswarm_bootstrap.clone(),
-                    &factory.signing_key_bytes,
-                )
-                .await?;
-                self.hypercore_clients
-                    .insert(test_name.clone(), Arc::new(client));
-            }
-        }
-        Ok(())
-    }
-
     /// Create a registry based on the test mode
     pub async fn from_test_mode(
         test_mode: crate::config::TestMode,
         chain_configs: Arc<RwLock<ChainConfigs>>,
         clients: &Clients,
         cosmos_code_map: &CosmosCodeMap,
-        //hyperswarm_bootstrap: Option<String>,
     ) -> Self {
         // Convert TestMode to TestMatrix
         let matrix: TestMatrix = test_mode.into();
