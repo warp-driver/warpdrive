@@ -51,8 +51,5 @@ derive-enum-all-values = { workspace = true }
 rand = { workspace = true }
 rand_core = "0.6"
 bip39 = { workspace = true }
-hypercore = { workspace = true }
-hypercore-protocol = { workspace = true }
-hyperswarm = { workspace = true }
 futures-lite = { workspace = true }
 async-std = "1"

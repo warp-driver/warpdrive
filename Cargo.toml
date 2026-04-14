@@ -1,10 +1,8 @@
 [workspace]
 members = [
     "packages/cli",
-    "packages/warpdrive-mcp",
     "packages/dev-tool",
     "packages/engine",
-    "packages/gui/shared",
     "packages/warpdrive-tests",
     "packages/types",
     "packages/utils",
@@ -26,7 +24,6 @@ members = [
     "examples/contracts/cosmwasm/trigger/simple",
     "examples/contracts/cosmwasm/mock/api",
     "examples/contracts/cosmwasm/mock/service-handler",
-    "app/src-tauri",
 ]
 resolver = "2"
 
@@ -101,12 +98,6 @@ ctrlc = "3.5.0"
 temp-env = { version = "0.3.6", features = ["async_closure"] }
 async-trait = "0.1.89"
 async-stream = "0.3.6"
-hypercore = { version = "0.14.0", default-features = false, features = [
-    "tokio",
-    "replication",
-    "sparse",
-] }
-hyperswarm = { git = "https://github.com/datrs/hyperswarm-rs.git", default-features = false, rev = "da1c2fd" }
 
 # websocket
 tokio-tungstenite = { version = "0.28.0", features = [
@@ -206,9 +197,6 @@ sha2 = "0.10.9"
 const-hex = "1.16.0"
 base64 = "0.22"
 ripemd = "0.1.3"
-hypercore-protocol = { version = "0.6.1", default-features = false, features = [
-    "tokio",
-] }
 
 # database
 lru = "0.16.1"
@@ -252,32 +240,7 @@ libp2p = { version = "0.56", features = [
     "secp256k1",        # secp256k1 identity for P2P (derived from signing_mnemonic)
 ] }
 
-# Tauri - backend
-tauri = { version = "2.10.2", features = ["protocol-asset"] }
-log = "0.4"
-tauri-plugin-log = "2"
-tauri-plugin-fs = "2"
-tauri-plugin-dialog = "2"
-tauri-build = { version = "2.5.3" }
-fix-path-env = { git = "https://github.com/tauri-apps/fix-path-env-rs", rev="c4c45d503ea115a839aae718d02f79e7c7f0f673"}
-
-# Tauri - frontend
-wasm-bindgen = "0.2.100"
-js-sys = "0.3.77"
-wasm-bindgen-futures = "0.4.50"
-web-sys = { version = "0.3.77", features = [ "console", "MouseEvent", "HtmlImageElement" ] }
-serde-wasm-bindgen = "0.6.5"
-gloo-net = {version = "0.6.0", features = ["http"]}
-gloo-events = "0.2.0"
-gloo-timers = {version = "0.3.0", features = ["futures"]}
-tracing-web = "0.1.3"
-tracing-panic = "0.1.2"
-dominator = "0.5.38"
-futures-signals = "0.3.34"
-dominator_helpers = "0.8.0"
-mime_guess = "2.0.5"
-awsm_web = {version = "0.45.0", default-features = false, features = ["dom", "file"]}
-
+# log = "0.4"
 
 # local
 utils = { path = "packages/utils" }

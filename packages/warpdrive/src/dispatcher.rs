@@ -36,7 +36,6 @@ use utils::error::EvmClientError;
 use utils::service::fetch_service;
 use utils::storage::fs::FileStorage;
 use utils::telemetry::{DispatcherMetrics, WarpdriveMetrics};
-use warpdrive_gui_shared::event::TauriEventEmitterExt;
 use warpdrive_types::contracts::cosmwasm::service_manager::ServiceManagerQueryMessages;
 use warpdrive_types::IWavsServiceManager::IWavsServiceManagerInstance;
 use warpdrive_types::{
@@ -86,32 +85,6 @@ pub struct Dispatcher<S: CAStorage> {
     pub tauri_handle: TauriHandle,
 }
 
-#[derive(Clone)]
-pub enum TauriHandle {
-    #[cfg(feature = "gui")]
-    Real(tauri::AppHandle),
-    Mock,
-}
-
-impl TauriEventEmitterExt for TauriHandle {
-    fn emit_ext<E: warpdrive_gui_shared::event::TauriEventExt>(
-        &self,
-        _event: E,
-    ) -> Result<(), warpdrive_gui_shared::error::AppError> {
-        match self {
-            #[cfg(feature = "gui")]
-            TauriHandle::Real(handle) => handle.emit_ext(_event),
-            TauriHandle::Mock => Ok(()),
-        }
-    }
-}
-
-#[cfg(feature = "gui")]
-impl From<tauri::AppHandle> for TauriHandle {
-    fn from(handle: tauri::AppHandle) -> Self {
-        TauriHandle::Real(handle)
-    }
-}
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
@@ -338,15 +311,6 @@ impl<S: CAStorage + 'static> Dispatcher<S> {
                                 "Dispatcher received trigger action",
                             );
 
-                            if let Err(err) =
-                                _self
-                                    .tauri_handle
-                                    .emit_ext(warpdrive_gui_shared::event::TriggerEvent {
-                                        action: action.clone(),
-                                    })
-                            {
-                                tracing::error!("Error emitting trigger event to GUI: {:?}", err);
-                            }
                             if let Err(err) = _self
                                 .dispatcher_to_engine_tx
                                 .send(EngineCommand::ExecuteOperator { service, action })
@@ -457,19 +421,8 @@ impl<S: CAStorage + 'static> Dispatcher<S> {
                             workflow_id,
                             trigger_data,
                         } => {
-                            if let Err(err) = _self.tauri_handle.emit_ext(
-                                warpdrive_gui_shared::event::SubmissionEvent {
-                                    service_id,
-                                    workflow_id,
-                                    trigger_data,
-                                },
-                            ) {
-                                tracing::error!(
-                                    "Error emitting submission event to GUI: {:?}",
-                                    err
-                                );
-                            }
-                        }
+                            // Previously sent notification to GUI 
+=                        }
                     }
                 }
             }
