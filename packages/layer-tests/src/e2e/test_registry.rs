@@ -38,14 +38,9 @@ pub enum CosmosContractDefinition {
 }
 
 /// Registry for managing test definitions and their deployed services
+#[derive(Default)]
 pub struct TestRegistry {
     tests: Vec<TestDefinition>,
-}
-
-impl Default for TestRegistry {
-    fn default() -> Self {
-        Self { tests: Vec::new() }
-    }
 }
 
 impl TestRegistry {

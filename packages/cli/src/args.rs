@@ -402,7 +402,6 @@ pub enum TriggerCommand {
         #[clap(long)]
         action: Option<AtProtoAction>,
     },
-
 }
 
 impl Command {

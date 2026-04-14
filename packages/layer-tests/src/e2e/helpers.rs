@@ -668,4 +668,3 @@ pub async fn wait_for_evm_trigger_streams_to_finalize(
     .await
     .unwrap();
 }
-
