@@ -4,8 +4,9 @@ on:
   push:
     tags:
       - "v*"
-    branches:
-      - main
+  # Re-enable for main when this is stable
+    # branches:
+    #   - main
   # You can enable the below to build on each PR push for testing,
   # pull_request:
   #   branches:
@@ -18,7 +19,7 @@ env:
 jobs:
   build_amd64:
     name: Build and Push AMD64 Image
-    runs-on: linux-8-core
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
@@ -80,7 +81,7 @@ jobs:
 
   build_arm64:
     name: Build and Push ARM64 Image
-    runs-on: arm64-builder
+    runs-on: ubuntu-24.04-arm
     permissions:
       contents: read
       packages: write
@@ -142,7 +143,7 @@ jobs:
 
   create_manifest:
     name: Create and Push Multi-Arch Manifest
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [build_amd64, build_arm64]
     permissions:
       contents: read
