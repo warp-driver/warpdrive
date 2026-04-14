@@ -145,7 +145,7 @@ solidity-build CLEAN="":
     cp -r {{REPO_ROOT}}/out/IWavsServiceHandler.sol {{REPO_ROOT}}/packages/types/src/contracts/solidity/abi/
     cp -r {{REPO_ROOT}}/out/IWavsServiceManager.sol {{REPO_ROOT}}/packages/types/src/contracts/solidity/abi/
     cp -r {{REPO_ROOT}}/out/SimpleServiceManager.sol {{REPO_ROOT}}/packages/types/src/contracts/solidity/abi/
-    # layer-tests mock contracts
+    # warpdrive-tests mock contracts
     cp -r {{REPO_ROOT}}/out/LogSpam.sol {{REPO_ROOT}}/examples/contracts/solidity/abi/
     cp -r {{REPO_ROOT}}/out/TestServiceContracts.sol {{REPO_ROOT}}/examples/contracts/solidity/abi/
     # wavs tests - some funkiness with it sometimes not creating the .sol directory so make sure to create it first
@@ -179,7 +179,7 @@ cosmwasm-build-inner CONTRACT_PATH:
     fi;
 # on-chain integration test
 test-warpdrive-e2e:
-    ulimit -n 65536 && RUST_LOG=debug,alloy_rpc=off,alloy_provider=off,wasmtime=off,cranelift=off,hyper_util=off cargo test -p layer-tests
+    ulimit -n 65536 && RUST_LOG=debug,alloy_rpc=off,alloy_provider=off,wasmtime=off,cranelift=off,hyper_util=off cargo test -p warpdrive-tests
 
 update-submodules:
     git submodule update --init --recursive

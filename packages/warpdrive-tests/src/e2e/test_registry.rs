@@ -932,7 +932,7 @@ impl TestRegistry {
         )
     }
 
-    /// Multi-vector test (P2P mode configured via layer-tests.toml)
+    /// Multi-vector test (P2P mode configured via warpdrive-tests.toml)
     fn register_evm_multi_vector_test(&mut self, chain: &ChainKey) -> &mut Self {
         self.register(
             TestBuilder::new("evm_multi_vector")

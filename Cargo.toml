@@ -3,7 +3,7 @@ members = [
     "packages/cli",
     "packages/dev-tool",
     "packages/engine",
-    "packages/layer-tests",
+    "packages/warpdrive-tests",
     "packages/types",
     "packages/utils",
     "packages/version-pins",

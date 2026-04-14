@@ -63,10 +63,10 @@ E2E integration tests run on-chain with a live WarpDrive node:
 ```bash
 just test-warpdrive-e2e
 # or directly:
-cargo test -p layer-tests
+cargo test -p warpdrive-tests
 ```
 
-To run a subset of tests, edit `packages/layer-tests/layer-tests.toml` to isolate specific cases.
+To run a subset of tests, edit `packages/warpdrive-tests/warpdrive-tests.toml` to isolate specific cases.
 
 ### Running the Stack
 
@@ -106,7 +106,7 @@ An HTTP API server (Axum) on top handles service registration, health checks, an
 - `packages/cli/` — CLI for deploying services, executing components, and EigenLayer integration
 - `packages/engine/` — Wasmtime wrapper and WASI component lifecycle management
 - `packages/aggregator/` — Standalone aggregation service
-- `packages/layer-tests/` — E2E test suite; config in `layer-tests.toml`
+- `packages/warpdrive-tests/` — E2E test suite; config in `warpdrive-tests.toml`
 - `packages/dev-tool/` — Dev utilities for local testing
 
 ### Desktop App (`app/`)

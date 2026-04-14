@@ -4,24 +4,24 @@
 package host
 
 import (
-	layertypes "github.com/Lay3rLabs/wavs-wasi/go/wavs/worker/layer-types"
+	warpdrivetypes "github.com/Lay3rLabs/wavs-wasi/go/wavs/worker/layer-types"
 	"go.bytecodealliance.org/cm"
 )
 
 // EvmChainConfig represents the type alias "host#evm-chain-config".
 //
-// See [layertypes.EvmChainConfig] for more information.
-type EvmChainConfig = layertypes.EvmChainConfig
+// See [warpdrivetypes.EvmChainConfig] for more information.
+type EvmChainConfig = warpdrivetypes.EvmChainConfig
 
 // CosmosChainConfig represents the type alias "host#cosmos-chain-config".
 //
-// See [layertypes.CosmosChainConfig] for more information.
-type CosmosChainConfig = layertypes.CosmosChainConfig
+// See [warpdrivetypes.CosmosChainConfig] for more information.
+type CosmosChainConfig = warpdrivetypes.CosmosChainConfig
 
 // LogLevel represents the type alias "host#log-level".
 //
-// See [layertypes.LogLevel] for more information.
-type LogLevel = layertypes.LogLevel
+// See [warpdrivetypes.LogLevel] for more information.
+type LogLevel = warpdrivetypes.LogLevel
 
 // GetEvmChainConfig represents the imported function "get-evm-chain-config".
 //

@@ -31,7 +31,7 @@ docker run \
 
 ### 2. Enable Jaeger endpoint
 
-Update the configuration file `packages/layer-tests/layer-tests.toml` and uncomment the line:
+Update the configuration file `packages/warpdrive-tests/warpdrive-tests.toml` and uncomment the line:
 ```bash
 jaeger = "http://localhost:4317"
 ```
@@ -40,7 +40,7 @@ jaeger = "http://localhost:4317"
 
 Run your tests as usual:
 ```bash
-cd packages/layer-tests && cargo test
+cd packages/warpdrive-tests && cargo test
 ```
 - the OpenTelemetry tracer will send traces to the Jaeger server at `http://localhost:4317`.
 - if everything is correct, traces generated during the tests will be collected by Jaeger at shutdown.
@@ -99,7 +99,7 @@ docker run \
 
 ### 3. Enable Prometheus collection endpoint
 
-Update the configuration file `packages/layer-tests/layer-tests.toml` and uncomment the line:
+Update the configuration file `packages/warpdrive-tests/warpdrive-tests.toml` and uncomment the line:
 ```bash
 prometheus = "http://localhost:9090"
 ```
@@ -108,7 +108,7 @@ prometheus = "http://localhost:9090"
 
 Run your tests as usual:
 ```bash
-cd packages/layer-tests && cargo test
+cd packages/warpdrive-tests && cargo test
 ```
 - the OpenTelemetry metrics will be periodically uploaded to Prometheus server at `http://localhost:9090`.
 
