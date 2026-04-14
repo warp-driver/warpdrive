@@ -170,8 +170,7 @@ pub async fn validate_contracts_exist(
             Trigger::Cron { .. }
             | Trigger::Manual
             | Trigger::BlockInterval { .. }
-            | Trigger::AtProtoEvent { .. }
-            | Trigger::HypercoreAppend { .. } => {}
+            | Trigger::AtProtoEvent { .. } => {}
         }
     }
 

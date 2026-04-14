@@ -20,10 +20,7 @@ use warpdrive_types::{
     Workflow, WorkflowId,
 };
 
-use crate::e2e::helpers::wait_for_hypercore_streams_to_finalize;
-use crate::e2e::helpers::{
-    change_service_for_test, cosmos_wait_for_task_to_land, wait_for_hypercore_mesh_ready,
-};
+use crate::e2e::helpers::{change_service_for_test, cosmos_wait_for_task_to_land};
 use crate::e2e::report::TestReport;
 use crate::e2e::service_managers::ServiceManagers;
 use crate::e2e::test_definition::{
@@ -100,27 +97,6 @@ impl Runner {
         let test_groups = self.registry.list_all_grouped(self.configs.grouping);
 
         for (group, mut group_tests) in test_groups {
-            // Create hypercore clients BEFORE deploying services
-            // This ensures the test client announces to DHT before WarpDrive starts its hypercore streams.
-            // When WarpDrive deploys a service with a HypercoreAppend trigger, it immediately starts
-            // the hyperswarm discovery. If the test client hasn't announced yet, WarpDrive won't find it.
-            if let Err(e) = self.registry.create_hypercore_clients().await {
-                tracing::error!("Failed to create hypercore clients: {}", e);
-            }
-
-            // Give the hypercore client time to announce to DHT before services start discovering
-            // In CI with multiple vectors, DHT propagation may take longer
-            if self
-                .registry
-                .get_hypercore_client("evm_hypercore_echo_data")
-                .is_some()
-            {
-                tracing::info!(
-                    "Waiting for hypercore client DHT announcement to propagate (10s)..."
-                );
-                tokio::time::sleep(std::time::Duration::from_secs(10)).await;
-            }
-
             let services = group_tests
                 .iter()
                 .map(|test| all_services.get(&test.name).cloned().unwrap().service)
@@ -276,7 +252,7 @@ async fn run_test(
     service_deployment: ServiceDeployment,
     clients: &Clients,
     component_sources: &ComponentSources,
-    registry: &TestRegistry,
+    _registry: &TestRegistry,
 ) -> anyhow::Result<()> {
     // For multi-vector tests, wait for P2P mesh to form before triggering
     if test.multi_vector && clients.http_clients.len() > 1 {
@@ -488,125 +464,6 @@ async fn run_test(
                 }
 
                 vec![trigger_id]
-            }
-            Trigger::HypercoreAppend { feed_key } => {
-                // Try to get the hypercore test client for this test
-                let payload = input_bytes.clone().unwrap_or_default();
-
-                tracing::info!("Hypercore trigger detected with feed_key: {}", feed_key);
-
-                if let Some(hypercore_client) = registry.get_hypercore_client(&test.name) {
-                    let client_feed_key = hypercore_client.feed_key();
-                    tracing::info!(
-                        "Using real hypercore feed for test '{}', client feed_key: {}, service feed_key: {}",
-                        test.name,
-                        client_feed_key,
-                        feed_key
-                    );
-
-                    for (idx, http_client) in clients.http_clients.iter().enumerate() {
-                        tracing::info!(
-                            "Waiting for hypercore stream readiness on instance {} for feed_key {}",
-                            idx,
-                            feed_key
-                        );
-                        wait_for_hypercore_streams_to_finalize(
-                            http_client,
-                            feed_key,
-                            Some(Duration::from_secs(30)),
-                        )
-                        .await
-                        .context("Failed to wait for hypercore stream to finalize")?;
-                    }
-
-                    // Wait for hypercore mesh to stabilize - require at least 1 WarpDrive instance to connect
-                    // In multi-vector mode, DHT discovery may not connect all vectors reliably,
-                    // but data will still replicate if at least one connection is established
-                    {
-                        // Require at least 1 connection, but ideally all vectors
-                        let min_required_peers = 1;
-                        let total_operators = clients.http_clients.len();
-                        tracing::info!(
-                            "Waiting for hypercore mesh to stabilize (min {} peer, {} total vectors) before append",
-                            min_required_peers,
-                            total_operators
-                        );
-
-                        // Make mesh readiness check non-blocking - warn if not ready but proceed anyway
-                        // Use longer timeout in CI where DHT discovery may be slower
-                        match wait_for_hypercore_mesh_ready(
-                            &hypercore_client,
-                            min_required_peers,
-                            Duration::from_secs(60),
-                        )
-                        .await
-                        {
-                            Ok(peer_count) => {
-                                tracing::info!(
-                                    "Hypercore mesh ready for append: {} connected peers (min required: {}, total vectors: {})",
-                                    peer_count,
-                                    min_required_peers,
-                                    total_operators
-                                );
-                            }
-                            Err(e) => {
-                                tracing::warn!(
-                                    "Hypercore mesh not fully formed before append: {}. \
-                                     Proceeding anyway - replication may still work when peers connect.",
-                                    e
-                                );
-                            }
-                        }
-                    }
-
-                    // Verify feed keys match
-                    if client_feed_key != *feed_key {
-                        tracing::error!(
-                            "FEED KEY MISMATCH! Client has: {}, Service has: {}",
-                            client_feed_key,
-                            feed_key
-                        );
-                        return Err(anyhow::anyhow!(
-                            "Feed key mismatch between client and service"
-                        ));
-                    }
-
-                    // Append data to the hypercore feed
-                    tracing::info!("Appending {} bytes to hypercore feed...", payload.len());
-                    let index = hypercore_client.append(payload).await?;
-
-                    vec![TriggerId::new(index)]
-                } else {
-                    // Fallback to simulated trigger for backward compatibility
-                    tracing::warn!(
-                        "No hypercore client found for test '{}', using simulated trigger",
-                        test.name
-                    );
-
-                    let trigger_id = TriggerId::new(0);
-                    let hypercore_data = TriggerData::HypercoreAppend {
-                        feed_key: feed_key.clone(),
-                        index: trigger_id.u64(),
-                        data: payload,
-                    };
-
-                    let req = SimulatedTriggerRequest {
-                        service_id: service_deployment.service.id(),
-                        workflow_id: first_workflow_id.clone(),
-                        trigger: trigger.clone(),
-                        data: hypercore_data,
-                        count: 1,
-                        wait_for_completion: true,
-                    };
-
-                    let http_client = clients
-                        .http_clients
-                        .first()
-                        .ok_or_else(|| anyhow!("No HTTP clients available"))?;
-                    http_client.simulate_trigger(req).await?;
-
-                    vec![trigger_id]
-                }
             }
             Trigger::Manual => unimplemented!("Manual trigger type is not implemented"),
         };

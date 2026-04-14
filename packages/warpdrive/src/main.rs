@@ -11,7 +11,7 @@ use utils::{
 use warpdrive::{
     args::CliArgs,
     config::{Config, HealthCheckMode},
-    dispatcher::{Dispatcher, TauriHandle},
+    dispatcher::Dispatcher,
     health::SharedHealthStatus,
     log_buffer::{InMemoryLogLayer, LogBufferInner},
 };
@@ -137,8 +137,7 @@ fn main() {
     }
 
     let config_clone = config.clone();
-    let dispatcher =
-        Arc::new(Dispatcher::new(&config_clone, metrics.warpdrive, TauriHandle::Mock).unwrap());
+    let dispatcher = Arc::new(Dispatcher::new(&config_clone, metrics.warpdrive).unwrap());
 
     warpdrive::run_server(
         ctx,

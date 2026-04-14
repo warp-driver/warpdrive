@@ -36,15 +36,6 @@ just solidity-build    # Forge build for Solidity contracts
 just cosmwasm-build    # Docker-based CosmWasm build
 ```
 
-### Desktop App (Tauri + React)
-
-```bash
-just app-dev           # Full Tauri dev with hot reload
-just app-dev-frontend  # Vite frontend dev server only
-just app-build-release # Release build
-just app-build-frontend # Vite build only
-```
-
 ### Tests
 
 E2E integration tests run on-chain with a live WarpDrive node:
@@ -98,10 +89,6 @@ An HTTP API server (Axum) on top handles service registration, health checks, an
 - `packages/warpdrive-tests/` — E2E test suite; config in `warpdrive-tests.toml`
 - `packages/dev-tool/` — Dev utilities for local testing
 
-### Desktop App (`app/`)
-
-Tauri 2 desktop app with a React 19 + Vite 7 frontend. The Tauri backend in `app/src-tauri/` bridges to the WarpDrive node. State management uses Zustand; blockchain interaction uses Viem.
-
 ### Examples
 
 - `examples/components/` — WASI component source code (echo, kv-store, aggregator, cosmos-query, etc.)
@@ -111,7 +98,8 @@ Tauri 2 desktop app with a React 19 + Vite 7 frontend. The Tauri backend in `app
 ### External Dependencies (downloaded via `just`)
 
 ```bash
-just download-wit        # WIT interface definitions (wavs-wasi)
+just setup
+just wit                 # WIT interface definitions (wavs-wasi)
 just download-solidity   # Solidity middleware contracts
 just download-cosmwasm   # CosmWasm middleware contracts
 ```

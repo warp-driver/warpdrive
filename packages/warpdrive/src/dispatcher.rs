@@ -82,7 +82,6 @@ pub struct Dispatcher<S: CAStorage> {
     evm_http_providers: Arc<RwLock<HashMap<ChainKey, DynProvider>>>,
     /// Cached Cosmos query clients per chain to avoid creating new connections for each query
     cosmos_query_clients: Arc<RwLock<HashMap<ChainKey, QueryClient>>>,
-    pub tauri_handle: TauriHandle,
 }
 
 
@@ -112,7 +111,6 @@ impl Dispatcher<FileStorage> {
     pub fn new(
         config: &Config,
         metrics: WarpdriveMetrics,
-        tauri_handle: impl Into<TauriHandle>,
     ) -> Result<Self, DispatcherError> {
         // Create all our channels for communication
         // except dispatcher_to_trigger calls its local stream channel
@@ -196,7 +194,6 @@ impl Dispatcher<FileStorage> {
             dispatcher_to_aggregator_tx,
             evm_http_providers: Arc::new(RwLock::new(HashMap::new())),
             cosmos_query_clients: Arc::new(RwLock::new(HashMap::new())),
-            tauri_handle: tauri_handle.into(),
         })
     }
 }
@@ -417,12 +414,12 @@ impl<S: CAStorage + 'static> Dispatcher<S> {
                             }
                         }
                         DispatcherCommand::SubmissionConfirmed {
-                            service_id,
-                            workflow_id,
-                            trigger_data,
+                            service_id: _,
+                            workflow_id: _,
+                            trigger_data: _,
                         } => {
-                            // Previously sent notification to GUI 
-=                        }
+                            // Previously sent notification to GUI
+                        }
                     }
                 }
             }

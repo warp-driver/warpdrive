@@ -12,9 +12,8 @@ use uuid::Uuid;
 use warpdrive_cli::clients::HttpClient;
 
 use warpdrive_types::{
-    AllowedHostPermission, ByteArray, ChainKey, Component, DevHypercoreStreamState,
-    DevTriggerStreamSubscriptionKind, Permissions, Service, ServiceManager, ServiceStatus,
-    SignatureKind, Submit, Trigger, Workflow,
+    AllowedHostPermission, ByteArray, ChainKey, Component, DevTriggerStreamSubscriptionKind,
+    Permissions, Service, ServiceManager, ServiceStatus, SignatureKind, Submit, Trigger, Workflow,
 };
 
 use crate::deployment::{ServiceDeployment, WorkflowDeployment};
@@ -670,103 +669,3 @@ pub async fn wait_for_evm_trigger_streams_to_finalize(
     .unwrap();
 }
 
-pub async fn wait_for_hypercore_streams_to_finalize(
-    client: &HttpClient,
-    feed_key: &str,
-    timeout: Option<Duration>,
-) -> anyhow::Result<()> {
-    let timeout = timeout.unwrap_or(Duration::from_secs(30));
-    let start = std::time::Instant::now();
-    let mut poll_interval = Duration::from_millis(100);
-
-    tokio::time::timeout(timeout, async {
-        loop {
-            // Retry HTTP request with backoff on failure
-            match client.get_trigger_streams_info().await {
-                Ok(info) => {
-                    match info.hypercore.get(feed_key) {
-                        Some(DevHypercoreStreamState::Connected) => {
-                            tracing::info!("Hypercore stream connected for feed_key {}", feed_key);
-                            return Ok(());
-                        }
-                        Some(DevHypercoreStreamState::Connecting) => {
-                            tracing::info!("Hypercore stream connecting for feed_key {}", feed_key);
-                        }
-                        Some(DevHypercoreStreamState::Waiting) => {
-                            tracing::info!("Hypercore stream waiting for feed_key {}", feed_key);
-                        }
-                        None => {
-                            tracing::info!(
-                                "Hypercore stream not registered yet for feed_key {}",
-                                feed_key
-                            );
-                        }
-                    }
-                    // Reset poll interval on successful response
-                    poll_interval = Duration::from_millis(100);
-                }
-                Err(e) => {
-                    tracing::warn!("HTTP error getting trigger streams info: {}", e);
-                    // Exponential backoff for HTTP errors
-                    poll_interval = (poll_interval * 2).min(Duration::from_secs(1));
-                }
-            }
-
-            tokio::time::sleep(poll_interval).await;
-
-            // Log progress every 5 seconds
-            if start.elapsed().as_secs().is_multiple_of(5) {
-                tracing::info!(
-                    "Still waiting for hypercore stream (elapsed: {}s)",
-                    start.elapsed().as_secs()
-                );
-            }
-        }
-    })
-    .await
-    .map_err(|_| {
-        anyhow::anyhow!(
-            "Timed out waiting for hypercore stream to connect (feed_key: {})",
-            feed_key
-        )
-    })?
-}
-
-/// Wait for hypercore mesh to form by checking the test client's peer connection count directly.
-///
-/// This is used in multi-vector tests to ensure all vectors have discovered each other
-/// via hyperswarm before proceeding with test execution.
-pub async fn wait_for_hypercore_mesh_ready(
-    hypercore_client: &std::sync::Arc<crate::e2e::handles::hypercore::HypercoreTestClient>,
-    expected_peers: usize,
-    timeout: Duration,
-) -> anyhow::Result<usize> {
-    let start = std::time::Instant::now();
-    let mut poll_interval = Duration::from_millis(100);
-
-    loop {
-        let peer_count = hypercore_client.connected_peer_count();
-
-        if peer_count >= expected_peers {
-            tracing::info!(
-                "Hypercore mesh ready: {} connected peers (expected {})",
-                peer_count,
-                expected_peers
-            );
-            return Ok(peer_count);
-        }
-
-        if start.elapsed() > timeout {
-            anyhow::bail!(
-                "Timeout waiting for hypercore mesh: {} peers connected, expected {}",
-                peer_count,
-                expected_peers
-            );
-        }
-
-        // Exponential backoff with jitter for mesh formation
-        let wait_time = poll_interval;
-        poll_interval = std::cmp::min(Duration::from_secs(2), poll_interval * 2);
-        tokio::time::sleep(wait_time).await;
-    }
-}

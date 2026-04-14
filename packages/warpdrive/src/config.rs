@@ -137,9 +137,6 @@ pub struct Config {
     /// Set to 0 for no max size
     pub jetstream_max_message_size: usize,
 
-    /// Optional hyperswarm bootstrap address (host:port) for Hypercore discovery
-    pub hyperswarm_bootstrap: Option<String>,
-
     /// Maximum WASM response payload size in bytes (default: 50MB)
     pub max_wasm_payload_size: usize,
 
@@ -213,7 +210,6 @@ impl Default for Config {
             disable_submission_networking: false,
             jetstream_endpoint: "wss://jetstream1.us-east.bsky.network/subscribe".to_string(),
             jetstream_max_message_size: 1024 * 1024, // 1MB
-            hyperswarm_bootstrap: None,
             max_wasm_payload_size: WasmResponse::DEFAULT_MAX_PAYLOAD_SIZE,
             max_wasm_salt_size: WasmResponse::DEFAULT_MAX_SALT_SIZE,
             log_buffer_capacity: crate::log_buffer::DEFAULT_LOG_BUFFER_CAPACITY,

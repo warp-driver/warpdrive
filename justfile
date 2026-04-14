@@ -11,21 +11,14 @@ COSMWASM_OPTIMIZER_VERSION := env_var_or_default("COSMWASM_OPTIMIZER_VERSION", "
 help:
   just --list
 
-# WarpDrive Desktop App (React/TypeScript frontend)
-app-dev:
-    cd app && pnpm tauri dev
-
-app-dev-frontend:
-    cd app && pnpm dev
-
-app-build-release:
-    cd app && pnpm tauri build
-
-app-build-debug:
-    cd app && pnpm tauri build --debug
-
-app-build-frontend:
-    cd app && pnpm build
+# install required tooling (wkg) for building WIT packages
+setup:
+    @if command -v wkg >/dev/null 2>&1; then \
+        echo "wkg already installed: $(wkg --version)"; \
+    else \
+        echo "Installing wkg..."; \
+        cargo install wkg; \
+    fi
 
 # builds warpdrive
 docker-build TAG="local":
@@ -251,23 +244,29 @@ start-anvil:
 cli-exec COMPONENT INPUT:
     @cd packages/cli && cargo run exec --component {{COMPONENT}} --input '{{INPUT}}'
 
+# Clean wit build
+wit:
+    just wit-clean
+    just wit-deps-fetch
+    just wit-build
+
 # remove fetched WIT dependency directories
 wit-deps-clean:
-    rm -rf wit-definitions/vector/wit/deps
+    rm -rf wit-definitions/operator/wit/deps
     rm -rf wit-definitions/aggregator/wit/deps
     rm -rf wit-definitions/types/wit/deps
 
 # fetch WIT dependencies for each wit-definitions subdirectory
 wit-deps-fetch:
     cd wit-definitions/types && wkg wit fetch
-    cd wit-definitions/vector && wkg wit fetch
+    cd wit-definitions/operator && wkg wit fetch
     cd wit-definitions/aggregator && wkg wit fetch
 
 # remove built WIT .wasm artifacts
 wit-clean:
     rm -f wit-definitions/wasi-tls/*.wasm
     rm -f wit-definitions/types/wavs:types@*.wasm
-    rm -f wit-definitions/vector/wavs:operator@*.wasm
+    rm -f wit-definitions/operator/wavs:operator@*.wasm
     rm -f wit-definitions/aggregator/wavs:aggregator@*.wasm
 
 # build WIT packages via wkg wit build
@@ -282,12 +281,12 @@ _inner-wit-build config-arg:
     just wit-clean
     cd wit-definitions/wasi-tls && wkg wit build{{config-arg}}
     cd wit-definitions/types && wkg wit build{{config-arg}}
-    cd wit-definitions/vector && wkg wit build{{config-arg}}
+    cd wit-definitions/operator && wkg wit build{{config-arg}}
     cd wit-definitions/aggregator && wkg wit build{{config-arg}}
 
 _inner-wit-publish config-arg:
     cd wit-definitions/types && wkg publish wavs:types@*.wasm{{config-arg}}
-    cd wit-definitions/vector && wkg publish wavs:operator@*.wasm{{config-arg}}
+    cd wit-definitions/operator && wkg publish wavs:operator@*.wasm{{config-arg}}
     cd wit-definitions/aggregator && wkg publish wavs:aggregator@*.wasm{{config-arg}}
 
 # update version in root Cargo.toml and all WIT files (eg. just set-version v2.7.0)
@@ -432,17 +431,6 @@ ts-bindings:
     rm -rf packages/types/bindings
     cargo test -p warpdrive-types --features ts-bindings
     cargo run --bin ts
-
-# Install the WarpDrive Claude Code skill globally
-install-claude-skill:
-    @mkdir -p ~/.claude/skills
-    @cp -r .claude/skills/warp-drive ~/.claude/skills/warp-drive
-    @echo "WarpDrive skill installed to ~/.claude/skills/warp-drive"
-    @echo "Restart Claude Code to pick up the skill."
-
-# Register warpdrive-mcp with Claude Code (interactive wizard)
-setup-claude-mcp:
-    @node packages/warpdrive-mcp/bin/setup.mjs
 
 debug:
     cargo test --package wavs --features dev --test aggregator_tests send_to_self

@@ -80,11 +80,6 @@ impl TryFrom<warpdrive_types::Trigger> for component_service::Trigger {
                 repo_did,
                 action: action.map(|a| a.to_string()),
             }),
-            warpdrive_types::Trigger::HypercoreAppend { feed_key } => {
-                component_service::Trigger::HypercoreAppend(
-                    component_service::TriggerHypercoreAppend { feed_key },
-                )
-            }
         })
     }
 }
@@ -477,17 +472,6 @@ impl TryFrom<warpdrive_types::TriggerData> for component_input::TriggerData {
                     },
                 ))
             }
-            warpdrive_types::TriggerData::HypercoreAppend {
-                feed_key,
-                index,
-                data,
-            } => Ok(component_input::TriggerData::HypercoreAppend(
-                component_events::TriggerDataHypercoreAppend {
-                    feed_key,
-                    index,
-                    data,
-                },
-            )),
             warpdrive_types::TriggerData::Raw(data) => Ok(component_input::TriggerData::Raw(data)),
         }
     }
@@ -643,17 +627,6 @@ impl TryFrom<warpdrive_types::TriggerData> for aggregator_operator_input::Trigge
                     },
                 ))
             }
-            warpdrive_types::TriggerData::HypercoreAppend {
-                feed_key,
-                index,
-                data,
-            } => Ok(aggregator_operator_input::TriggerData::HypercoreAppend(
-                aggregator_events::TriggerDataHypercoreAppend {
-                    feed_key,
-                    index,
-                    data,
-                },
-            )),
             warpdrive_types::TriggerData::Raw(data) => {
                 Ok(aggregator_operator_input::TriggerData::Raw(data))
             }
@@ -922,11 +895,6 @@ impl TryFrom<warpdrive_types::Trigger> for aggregator_service::Trigger {
                     repo_did,
                     action: action.map(|a| a.to_string()),
                 })
-            }
-            warpdrive_types::Trigger::HypercoreAppend { feed_key } => {
-                aggregator_service::Trigger::HypercoreAppend(
-                    aggregator_service::TriggerHypercoreAppend { feed_key },
-                )
             }
         })
     }

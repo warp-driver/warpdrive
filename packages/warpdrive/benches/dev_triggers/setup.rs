@@ -4,7 +4,6 @@ use tempfile::tempdir;
 use utils::context::AppContext;
 use utils::filesystem::workspace_path;
 use warpdrive::config::Config;
-use warpdrive::dispatcher::TauriHandle;
 use warpdrive_types::{
     AllowedHostPermission, Component, ComponentDigest, ComponentSource, Service, WorkflowId,
 };
@@ -116,7 +115,6 @@ impl DevTriggersRuntime {
         let mut dispatcher_local = warpdrive::dispatcher::Dispatcher::new(
             &config,
             utils::telemetry::WarpdriveMetrics::new(opentelemetry::global::meter("wavs-benchmark")),
-            TauriHandle::Mock,
         )
         .expect("dispatcher new");
 

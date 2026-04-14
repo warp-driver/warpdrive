@@ -175,9 +175,6 @@ dev_endpoints_enabled = true
 # Maximum message size for Jetstream in bytes. Default: 1048576 (1MB). Set to 0 for no limit.
 # jetstream_max_message_size = 1048576
 
-# Hyperswarm bootstrap node address (host:port) for Hypercore discovery. Default: none
-# hyperswarm_bootstrap = "bootstrap.example.com:49737"
-
 # ----------------------------
 # Aggregator subsystem settings
 # ----------------------------

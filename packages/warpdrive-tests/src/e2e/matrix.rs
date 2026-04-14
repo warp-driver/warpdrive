@@ -21,8 +21,6 @@ pub enum EvmService {
     CosmosQuery,
     EchoData,
     AtprotoEchoData,
-    // #[cfg(feature = "hypercore-tests")]
-    // HypercoreEchoData,
     ChangeWorkflow,
     EchoDataSecondaryChain,
     KvStore,
@@ -150,10 +148,6 @@ impl From<EvmService> for Vec<ComponentName> {
             EvmService::AtprotoEchoData => {
                 vec![ComponentName::Vector(VectorComponent::EchoData)]
             }
-            // #[cfg(feature = "hypercore-tests")]
-            // EvmService::HypercoreEchoData => {
-            //     vec![ComponentName::Vector(VectorComponent::EchoData)]
-            // }
             EvmService::ChangeWorkflow => vec![
                 ComponentName::Vector(VectorComponent::Square),
                 ComponentName::Vector(VectorComponent::EchoData),

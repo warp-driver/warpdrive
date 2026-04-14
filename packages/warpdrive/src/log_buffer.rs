@@ -136,7 +136,6 @@ impl InMemoryLogLayer {
     }
 }
 
-// Field visitor to format event fields (same pattern as app/src-tauri/src/logger.rs TauriLogLayer)
 struct FieldFmt(String);
 
 impl tracing::field::Visit for FieldFmt {

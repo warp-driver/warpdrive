@@ -50,10 +50,8 @@ impl TryFrom<component_service::Trigger> for warpdrive_types::Trigger {
                 repo_did: source.repo_did,
                 action: source.action.map(|x| x.parse()).transpose()?,
             },
-            component_service::Trigger::HypercoreAppend(source) => {
-                warpdrive_types::Trigger::HypercoreAppend {
-                    feed_key: source.feed_key,
-                }
+            component_service::Trigger::HypercoreAppend(_) => {
+                return Err(anyhow::anyhow!("HypercoreAppend trigger is no longer supported"));
             }
         })
     }
