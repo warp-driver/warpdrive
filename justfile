@@ -73,6 +73,7 @@ wasi-build COMPONENT="*" TAG="latest":
     #!/usr/bin/env bash
     set -euo pipefail
 
+    # FIXME: should we clone this repo and maintain our own image?
     IMAGE_NAME="ghcr.io/lay3rlabs/wasi-builder:{{TAG}}"
 
     # Pull latest (unless tag is local)
@@ -142,8 +143,8 @@ solidity-build CLEAN="":
     cp -r {{REPO_ROOT}}/out/SimpleSubmit.sol {{REPO_ROOT}}/examples/contracts/solidity/abi/
     cp -r {{REPO_ROOT}}/out/ISimpleSubmit.sol {{REPO_ROOT}}/examples/contracts/solidity/abi/
     # warpdrive-types
-    cp -r {{REPO_ROOT}}/out/IWavsServiceHandler.sol {{REPO_ROOT}}/packages/types/src/contracts/solidity/abi/
-    cp -r {{REPO_ROOT}}/out/IWavsServiceManager.sol {{REPO_ROOT}}/packages/types/src/contracts/solidity/abi/
+    cp -r {{REPO_ROOT}}/out/IWarpDriveServiceHandler.sol {{REPO_ROOT}}/packages/types/src/contracts/solidity/abi/
+    cp -r {{REPO_ROOT}}/out/IWarpDriveServiceManager.sol {{REPO_ROOT}}/packages/types/src/contracts/solidity/abi/
     cp -r {{REPO_ROOT}}/out/SimpleServiceManager.sol {{REPO_ROOT}}/packages/types/src/contracts/solidity/abi/
     # warpdrive-tests mock contracts
     cp -r {{REPO_ROOT}}/out/LogSpam.sol {{REPO_ROOT}}/examples/contracts/solidity/abi/
@@ -167,13 +168,13 @@ cosmwasm-build-inner CONTRACT_PATH:
     @if [ "{{ARCH}}" = "arm64" ]; then \
         docker run --rm \
             -v "{{REPO_ROOT}}:/code" \
-            --mount type=volume,source="layer_wavs_cache",target=/target \
+            --mount type=volume,source="warpdrive_cache",target=/target \
             --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
             cosmwasm/optimizer-arm64:{{COSMWASM_OPTIMIZER_VERSION}} "{{CONTRACT_PATH}}"; \
     else \
         docker run --rm \
             -v "{{REPO_ROOT}}:/code" \
-            --mount type=volume,source="layer_wavs_cache",target=/target \
+            --mount type=volume,source="warpdrive_cache",target=/target \
             --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
             cosmwasm/optimizer:{{COSMWASM_OPTIMIZER_VERSION}} "{{CONTRACT_PATH}}"; \
     fi;
@@ -357,54 +358,57 @@ push-tag version:
 
     echo "Successfully created and pushed tags: ${TAG} and ${GO_TAG}"
 
-# downloads the latest solidity repo
-download-solidity branch="dev":
-    # Create a temporary directory
-    rm -rf temp_clone
-    mkdir temp_clone
+# FIXME: These downloads are broken as the source of truth is this repo (many improvements), and they refer to repos outside of our control.
+# If we want to maintain a separate middleware repo, we should make a new repo and port all improvements from this repo
 
-    # Clone the specific branch into the temp directory
-    git -C temp_clone clone --depth=1 --branch {{branch}} --single-branch https://github.com/Lay3rLabs/wavs-middleware.git
+# # downloads the latest solidity repo
+# download-solidity branch="dev":
+#     # Create a temporary directory
+#     rm -rf temp_clone
+#     mkdir temp_clone
 
-    # Clear existing content and create solidity directory
-    rm -rf contracts/solidity
-    rm -rf examples/contracts/solidity
-    mkdir -p contracts/solidity/interfaces
-    mkdir -p examples/contracts/solidity/interfaces
-    mkdir -p examples/contracts/solidity/mocks
+#     # Clone the specific branch into the temp directory
+#     git -C temp_clone clone --depth=1 --branch {{branch}} --single-branch https://github.com/Lay3rLabs/wavs-middleware.git
 
-    # Copy just the interfaces
-    cp temp_clone/wavs-middleware/contracts/src/eigenlayer/ecdsa/interfaces/*.sol contracts/solidity/interfaces/
+#     # Clear existing content and create solidity directory
+#     rm -rf contracts/solidity
+#     rm -rf examples/contracts/solidity
+#     mkdir -p contracts/solidity/interfaces
+#     mkdir -p examples/contracts/solidity/interfaces
+#     mkdir -p examples/contracts/solidity/mocks
 
-    # and, for examples - interfaces and mocks
-    cp temp_clone/wavs-middleware/contracts/src/eigenlayer/ecdsa/interfaces/*.sol examples/contracts/solidity/interfaces/
-    cp temp_clone/wavs-middleware/contracts/src/eigenlayer/ecdsa/mocks/*.sol examples/contracts/solidity/mocks/
+#     # Copy just the interfaces
+#     cp temp_clone/wavs-middleware/contracts/src/eigenlayer/ecdsa/interfaces/*.sol contracts/solidity/interfaces/
 
-    # Clean up
-    rm -rf temp_clone
+#     # and, for examples - interfaces and mocks
+#     cp temp_clone/wavs-middleware/contracts/src/eigenlayer/ecdsa/interfaces/*.sol examples/contracts/solidity/interfaces/
+#     cp temp_clone/wavs-middleware/contracts/src/eigenlayer/ecdsa/mocks/*.sol examples/contracts/solidity/mocks/
 
-# downloads the latest mock cosmwasm contracts from the cw-middleware repo
-# we only need the service-handler and API though, service-manager is handled by middleware
-download-cosmwasm branch="main":
-    # Create a temporary directory
-    rm -rf temp_clone
-    mkdir temp_clone
+#     # Clean up
+#     rm -rf temp_clone
 
-    # Clone the specific branch into the temp directory
-    git -C temp_clone clone --depth=1 --branch {{branch}} --single-branch https://github.com/Lay3rLabs/cw-middleware.git
+# # downloads the latest mock cosmwasm contracts from the cw-middleware repo
+# # we only need the service-handler and API though, service-manager is handled by middleware
+# download-cosmwasm branch="main":
+#     # Create a temporary directory
+#     rm -rf temp_clone
+#     mkdir temp_clone
 
-    # Clear existing content and directories
-    rm -rf examples/contracts/cosmwasm
-    mkdir -p examples/contracts/cosmwasm/mock
-    mkdir -p examples/contracts/cosmwasm/trigger
+#     # Clone the specific branch into the temp directory
+#     git -C temp_clone clone --depth=1 --branch {{branch}} --single-branch https://github.com/Lay3rLabs/cw-middleware.git
 
-    # Copy it over
-    cp -r temp_clone/cw-middleware/packages/contracts/mock/api examples/contracts/cosmwasm/mock/api
-    cp -r temp_clone/cw-middleware/packages/contracts/mock/service-handler examples/contracts/cosmwasm/mock/service-handler
-    cp -r temp_clone/cw-middleware/packages/contracts/trigger examples/contracts/cosmwasm/
+#     # Clear existing content and directories
+#     rm -rf examples/contracts/cosmwasm
+#     mkdir -p examples/contracts/cosmwasm/mock
+#     mkdir -p examples/contracts/cosmwasm/trigger
 
-    # Clean up
-    rm -rf temp_clone
+#     # Copy it over
+#     cp -r temp_clone/cw-middleware/packages/contracts/mock/api examples/contracts/cosmwasm/mock/api
+#     cp -r temp_clone/cw-middleware/packages/contracts/mock/service-handler examples/contracts/cosmwasm/mock/service-handler
+#     cp -r temp_clone/cw-middleware/packages/contracts/trigger examples/contracts/cosmwasm/
+
+#     # Clean up
+#     rm -rf temp_clone
 
 
 wasi-publish version component="*" flags="":
