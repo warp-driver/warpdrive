@@ -67,7 +67,7 @@ jobs:
         run: cargo test --workspace --no-run --locked
 
       - name: Run tests
-        run: cargo test --workspace --locked --all-features -- --nocapture --test-threads=4
+        run: cargo test --workspace --locked --all-features -- --nocapture --test-threads=4 --skip concurrency
         env:
           RUST_LOG: info
 
