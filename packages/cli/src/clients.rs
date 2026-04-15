@@ -6,8 +6,8 @@ use layer_climb::{prelude::CosmosAddr, signing::SigningClient};
 use warpdrive_types::{
     contracts::cosmwasm::service_manager::ServiceManagerExecuteMessages, AddServiceRequest,
     ChainKey, ComponentDigest, DeleteServicesRequest, DevTriggerStreamsInfo, GetSignerRequest,
-    IWarpDriveServiceManager::IWarpDriveServiceManagerInstance, P2pStatus, SaveServiceResponse, Service,
-    ServiceManager, SignerResponse, UploadComponentResponse,
+    IWarpDriveServiceManager::IWarpDriveServiceManagerInstance, P2pStatus, SaveServiceResponse,
+    Service, ServiceManager, SignerResponse, UploadComponentResponse,
 };
 
 use crate::command::deploy_service::SetServiceUriArgs;

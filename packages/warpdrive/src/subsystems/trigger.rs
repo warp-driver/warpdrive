@@ -185,7 +185,9 @@ impl TriggerManager {
                     .send(TriggerCommand::WatchEvmContractEvents {
                         chain,
                         addresses: vec![address],
-                        event_hashes: vec![IWarpDriveServiceManager::ServiceURIUpdated::SIGNATURE_HASH],
+                        event_hashes: vec![
+                            IWarpDriveServiceManager::ServiceURIUpdated::SIGNATURE_HASH,
+                        ],
                     })?;
             }
             warpdrive_types::ServiceManager::Cosmos { .. } => {
@@ -654,7 +656,9 @@ impl TriggerManager {
                     if let Some(event_hash) = log.topic0() {
                         let contract_address = log.address();
 
-                        if *event_hash == IWarpDriveServiceManager::ServiceURIUpdated::SIGNATURE_HASH {
+                        if *event_hash
+                            == IWarpDriveServiceManager::ServiceURIUpdated::SIGNATURE_HASH
+                        {
                             // 3. Decode the event data
                             match IWarpDriveServiceManager::ServiceURIUpdated::decode_log_data(
                                 log.data(),

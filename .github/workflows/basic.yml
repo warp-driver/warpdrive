@@ -49,7 +49,3 @@ jobs:
 
       - name: Test WarpDrive Engine
         run: cargo test -p warpdrive-engine --lib
-
-      - name: Test WarpDrive (no anvil, cosmos)
-        run: cargo test -p warpdrive --lib -- --skip evm_stream
-

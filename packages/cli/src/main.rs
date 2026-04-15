@@ -313,8 +313,10 @@ async fn main() {
                             .unwrap();
 
                         // Create contract instance
-                        let contract =
-                            IWarpDriveServiceHandler::new(handler_address, evm_client.provider.clone());
+                        let contract = IWarpDriveServiceHandler::new(
+                            handler_address,
+                            evm_client.provider.clone(),
+                        );
 
                         // Get the block number just before the latest block for reference
                         let previous_block = match evm_client.provider.get_block_number().await {
