@@ -6,7 +6,7 @@ use layer_climb::{prelude::CosmosAddr, signing::SigningClient};
 use warpdrive_types::{
     contracts::cosmwasm::service_manager::ServiceManagerExecuteMessages, AddServiceRequest,
     ChainKey, ComponentDigest, DeleteServicesRequest, DevTriggerStreamsInfo, GetSignerRequest,
-    IWavsServiceManager::IWavsServiceManagerInstance, P2pStatus, SaveServiceResponse, Service,
+    IWarpDriveServiceManager::IWarpDriveServiceManagerInstance, P2pStatus, SaveServiceResponse, Service,
     ServiceManager, SignerResponse, UploadComponentResponse,
 };
 
@@ -140,7 +140,7 @@ impl HttpClient {
         service_manager_address: alloy_primitives::Address,
         service_url: String,
     ) -> Result<()> {
-        let contract = IWavsServiceManagerInstance::new(service_manager_address, provider);
+        let contract = IWarpDriveServiceManagerInstance::new(service_manager_address, provider);
         contract
             .setServiceURI(service_url)
             .send()

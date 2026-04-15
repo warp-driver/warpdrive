@@ -37,7 +37,7 @@ use utils::service::fetch_service;
 use utils::storage::fs::FileStorage;
 use utils::telemetry::{DispatcherMetrics, WarpdriveMetrics};
 use warpdrive_types::contracts::cosmwasm::service_manager::ServiceManagerQueryMessages;
-use warpdrive_types::IWavsServiceManager::IWavsServiceManagerInstance;
+use warpdrive_types::IWarpDriveServiceManager::IWarpDriveServiceManagerInstance;
 use warpdrive_types::{
     AnyChainConfig, ChainConfigError, ChainConfigs, ChainKey, ComponentDigest, ServiceManager,
     Submission, Submit, WorkflowIdError,
@@ -938,7 +938,7 @@ async fn query_service_from_address(
                 }
             };
 
-            let contract = IWavsServiceManagerInstance::new(
+            let contract = IWarpDriveServiceManagerInstance::new(
                 address
                     .try_into()
                     .map_err(DispatcherError::AddressConversion)?,

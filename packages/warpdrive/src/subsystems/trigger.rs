@@ -31,7 +31,7 @@ use tracing::instrument;
 use utils::telemetry::TriggerMetrics;
 use warpdrive_types::{
     contracts::cosmwasm::service_manager::event::WavsServiceUriUpdatedEvent, AnyChainConfig,
-    ByteArray, ChainConfigs, ChainKey, IWavsServiceManager, ServiceId, Trigger, TriggerAction,
+    ByteArray, ChainConfigs, ChainKey, IWarpDriveServiceManager, ServiceId, Trigger, TriggerAction,
     TriggerConfig, TriggerData,
 };
 
@@ -185,7 +185,7 @@ impl TriggerManager {
                     .send(TriggerCommand::WatchEvmContractEvents {
                         chain,
                         addresses: vec![address],
-                        event_hashes: vec![IWavsServiceManager::ServiceURIUpdated::SIGNATURE_HASH],
+                        event_hashes: vec![IWarpDriveServiceManager::ServiceURIUpdated::SIGNATURE_HASH],
                     })?;
             }
             warpdrive_types::ServiceManager::Cosmos { .. } => {
@@ -654,9 +654,9 @@ impl TriggerManager {
                     if let Some(event_hash) = log.topic0() {
                         let contract_address = log.address();
 
-                        if *event_hash == IWavsServiceManager::ServiceURIUpdated::SIGNATURE_HASH {
+                        if *event_hash == IWarpDriveServiceManager::ServiceURIUpdated::SIGNATURE_HASH {
                             // 3. Decode the event data
-                            match IWavsServiceManager::ServiceURIUpdated::decode_log_data(
+                            match IWarpDriveServiceManager::ServiceURIUpdated::decode_log_data(
                                 log.data(),
                             ) {
                                 Ok(decoded_event) => {

@@ -33,7 +33,7 @@ When targeting a blockchain, the aggregator component decides which on-chain ser
 
 ### EVM
 
-For EVM chains, your contract needs to satisfy the [IWavsServiceHandler interface](../contracts/solidity/interfaces/IWavsServiceHandler.sol).
+For EVM chains, your contract needs to satisfy the [IWarpDriveServiceHandler interface](../contracts/solidity/interfaces/IWarpDriveServiceHandler.sol).
 
 It doesn't do very much — that's precisely the point. It's completely up to you for processing that data and handling it however you want. This is where you put all your business logic — no limits!
 

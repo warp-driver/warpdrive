@@ -11,8 +11,8 @@ use warpdrive_types::{
         },
     },
     CosmosSubmitAction, EvmSubmitAction,
-    IWavsServiceHandler::IWavsServiceHandlerInstance,
-    IWavsServiceManager::IWavsServiceManagerInstance,
+    IWarpDriveServiceHandler::IWarpDriveServiceHandlerInstance,
+    IWarpDriveServiceManager::IWarpDriveServiceManagerInstance,
     ServiceManagerError, Submission, WavsSignature, WavsSigner,
 };
 
@@ -230,12 +230,12 @@ impl Aggregator {
         &self,
         provider: DynProvider,
         service_handler_address: alloy_primitives::Address,
-    ) -> Result<IWavsServiceManagerInstance<DynProvider>, AggregatorError> {
+    ) -> Result<IWarpDriveServiceManagerInstance<DynProvider>, AggregatorError> {
         // we need to get the service manager from the perspective of the service handler
         // which may be different than the service manager where the vector is staked
         // e.g. in the case of vector sets that are mirrored across multiple chains
         let service_handler =
-            IWavsServiceHandlerInstance::new(service_handler_address, provider.clone());
+            IWarpDriveServiceHandlerInstance::new(service_handler_address, provider.clone());
 
         let service_manager_address = service_handler
             .getServiceManager()
@@ -243,7 +243,7 @@ impl Aggregator {
             .await
             .map_err(AggregatorError::EvmServiceManagerLookup)?;
 
-        Ok(IWavsServiceManagerInstance::new(
+        Ok(IWarpDriveServiceManagerInstance::new(
             service_manager_address,
             provider,
         ))

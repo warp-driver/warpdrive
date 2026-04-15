@@ -5,7 +5,7 @@ use anyhow::Result;
 use std::time::Duration;
 use tokio::time::sleep;
 
-use warpdrive_types::IWavsServiceManager::IWavsServiceManagerInstance;
+use warpdrive_types::IWarpDriveServiceManager::IWarpDriveServiceManagerInstance;
 
 use crate::{
     evm_client::EvmSigningClient,
@@ -201,7 +201,7 @@ impl MockEvmServiceManager {
         const VALIDATION_RETRY_DELAY: Duration = Duration::from_millis(200);
 
         for attempt in 0..VALIDATION_RETRIES {
-            let service_manager = IWavsServiceManagerInstance::new(
+            let service_manager = IWarpDriveServiceManagerInstance::new(
                 self.service_manager.address,
                 &self.client.provider,
             );
@@ -241,7 +241,7 @@ impl MockEvmServiceManager {
         const VALIDATION_RETRY_DELAY: Duration = Duration::from_millis(200);
 
         for attempt in 0..VALIDATION_RETRIES {
-            let service_manager = IWavsServiceManagerInstance::new(
+            let service_manager = IWarpDriveServiceManagerInstance::new(
                 self.service_manager.address,
                 &self.client.provider,
             );
