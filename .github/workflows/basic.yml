@@ -34,7 +34,7 @@ jobs:
       # - name: Check compilations
       #   run: cargo check --all-targets --all-features
 
-  test:
+  test-unit:
     name: Basic Unit Tests
     runs-on: ubuntu-24.04
     steps:
@@ -49,3 +49,16 @@ jobs:
 
       - name: Test WarpDrive Engine
         run: cargo test -p warpdrive-engine --lib
+
+  test-e2e-basic:
+    name: Basic e2e Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - name: Test WarpDrive Engine
+        run: cargo test -p warpdrive-tests
+        env:
+          WARPDRIVE_TESTS_CONFIG_FILENAME: "warpdrive-tests-ci-basic.toml"
+          RUST_LOG: info
