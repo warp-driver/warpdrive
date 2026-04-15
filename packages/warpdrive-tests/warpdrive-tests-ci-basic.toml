@@ -1,0 +1,10 @@
+[default]
+log_level = ["info", "warpdrive=debug"]
+
+[warpdrive-tests]
+wavs_concurrency = true
+middleware_concurrency = true
+grouping = false
+evm_middleware_type = "poa"   # "eigenlayer" or "poa"
+p2p = "mdns"              # "mdns" (local) or "kademlia" (remote)
+mode = { "isolated" = [{ evm = "echo_data" }] }

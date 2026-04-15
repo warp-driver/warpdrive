@@ -180,7 +180,7 @@ cosmwasm-build-inner CONTRACT_PATH:
     fi;
 # on-chain integration test
 test-warpdrive-e2e:
-    ulimit -n 65536 && RUST_LOG=debug,alloy_rpc=off,alloy_provider=off,wasmtime=off,cranelift=off,hyper_util=off cargo test -p warpdrive-tests
+    ulimit -n 65536 && WARPDRIVE_TESTS_CONFIG_FILENAME=warpdrive-tests-dev.toml RUST_LOG=info,alloy_rpc=off,alloy_provider=off,wasmtime=off,cranelift=off,hyper_util=off cargo test -p warpdrive-tests
 
 update-submodules:
     git submodule update --init --recursive

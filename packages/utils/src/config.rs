@@ -53,8 +53,9 @@ pub trait CliEnvExt: Serialize + DeserializeOwned + Default + std::fmt::Debug {
 }
 
 pub trait ConfigExt: Serialize + DeserializeOwned + Default + std::fmt::Debug {
-    // e.g. "warpdrive.toml"
-    const FILENAME: &'static str = "warpdrive.toml";
+    fn filename() -> String {
+        "warpdrive.toml".to_string()
+    }
 
     // the data directory, which is the root of the data storage
     fn with_data_dir(&mut self, f: fn(&mut PathBuf));
@@ -111,11 +112,12 @@ impl<CONFIG: ConfigExt, ARG: CliEnvExt> ConfigBuilder<CONFIG, ARG> {
         let cli_env_args = self.cli_env_args.merge_cli_env_args()?;
 
         // then get the filepath for our file-based config
-        let filepath = ConfigFilePath::new(CONFIG::FILENAME, cli_env_args.home_dir())
+        let filename = CONFIG::filename();
+        let filepath = ConfigFilePath::new(&filename, cli_env_args.home_dir())
             .into_path()
             .context(format!(
                 "Error getting config file path (filename: {}, homedir: {:?})",
-                CONFIG::FILENAME,
+                filename,
                 cli_env_args.home_dir()
             ))?;
 
@@ -406,20 +408,20 @@ mod test {
             .unwrap()
             .home;
 
-            ConfigFilePath::new(TestConfig::FILENAME, home).into_possible()
+            ConfigFilePath::new(TestConfig::filename(), home).into_possible()
         }
 
         // make sure all the test directories are not there by default
         let default_dirs = filepaths(None);
         for i in 1..=10 {
             assert!(!default_dirs
-                .contains(&PathBuf::from(format!("/tmp{i}")).join(TestConfig::FILENAME)));
+                .contains(&PathBuf::from(format!("/tmp{i}")).join(TestConfig::filename())));
         }
 
         // if provide a specific home directory, then it is the first one to try
         assert_eq!(
             filepaths(Some("/tmp1".into())).first().unwrap(),
-            &PathBuf::from("/tmp1").join(TestConfig::FILENAME)
+            &PathBuf::from("/tmp1").join(TestConfig::filename())
         );
 
         // even if we also provide it in an env var, it still takes precedence
@@ -431,7 +433,7 @@ mod test {
             || {
                 assert_eq!(
                     filepaths(Some("/tmp3".into())).first().unwrap(),
-                    &PathBuf::from("/tmp3").join(TestConfig::FILENAME)
+                    &PathBuf::from("/tmp3").join(TestConfig::filename())
                 );
             },
         );
@@ -445,7 +447,7 @@ mod test {
             || {
                 assert_eq!(
                     filepaths(None).first().unwrap(),
-                    &PathBuf::from("/tmp2").join(TestConfig::FILENAME),
+                    &PathBuf::from("/tmp2").join(TestConfig::filename()),
                 );
             },
         );
@@ -585,7 +587,9 @@ mod test {
         }
 
         impl ConfigExt for ServiceConfig {
-            const FILENAME: &'static str = "test_wavs.toml";
+            fn filename() -> String {
+                "test_wavs.toml".to_string()
+            }
 
             fn with_data_dir(&mut self, f: fn(&mut PathBuf)) {
                 f(&mut self.data);
@@ -652,7 +656,7 @@ mod test {
 
         // Write test config file
         let temp_dir = tempfile::tempdir().unwrap();
-        let config_path = temp_dir.path().join(ServiceConfig::FILENAME);
+        let config_path = temp_dir.path().join(ServiceConfig::filename());
         std::fs::write(&config_path, test_config).unwrap();
 
         // Setup CLI env for service1
@@ -750,7 +754,9 @@ mod test {
         }
 
         impl ConfigExt for Service2Config {
-            const FILENAME: &'static str = "test_wavs.toml";
+            fn filename() -> String {
+                "test_wavs.toml".to_string()
+            }
 
             fn with_data_dir(&mut self, f: fn(&mut PathBuf)) {
                 f(&mut self.data);
