@@ -5,9 +5,10 @@ log_level = ["info", "warpdrive=debug"]
 wavs_concurrency = true
 middleware_concurrency = true
 grouping = false
-evm_middleware_type = "poa"   # "eigenlayer" or "poa"
-# p2p = "kademlia"              # "mdns" (local) or "kademlia" (remote)
-p2p = "mdns"              # "mdns" (local) or "kademlia" (remote)
+evm_middleware_type = "poa"
+p2p = "mdns"
+mode = { "isolated" = [{ evm = "echo_data" }] }
+
 
 # Run all tests
 # mode = "all"
@@ -21,7 +22,7 @@ p2p = "mdns"              # "mdns" (local) or "kademlia" (remote)
 # ]}
 
 # Run all ethereum tests (same can be done for cosmos, cross-chain, etc.)
-mode = "all_eth"
+# mode = "all_eth"
 
 # Run a specific test
 # mode = { "isolated" = [{ evm = "trigger_backpressure" }] }

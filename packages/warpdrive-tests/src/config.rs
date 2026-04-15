@@ -35,7 +35,10 @@ pub struct TestConfig {
 }
 
 impl ConfigExt for TestConfig {
-    const FILENAME: &'static str = "warpdrive-tests.toml";
+    fn filename() -> String {
+        std::env::var("WARPDRIVE_TESTS_CONFIG_FILENAME")
+            .unwrap_or("warpdrive-tests-default.toml".to_string())
+    }
 
     fn with_data_dir(&mut self, f: fn(&mut PathBuf)) {
         f(&mut self._data_dir);

@@ -100,7 +100,7 @@ impl EigenlayerMiddleware {
                     "-e",
                     &format!("DEPLOY_FILE_MOCK={filename}"),
                     &container_id,
-                    "/warpdrive/scripts/cli.sh",
+                    "/wavs/scripts/cli.sh",
                     "-m",
                     "mock",
                     "deploy",
@@ -192,7 +192,7 @@ impl EigenlayerMiddleware {
                     "-e",
                     &format!("CONFIGURE_FILE={}", filename),
                     container_id,
-                    "/warpdrive/scripts/cli.sh",
+                    "/wavs/scripts/cli.sh",
                     "-m",
                     "mock",
                     "configure",
@@ -238,7 +238,7 @@ impl EigenlayerMiddleware {
                     "-e",
                     &format!("SERVICE_URI={}", service_uri),
                     container_id,
-                    "/warpdrive/scripts/cli.sh",
+                    "/wavs/scripts/cli.sh",
                     "set_service_uri",
                 ])
                 .stdout(Stdio::null())
