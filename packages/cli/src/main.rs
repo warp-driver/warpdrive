@@ -203,8 +203,8 @@ async fn main() {
             submit_chain,
             submit_handler,
             simulates_trigger,
-            operator_credential,
-            operator_hd_index,
+            vectr_credential,
+            vectr_hd_index,
             args: _,
         } => {
             let config = config
@@ -252,8 +252,8 @@ async fn main() {
             }
 
             // If submit_chain is provided, submit the result to the chain
-            if let (Some(chain_key), Some(handler_address), Some(operator_credential)) =
-                (submit_chain, submit_handler, operator_credential)
+            if let (Some(chain_key), Some(handler_address), Some(vectr_credential)) =
+                (submit_chain, submit_handler, vectr_credential)
             {
                 if res.wasm_responses.is_empty() {
                     tracing::warn!("No WASM response to submit to chain");
@@ -291,11 +291,11 @@ async fn main() {
                         };
 
                         // Get vector EVM client for envelope signing
-                        let operator_evm_client = match new_evm_client_with_credential(
+                        let vectr_evm_client = match new_evm_client_with_credential(
                             &ctx,
                             chain_key.id.clone(),
-                            &operator_credential,
-                            operator_hd_index,
+                            &vectr_credential,
+                            vectr_hd_index,
                         )
                         .await
                         {
@@ -308,7 +308,7 @@ async fn main() {
 
                         // Create signature using the vector EVM client's signer
                         let signature = envelope
-                            .sign(&operator_evm_client.signer, SignatureKind::evm_default())
+                            .sign(&vectr_evm_client.signer, SignatureKind::evm_default())
                             .await
                             .unwrap();
 

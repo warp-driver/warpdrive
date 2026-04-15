@@ -18,7 +18,15 @@ use wasm_pkg_client::{PackageRef, Version};
 use crate::config::Config;
 
 #[derive(Parser)]
-#[command(version, about, long_about = None)]
+#[command(
+    version,
+    about = "WarpDrive",
+    long_about = r#"
+WarpDrive: Stellar's Gateway to Off-Chain Power.
+
+Discover more at: https://www.warp-drive.xyz/
+"#
+)]
 pub enum Command {
     /// Uploads a WASI component
     UploadComponent {
@@ -29,32 +37,34 @@ pub enum Command {
         args: CliArgs,
     },
 
-    /// # Description
-    /// Deploys a service by loading its definition from a URL. The URL can be:
-    /// - http:// or https:// pointing to a JSON service definition
-    /// - ipfs:// with a valid CID as the host (e.g., ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi)
+    /// Deploys a service by loading its definition from a URL.
+    ///
+    /// The URL can be:
+    /// http:// or https:// pointing to a JSON service definition
+    /// or ipfs:// with a valid CID as the host (e.g., ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi)
     ///
     /// # Prerequisites
-    /// - Core contracts must have been previously deployed via the CLI
-    /// - Service components must already be uploaded
-    /// - Vectors must already be registered on the contracts
     ///
-    /// # Parameters
-    /// * `service_uri`: URI pointing to the JSON service definition
-    /// * `set_uri`: Boolean indicating whether to also set the URL on the service manager
-    /// * `args`: Additional CLI arguments for the deployment operation
+    /// - Core contracts must have been previously deployed via the CLI
+    ///
+    /// - Service components must already be uploaded
+    ///
+    /// - Vectrs must already be registered on the contracts
     DeployService {
+        /// URI pointing to the JSON service definition
         #[clap(long)]
         service_uri: UriString,
 
+        /// Boolean indicating whether to also set the URL on the service manager
         #[clap(long)]
         set_uri: bool,
 
+        /// Additional CLI arguments for the deployment operation
         #[clap(flatten)]
         args: CliArgs,
     },
 
-    /// Execute a component directly, without going through WarpDrive
+    /// Execute a component directly, without going through WarpDrive.
     /// Env vars starting with the "WARPDRIVE_ENV" prefix will be picked up by the component.
     Exec {
         /// Path to the WASI component
@@ -66,9 +76,9 @@ pub enum Command {
         args: CliArgs,
 
         /// The payload data.
-        /// If preceded by a `@`, will be treated as a file path
-        /// If preceded by a `0x`, will be treated as hex-encoded
-        /// Otherwise will be treated as raw string bytes
+        /// If preceded by a `@`, will be treated as a file path.
+        /// If preceded by a `0x`, will be treated as hex-encoded.
+        /// Otherwise will be treated as raw string bytes.
         #[clap(long)]
         input: String,
 
@@ -84,26 +94,26 @@ pub enum Command {
         #[clap(long)]
         config: Vec<String>,
 
-        /// Optional path to save the execution output as JSON
-        /// Writes the WASM response as formatted JSON to file
+        /// Optional path to save the execution output as JSON.
+        /// Writes the WASM response as formatted JSON
         #[clap(long = "output", short = 'o')]
         output_file: Option<PathBuf>,
 
-        /// Submit execution result to this chain via IWavsServiceHandler
-        #[clap(long, requires_all = &["submit_handler", "operator_credential"])]
+        /// Submit execution result to this chain via IWarpDriveServiceHandler
+        #[clap(long, requires_all = &["submit_handler", "vectr_credential"])]
         submit_chain: Option<ChainKey>,
 
-        /// Contract address of the IWavsServiceHandler to submit results to
-        #[clap(long, requires_all = &["submit_chain", "operator_credential"])]
+        /// Contract address of the IWarpDriveServiceHandler to submit results to
+        #[clap(long, requires_all = &["submit_chain", "vectr_credential"])]
         submit_handler: Option<alloy_primitives::Address>,
 
-        /// Vector credential for envelope signing (required for submission)
+        /// Vectr credential for envelope signing (required for submission)
         #[clap(long, requires_all = &["submit_chain", "submit_handler"])]
-        operator_credential: Option<Credential>,
+        vectr_credential: Option<Credential>,
 
-        /// Vector HD index for envelope signing
-        #[clap(long, requires = "operator_credential")]
-        operator_hd_index: Option<u32>,
+        /// Vectr HD index for envelope signing
+        #[clap(long, requires = "vectr_credential")]
+        vectr_hd_index: Option<u32>,
 
         /// Simulate the transaction execution as actual TriggerData (JSON format)
         #[clap(long)]
@@ -144,7 +154,7 @@ pub enum Command {
         #[clap(long)]
         time_limit: Option<u64>,
 
-        /// Configuration key-value pairs for the component in format 'key=value'
+        /// Configuration key-value pairs for the component in format 'key=value'.
         /// Example: --config chain=evm:31337 --config service_handler=0x1234...
         #[clap(long)]
         config: Option<Vec<String>>,
@@ -439,7 +449,7 @@ pub struct CliArgs {
     /// The WarpDrive endpoint. Default is `http://127.0.0.1:8000`
     #[arg(long)]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub wavs_endpoint: Option<PathBuf>,
+    pub warpdrive_endpoint: Option<PathBuf>,
 
     /// The path to an optional dotenv file to try and load
     /// if not set, will be the current working directory's .env
@@ -466,7 +476,7 @@ pub struct CliArgs {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub evm_credential: Option<Credential>,
 
-    /// cosmos mnemonic (usually leave this as None and override in env)
+    /// Cosmos mnemonic (usually leave this as None and override in env)
     #[arg(long)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cosmos_mnemonic: Option<Credential>,
