@@ -80,7 +80,9 @@ impl Host for AggregatorHostComponent {
             .workflows
             .get(&self.workflow_id)
             .and_then(|workflow| match &workflow.submit {
-                warpdrive_types::Submit::Aggregator { component, .. } => Some(component.source.digest()),
+                warpdrive_types::Submit::Aggregator { component, .. } => {
+                    Some(component.source.digest())
+                }
                 _ => unreachable!(),
             })
             .unwrap_or_else(|| {

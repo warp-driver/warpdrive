@@ -15,7 +15,9 @@ use utils::{
 mod warpdrive_systems;
 use alloy_sol_types::{sol, SolValue};
 use warpdrive::dispatcher::DispatcherCommand;
-use warpdrive_systems::{mock_app::MockE2ETestRunner, mock_submissions::wait_for_submission_messages};
+use warpdrive_systems::{
+    mock_app::MockE2ETestRunner, mock_submissions::wait_for_submission_messages,
+};
 use warpdrive_types::{
     ChainKey, Component, ComponentSource, EventId, EventIdSalt, Service, ServiceManager,
     SignatureKind, Submit, Trigger, TriggerAction, TriggerConfig, TriggerData, Workflow,

@@ -114,7 +114,9 @@ impl DevTriggersRuntime {
         #[allow(unused_mut)]
         let mut dispatcher_local = warpdrive::dispatcher::Dispatcher::new(
             &config,
-            utils::telemetry::WarpdriveMetrics::new(opentelemetry::global::meter("warpdrive-benchmark")),
+            utils::telemetry::WarpdriveMetrics::new(opentelemetry::global::meter(
+                "warpdrive-benchmark",
+            )),
         )
         .expect("dispatcher new");
 

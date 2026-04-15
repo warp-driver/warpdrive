@@ -45,11 +45,13 @@ impl TryFrom<component_service::Trigger> for warpdrive_types::Trigger {
                 start_time: source.start_time.map(Into::into),
                 end_time: source.end_time.map(Into::into),
             },
-            component_service::Trigger::AtprotoEvent(source) => warpdrive_types::Trigger::AtProtoEvent {
-                collection: source.collection,
-                repo_did: source.repo_did,
-                action: source.action.map(|x| x.parse()).transpose()?,
-            },
+            component_service::Trigger::AtprotoEvent(source) => {
+                warpdrive_types::Trigger::AtProtoEvent {
+                    collection: source.collection,
+                    repo_did: source.repo_did,
+                    action: source.action.map(|x| x.parse()).transpose()?,
+                }
+            }
         })
     }
 }
@@ -143,7 +145,9 @@ impl TryFrom<component_service::ComponentSource> for warpdrive_types::ComponentS
     fn try_from(src: component_service::ComponentSource) -> Result<Self, Self::Error> {
         Ok(match src {
             component_service::ComponentSource::Digest(digest) => {
-                warpdrive_types::ComponentSource::Digest(warpdrive_types::ComponentDigest::from_str(&digest)?)
+                warpdrive_types::ComponentSource::Digest(
+                    warpdrive_types::ComponentDigest::from_str(&digest)?,
+                )
             }
             component_service::ComponentSource::Download(download) => {
                 warpdrive_types::ComponentSource::Download {
@@ -187,7 +191,9 @@ impl From<component_service::Permissions> for warpdrive_types::Permissions {
 impl From<component_service::AllowedHostPermission> for warpdrive_types::AllowedHostPermission {
     fn from(src: component_service::AllowedHostPermission) -> Self {
         match src {
-            component_service::AllowedHostPermission::All => warpdrive_types::AllowedHostPermission::All,
+            component_service::AllowedHostPermission::All => {
+                warpdrive_types::AllowedHostPermission::All
+            }
             component_service::AllowedHostPermission::None => {
                 warpdrive_types::AllowedHostPermission::None
             }

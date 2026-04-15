@@ -949,9 +949,7 @@ impl TestRegistry {
                         ))
                         .with_submit(SubmitDefinition::Aggregator(Self::simple_aggregator(chain)))
                         .with_input_data(InputData::Text("multi-vector test".to_string()))
-                        .with_expected_output(ExpectedOutput::Text(
-                            "multi-vector test".to_string(),
-                        ))
+                        .with_expected_output(ExpectedOutput::Text("multi-vector test".to_string()))
                         .build(),
                 )
                 .with_service_manager_chain(chain)

@@ -334,7 +334,10 @@ impl LookupMaps {
         Ok(())
     }
 
-    pub fn remove_service(&self, service_id: warpdrive_types::ServiceId) -> Result<(), TriggerError> {
+    pub fn remove_service(
+        &self,
+        service_id: warpdrive_types::ServiceId,
+    ) -> Result<(), TriggerError> {
         let mut trigger_configs = self.trigger_configs.write().unwrap();
         let mut triggers_by_evm_contract_event =
             self.triggers_by_evm_contract_event.write().unwrap();

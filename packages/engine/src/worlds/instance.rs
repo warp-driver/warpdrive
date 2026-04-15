@@ -1,16 +1,16 @@
 use std::path::Path;
 
 use utils::config::WARPDRIVE_ENV_PREFIX;
+use warpdrive_types::{
+    AllowedHostPermission, ChainConfigs, EventId, Permissions, Service, TriggerData, Workflow,
+    WorkflowId,
+};
 use wasmtime::component::HasSelf;
 use wasmtime::Store;
 use wasmtime::{component::Linker, Engine as WTEngine};
 use wasmtime_wasi::{DirPerms, FilePerms, WasiCtxBuilder, WasiView};
 use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
 use wasmtime_wasi_tls::{WasiTls, WasiTlsCtxBuilder};
-use warpdrive_types::{
-    AllowedHostPermission, ChainConfigs, EventId, Permissions, Service, TriggerData, Workflow,
-    WorkflowId,
-};
 
 use crate::backend::wasi_keyvalue::context::KeyValueCtxProvider;
 use crate::worlds::aggregator::component::{
@@ -193,7 +193,9 @@ impl<P: AsRef<Path>> InstanceDepsBuilder<'_, P> {
 
                     let component = match &workflow.submit {
                         warpdrive_types::Submit::None => unreachable!(),
-                        warpdrive_types::Submit::Aggregator { component, .. } => (**component).clone(),
+                        warpdrive_types::Submit::Aggregator { component, .. } => {
+                            (**component).clone()
+                        }
                     };
                     configure_linker(&mut linker, &component.permissions)?;
 

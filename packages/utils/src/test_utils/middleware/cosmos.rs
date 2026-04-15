@@ -11,7 +11,9 @@ use layer_climb::prelude::*;
 use serde::{Deserialize, Serialize};
 use tempfile::TempDir;
 use tokio::process::Command;
-use warpdrive_types::{ChainConfigs, ChainKeyNamespace, CosmosChainConfig, CosmosChainConfigBuilder};
+use warpdrive_types::{
+    ChainConfigs, ChainKeyNamespace, CosmosChainConfig, CosmosChainConfigBuilder,
+};
 
 use crate::test_utils::middleware::vector::AvsOperator;
 
@@ -373,9 +375,7 @@ impl CosmosServiceManager {
     // intentionally thin, idea is to guard the lock
     pub async fn register_operator(&self, vector: AvsOperator) -> Result<()> {
         let inner = self.middleware.lock().await;
-        inner
-            .register_operator(self.address.clone(), vector)
-            .await
+        inner.register_operator(self.address.clone(), vector).await
     }
 }
 

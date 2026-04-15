@@ -80,7 +80,8 @@ impl AppHandles {
         } else {
             // Local mode or single vector: start all at once
             for (vector_index, warpdrive_config) in configs.warpdrive_configs.iter().enumerate() {
-                let handle = Self::spawn_wavs_operator(ctx, warpdrive_config, &metrics, vector_index);
+                let handle =
+                    Self::spawn_wavs_operator(ctx, warpdrive_config, &metrics, vector_index);
                 wavs_handles.push(handle);
             }
         }
@@ -115,7 +116,8 @@ impl AppHandles {
         metrics: &Metrics,
         vector_index: usize,
     ) -> std::thread::JoinHandle<()> {
-        let dispatcher = Arc::new(Dispatcher::new(warpdrive_config, metrics.warpdrive.clone()).unwrap());
+        let dispatcher =
+            Arc::new(Dispatcher::new(warpdrive_config, metrics.warpdrive.clone()).unwrap());
 
         std::thread::spawn({
             let dispatcher = dispatcher.clone();
@@ -200,7 +202,8 @@ impl AppHandles {
         })?;
 
         // Start remaining vectors with the bootstrap address
-        for (vector_index, warpdrive_config) in configs.warpdrive_configs.iter().enumerate().skip(1) {
+        for (vector_index, warpdrive_config) in configs.warpdrive_configs.iter().enumerate().skip(1)
+        {
             // Clone and modify config to add bootstrap address
             let mut config = warpdrive_config.clone();
             if let P2pConfig::Remote {

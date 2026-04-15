@@ -137,8 +137,7 @@ fn main() {
     }
 
     let config_clone = config.clone();
-    let dispatcher =
-        Arc::new(Dispatcher::new(&config_clone, metrics.warpdrive).unwrap());
+    let dispatcher = Arc::new(Dispatcher::new(&config_clone, metrics.warpdrive).unwrap());
 
     warpdrive::run_server(
         ctx,

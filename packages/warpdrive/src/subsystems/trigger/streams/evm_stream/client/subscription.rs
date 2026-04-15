@@ -1132,7 +1132,8 @@ mod tests {
         let rpc_ids = RpcIds::new();
         let (connection_tx, connection_rx) = unbounded_channel();
         let metrics = EvmStreamMetrics::new(opentelemetry::global::meter("test"));
-        let chain_key = warpdrive_types::ChainKey::new("evm:31337").expect("Invalid chain key format");
+        let chain_key =
+            warpdrive_types::ChainKey::new("evm:31337").expect("Invalid chain key format");
         // Return the inner subscriptions object alongside the channel we use to inspect outbound RPCs.
         (
             SubscriptionsInner::new(rpc_ids, connection_tx, metrics, chain_key),

@@ -416,7 +416,9 @@ impl<S: CAStorage + Send + Sync + 'static> WasmEngine<S> {
             })?;
 
         let digest = match &workflow.submit {
-            warpdrive_types::Submit::Aggregator { component, .. } => component.source.digest().clone(),
+            warpdrive_types::Submit::Aggregator { component, .. } => {
+                component.source.digest().clone()
+            }
             warpdrive_types::Submit::None => {
                 tracing::info!("Submit is None for service_id: {}", service.id(),);
                 return Ok(None);

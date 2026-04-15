@@ -1,8 +1,8 @@
 use std::time::Duration;
 
 use anyhow::Result;
-use wasmtime::Trap;
 use warpdrive_types::AggregatorInput;
+use wasmtime::Trap;
 
 use crate::utils::error::EngineError;
 use crate::{bindings::aggregator::world::AggregatorWorld, worlds::instance::InstanceDeps};

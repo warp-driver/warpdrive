@@ -1,5 +1,4 @@
 use utils::storage::db::WavsDb;
-use wasmtime::{component::Component as WasmtimeComponent, Config as WTConfig, Engine as WTEngine};
 use warpdrive_engine::{
     backend::wasi_keyvalue::context::KeyValueCtx,
     bindings::aggregator::world::{host::LogLevel, wavs::aggregator::output::AggregatorAction},
@@ -8,6 +7,7 @@ use warpdrive_engine::{
 use warpdrive_types::{
     AggregatorInput, ChainConfigs, ComponentDigest, EvmChainConfig, Service, ServiceId, WorkflowId,
 };
+use wasmtime::{component::Component as WasmtimeComponent, Config as WTConfig, Engine as WTEngine};
 
 #[allow(dead_code)]
 pub async fn execute_aggregator_component(

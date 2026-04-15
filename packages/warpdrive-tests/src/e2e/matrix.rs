@@ -140,9 +140,9 @@ impl TestMatrix {
 impl From<EvmService> for Vec<ComponentName> {
     fn from(service: EvmService) -> Self {
         match service {
-            EvmService::ChainTriggerLookup => vec![ComponentName::Vector(
-                VectorComponent::ChainTriggerLookup,
-            )],
+            EvmService::ChainTriggerLookup => {
+                vec![ComponentName::Vector(VectorComponent::ChainTriggerLookup)]
+            }
             EvmService::CosmosQuery => {
                 vec![ComponentName::Vector(VectorComponent::CosmosQuery)]
             }
@@ -174,12 +174,12 @@ impl From<EvmService> for Vec<ComponentName> {
             EvmService::TriggerBackpressure => {
                 vec![ComponentName::Vector(VectorComponent::EchoData)]
             }
-            EvmService::BlockInterval => vec![ComponentName::Vector(
-                VectorComponent::EchoBlockInterval,
-            )],
-            EvmService::BlockIntervalStartStop => vec![ComponentName::Vector(
-                VectorComponent::EchoBlockInterval,
-            )],
+            EvmService::BlockInterval => {
+                vec![ComponentName::Vector(VectorComponent::EchoBlockInterval)]
+            }
+            EvmService::BlockIntervalStartStop => {
+                vec![ComponentName::Vector(VectorComponent::EchoBlockInterval)]
+            }
             EvmService::CronInterval => {
                 vec![ComponentName::Vector(VectorComponent::EchoCronInterval)]
             }
@@ -211,9 +211,9 @@ impl From<EvmService> for Vec<ComponentName> {
 impl From<CosmosService> for Vec<ComponentName> {
     fn from(service: CosmosService) -> Self {
         match service {
-            CosmosService::ChainTriggerLookup => vec![ComponentName::Vector(
-                VectorComponent::ChainTriggerLookup,
-            )],
+            CosmosService::ChainTriggerLookup => {
+                vec![ComponentName::Vector(VectorComponent::ChainTriggerLookup)]
+            }
             CosmosService::CosmosQuery => {
                 vec![ComponentName::Vector(VectorComponent::CosmosQuery)]
             }
@@ -222,12 +222,12 @@ impl From<CosmosService> for Vec<ComponentName> {
                 vec![ComponentName::Vector(VectorComponent::Permissions)]
             }
             CosmosService::Square => vec![ComponentName::Vector(VectorComponent::Square)],
-            CosmosService::BlockInterval => vec![ComponentName::Vector(
-                VectorComponent::EchoBlockInterval,
-            )],
-            CosmosService::BlockIntervalStartStop => vec![ComponentName::Vector(
-                VectorComponent::EchoBlockInterval,
-            )],
+            CosmosService::BlockInterval => {
+                vec![ComponentName::Vector(VectorComponent::EchoBlockInterval)]
+            }
+            CosmosService::BlockIntervalStartStop => {
+                vec![ComponentName::Vector(VectorComponent::EchoBlockInterval)]
+            }
             CosmosService::CronInterval => {
                 vec![ComponentName::Vector(VectorComponent::EchoCronInterval)]
             }

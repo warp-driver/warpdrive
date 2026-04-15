@@ -148,7 +148,9 @@ impl MockEvmServiceManager {
                     } else {
                         return Err(anyhow::anyhow!(
                             "Vector registration failed: Expected vector {} for signer {}, got {}",
-                            avs_operator.vector, avs_operator.signer, registered_operator
+                            avs_operator.vector,
+                            avs_operator.signer,
+                            registered_operator
                         ));
                     }
                 }

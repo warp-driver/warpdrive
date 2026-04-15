@@ -8,9 +8,9 @@ use crate::e2e::test_registry::TestRegistry;
 use super::config::Configs;
 use futures::{stream::FuturesUnordered, StreamExt};
 use utils::filesystem::workspace_path;
-use wasm_pkg_common::package::PackageRef;
 use warpdrive_cli::clients::HttpClient;
 use warpdrive_types::{ComponentDigest, ComponentSource, Registry};
+use wasm_pkg_common::package::PackageRef;
 
 #[derive(Clone, Debug, Default)]
 pub struct ComponentSources {
