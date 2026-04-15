@@ -31,7 +31,7 @@ pub enum QueryMsg {
     #[returns(TriggerMessageResponse)]
     TriggerMessage { trigger_id: Uint64 },
 
-    #[returns(warpdrive_types::contracts::cosmwasm::service_handler::WavsSignatureData)]
+    #[returns(warpdrive_types::contracts::cosmwasm::service_handler::WarpDriveSignatureData)]
     SignatureData { trigger_id: Uint64 },
 
     #[serde(untagged)]

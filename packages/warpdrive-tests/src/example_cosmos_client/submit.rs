@@ -1,7 +1,7 @@
 use anyhow::Result;
 use cw_warpdrive_mock_api::service_handler::TriggerMessageResponse;
 use layer_climb::{pool::SigningClientPoolManager, prelude::*};
-use warpdrive_types::contracts::cosmwasm::service_handler::WavsSignatureData;
+use warpdrive_types::contracts::cosmwasm::service_handler::WarpDriveSignatureData;
 
 pub struct SimpleCosmosSubmitClient {
     pub signing_client: deadpool::managed::Object<SigningClientPoolManager>,
@@ -53,7 +53,7 @@ impl SimpleCosmosSubmitClient {
             .await
     }
 
-    pub async fn signature_data(&self, trigger_id: u64) -> Result<WavsSignatureData> {
+    pub async fn signature_data(&self, trigger_id: u64) -> Result<WarpDriveSignatureData> {
         if !self.trigger_validated(trigger_id).await? {
             return Err(anyhow::anyhow!("trigger not validated"));
         }

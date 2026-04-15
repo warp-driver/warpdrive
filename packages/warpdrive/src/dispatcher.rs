@@ -971,7 +971,10 @@ async fn query_service_from_address(
             };
 
             let service_uri: String = query_client
-                .contract_smart(&address, &ServiceManagerQueryMessages::WavsServiceUri {})
+                .contract_smart(
+                    &address,
+                    &ServiceManagerQueryMessages::WarpDriveServiceUri {},
+                )
                 .await
                 .map_err(DispatcherError::CosmosQuery)?;
 

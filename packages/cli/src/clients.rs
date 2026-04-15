@@ -160,7 +160,7 @@ impl HttpClient {
         client
             .contract_execute(
                 &service_manager_address.into(),
-                &ServiceManagerExecuteMessages::WavsSetServiceUri { service_uri },
+                &ServiceManagerExecuteMessages::WarpDriveSetServiceUri { service_uri },
                 vec![],
                 None,
             )

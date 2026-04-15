@@ -422,7 +422,7 @@ mod tests {
         let uri: String = cosmos_client
             .contract_smart(
                 &service_manager.address.clone().into(),
-                &ServiceManagerQueryMessages::WavsServiceUri {},
+                &ServiceManagerQueryMessages::WarpDriveServiceUri {},
             )
             .await
             .unwrap();

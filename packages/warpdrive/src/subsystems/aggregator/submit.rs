@@ -7,7 +7,7 @@ use warpdrive_types::{
     contracts::cosmwasm::{
         service_handler::{ServiceHandlerExecuteMessages, ServiceHandlerQueryMessages},
         service_manager::{
-            error::WavsValidateError, ServiceManagerQueryMessages, WavsValidateResult,
+            error::WavsValidateError, ServiceManagerQueryMessages, WarpDriveValidateResult,
         },
     },
     CosmosSubmitAction, EvmSubmitAction,
@@ -148,7 +148,7 @@ impl Aggregator {
             .querier
             .contract_smart(
                 &action.address.clone().into(),
-                &ServiceHandlerQueryMessages::WavsServiceManager {},
+                &ServiceHandlerQueryMessages::WarpDriveServiceManager {},
             )
             .await
             .map_err(AggregatorError::CosmosClient)?;
@@ -172,11 +172,11 @@ impl Aggregator {
             .envelope
             .signature_data(signatures, block_height_minus_one)?;
 
-        let result: WavsValidateResult = client
+        let result: WarpDriveValidateResult = client
             .querier
             .contract_smart(
                 &service_manager_addr.into(),
-                &ServiceManagerQueryMessages::WavsValidate {
+                &ServiceManagerQueryMessages::WarpDriveValidate {
                     envelope: queue.first().unwrap().envelope.clone().into(),
                     signature_data: signature_data.clone().into(),
                 },
@@ -185,10 +185,10 @@ impl Aggregator {
             .map_err(AggregatorError::CosmosClient)?;
 
         match result {
-            WavsValidateResult::Ok => {
+            WarpDriveValidateResult::Ok => {
                 tracing::info!("Service manager validation passed for custom submit");
             }
-            WavsValidateResult::Err(err) => match err {
+            WarpDriveValidateResult::Err(err) => match err {
                 WavsValidateError::InsufficientQuorum {
                     signer_weight,
                     threshold_weight,
@@ -211,7 +211,7 @@ impl Aggregator {
         let resp = client
             .contract_execute(
                 &action.address.into(),
-                &ServiceHandlerExecuteMessages::WavsHandleSignedEnvelope {
+                &ServiceHandlerExecuteMessages::WarpDriveHandleSignedEnvelope {
                     envelope: queue.first().unwrap().envelope.clone().into(),
                     signature_data: signature_data.clone().into(),
                 },

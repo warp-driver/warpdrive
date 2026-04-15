@@ -6,7 +6,7 @@ use cw2::set_contract_version;
 use warpdrive_types::contracts::cosmwasm::service_handler::ServiceHandlerQueryMessages;
 use warpdrive_types::contracts::cosmwasm::service_manager::ServiceManagerQueryMessages;
 use warpdrive_types::contracts::cosmwasm::{
-    service_handler::ServiceHandlerExecuteMessages, service_manager::WavsValidateResult,
+    service_handler::ServiceHandlerExecuteMessages, service_manager::WarpDriveValidateResult,
 };
 
 use crate::state;
@@ -46,16 +46,16 @@ pub fn execute(
 ) -> StdResult<Response> {
     match msg {
         ExecuteMsg::Wavs(msg) => match msg {
-            ServiceHandlerExecuteMessages::WavsHandleSignedEnvelope {
+            ServiceHandlerExecuteMessages::WarpDriveHandleSignedEnvelope {
                 envelope,
                 signature_data,
             } => {
                 let contract_addr = state::SERVICE_MANAGER.load(deps.storage)?;
 
                 deps.querier
-                    .query_wasm_smart::<WavsValidateResult>(
+                    .query_wasm_smart::<WarpDriveValidateResult>(
                         contract_addr,
-                        &ServiceManagerQueryMessages::WavsValidate {
+                        &ServiceManagerQueryMessages::WarpDriveValidate {
                             envelope: envelope.clone(),
                             signature_data: signature_data.clone(),
                         },
@@ -80,7 +80,7 @@ pub fn execute(
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<QueryResponse> {
     match msg {
         QueryMsg::Wavs(wavs) => match wavs {
-            ServiceHandlerQueryMessages::WavsServiceManager {} => {
+            ServiceHandlerQueryMessages::WarpDriveServiceManager {} => {
                 to_json_binary(&state::SERVICE_MANAGER.load(deps.storage)?)
             }
         },

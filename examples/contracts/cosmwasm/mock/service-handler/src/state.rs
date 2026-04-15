@@ -1,17 +1,19 @@
 use cosmwasm_std::{Addr, HexBinary, Uint64};
 use cw_storage_plus::{Item, Map};
 use cw_warpdrive_mock_api::message_with_id::MessageWithId;
-use warpdrive_types::contracts::cosmwasm::service_handler::{WavsEnvelope, WavsSignatureData};
+use warpdrive_types::contracts::cosmwasm::service_handler::{
+    WarpDriveEnvelope, WarpDriveSignatureData,
+};
 
 pub const SERVICE_MANAGER: Item<Addr> = Item::new("service-manager");
 
 pub const TRIGGER_MESSAGE: Map<Uint64, HexBinary> = Map::new("trigger-message");
-pub const SIGNATURE_DATA: Map<Uint64, WavsSignatureData> = Map::new("signature-data");
+pub const SIGNATURE_DATA: Map<Uint64, WarpDriveSignatureData> = Map::new("signature-data");
 
 pub fn save_envelope(
     storage: &mut dyn cosmwasm_std::Storage,
-    envelope: WavsEnvelope,
-    signature_data: WavsSignatureData,
+    envelope: WarpDriveEnvelope,
+    signature_data: WarpDriveSignatureData,
 ) -> cosmwasm_std::StdResult<()> {
     let envelope = envelope.decode()?;
     let message_with_id = MessageWithId::from_bytes(&envelope.payload)?;
