@@ -2,12 +2,12 @@
 pragma solidity ^0.8.27;
 
 /**
- * @title IWavsOperatorUpdateHandler
+ * @title IWarpDriveOperatorUpdateHandler
  * @author Lay3r Labs
  * @notice Interface for the operator weight sync handler
  * @dev This interface defines the types for the operator weight sync handler
  */
-interface IWavsOperatorUpdateHandler {
+interface IWarpDriveOperatorUpdateHandler {
     /**
      * @notice OperatorUpdatePayload is a struct containing the operators to update
      * @param operatorsPerQuorum The operators per quorum

@@ -2,12 +2,12 @@
 pragma solidity ^0.8.27;
 
 /**
- * @title IWavsServiceHandler
+ * @title IWarpDriveServiceHandler
  * @author Lay3r Labs
- * @notice Interface for the Wavs service handler
- * @dev This interface defines the functions and events for the Wavs service handler
+ * @notice Interface for the WarpDrive service handler
+ * @dev This interface defines the functions and events for the WarpDrive service handler
  */
-interface IWavsServiceHandler {
+interface IWarpDriveServiceHandler {
     /// @notice The signature data struct
     struct SignatureData {
         address[] signers;
