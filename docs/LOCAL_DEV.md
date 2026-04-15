@@ -1,8 +1,8 @@
 # E2E Tests
 
-This is the typical first stop for debugging and developing WAVS.
+This is the typical first stop for debugging and developing WarpDrive.
 
-The flow is usually editing `packages/layer-tests/layer-tests.toml` to isolate on a specific test, like:
+The flow is usually editing `packages/warpdrive-tests/warpdrive-tests.toml` to isolate on a specific test, like:
 
 ```toml
 mode = {"isolated" = [
@@ -13,18 +13,18 @@ mode = {"isolated" = [
 Then running:
 
 ```bash
-just test-wavs-e2e
+just test-warpdrive-e2e
 ```
 
-This is the preferred command — it sets `RUST_LOG` defaults, raises the open-file limit (`ulimit -n 65536`), and runs the layer-tests suite. You can also run directly with:
+This is the preferred command — it sets `RUST_LOG` defaults, raises the open-file limit (`ulimit -n 65536`), and runs the warpdrive-tests suite. You can also run directly with:
 
 ```bash
-cd packages/layer-tests && cargo test
+cd packages/warpdrive-tests && cargo test
 ```
 
 # Live telemetry
 
-Sometimes it helps to run a live instance of WAVS and look at Jaeger or Prometheus metrics
+Sometimes it helps to run a live instance of WarpDrive and look at Jaeger or Prometheus metrics
 
 ### Start the backend
 

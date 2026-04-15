@@ -1,7 +1,7 @@
+use warpdrive_types::{ChainConfigs, ComponentDigest, Service, ServiceId, TriggerData, WorkflowId};
 use wasmtime_wasi::{WasiCtx, WasiCtxView, WasiView};
 use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
 use wasmtime_wasi_tls::WasiTlsCtx;
-use wavs_types::{ChainConfigs, ComponentDigest, Service, ServiceId, TriggerData, WorkflowId};
 
 use crate::backend::wasi_keyvalue::context::KeyValueCtx;
 use crate::bindings::operator::world::host::LogLevel;

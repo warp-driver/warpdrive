@@ -4,7 +4,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 use utils::{config::ConfigExt, service::DEFAULT_IPFS_GATEWAY};
-use wavs_types::{ChainConfigs, Credential};
+use warpdrive_types::{ChainConfigs, Credential};
 
 /// The fully parsed and validated config struct we use in the application
 /// this is built up from the ConfigBuilder which can load from multiple sources (in order of preference):
@@ -21,7 +21,7 @@ pub struct Config {
     /// Default is `["info"]`
     pub log_level: Vec<String>,
     /// The directory to store all internal data files
-    /// Default is `/var/wavs-cli`
+    /// Default is `/var/warpdrive-cli`
     pub data: PathBuf,
 
     /// All the available chains
@@ -54,7 +54,7 @@ impl Default for Config {
         Self {
             wavs_endpoint: "http://127.0.0.1:8000".to_string(),
             log_level: vec!["info".to_string()],
-            data: PathBuf::from("/var/wavs-cli"),
+            data: PathBuf::from("/var/warpdrive-cli"),
             chains: Arc::new(RwLock::new(ChainConfigs::default())),
             cosmos_mnemonic: None,
             evm_credential: None,

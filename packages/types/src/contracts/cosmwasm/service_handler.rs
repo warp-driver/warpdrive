@@ -9,8 +9,8 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 ///
 /// ```rust
 /// use cosmwasm_schema::cw_serde;
-/// use wavs_types::contracts::cosmwasm::service_handler::ServiceHandlerQueryMessages;
-/// use wavs_types::contracts::cosmwasm::service_handler::ServiceHandlerExecuteMessages;
+/// use warpdrive_types::contracts::cosmwasm::service_handler::ServiceHandlerQueryMessages;
+/// use warpdrive_types::contracts::cosmwasm::service_handler::ServiceHandlerExecuteMessages;
 ///
 /// #[cw_serde]
 /// #[schemaifier(mute_warnings)]
@@ -35,13 +35,13 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 /// }
 /// ```
 ///
-/// This allows WAVS to call your contract with the `ServiceHandler` messages,
+/// This allows WarpDrive to call your contract with the `ServiceHandler` messages,
 /// without needing to know your full `QueryMsg` or `ExecuteMsg` types
 #[cw_serde]
 pub enum ServiceHandlerExecuteMessages {
-    WavsHandleSignedEnvelope {
-        envelope: WavsEnvelope,
-        signature_data: WavsSignatureData,
+    WarpDriveHandleSignedEnvelope {
+        envelope: WarpDriveEnvelope,
+        signature_data: WarpDriveSignatureData,
     },
 }
 
@@ -50,14 +50,14 @@ pub enum ServiceHandlerExecuteMessages {
 pub enum ServiceHandlerQueryMessages {
     /// Get the service manager address
     #[returns(cosmwasm_std::Addr)]
-    WavsServiceManager {},
+    WarpDriveServiceManager {},
 }
 
 /// The `Envelope` from the Solidity interface, ABI-encoded into raw bytes
 #[cw_serde]
-pub struct WavsEnvelope(cosmwasm_std::Binary);
+pub struct WarpDriveEnvelope(cosmwasm_std::Binary);
 
-impl WavsEnvelope {
+impl WarpDriveEnvelope {
     pub fn new(envelope: crate::solidity_types::Envelope) -> Self {
         Self::new_raw(envelope.abi_encode())
     }
@@ -75,7 +75,7 @@ impl WavsEnvelope {
     }
 }
 
-impl From<crate::solidity_types::Envelope> for WavsEnvelope {
+impl From<crate::solidity_types::Envelope> for WarpDriveEnvelope {
     fn from(envelope: crate::solidity_types::Envelope) -> Self {
         Self::new(envelope)
     }
@@ -83,13 +83,13 @@ impl From<crate::solidity_types::Envelope> for WavsEnvelope {
 
 /// A CosmWasm-friendly version of the `SignatureData` type from the Solidity interface
 #[cw_serde]
-pub struct WavsSignatureData {
+pub struct WarpDriveSignatureData {
     pub signers: Vec<layer_climb_address::EvmAddr>,
     pub signatures: Vec<cosmwasm_std::HexBinary>,
     pub reference_block: u32,
 }
 
-impl WavsSignatureData {
+impl WarpDriveSignatureData {
     pub fn new(signature_data: crate::solidity_types::SignatureData) -> Self {
         Self {
             signers: signature_data
@@ -107,14 +107,14 @@ impl WavsSignatureData {
     }
 }
 
-impl From<crate::solidity_types::SignatureData> for WavsSignatureData {
+impl From<crate::solidity_types::SignatureData> for WarpDriveSignatureData {
     fn from(signature_data: crate::solidity_types::SignatureData) -> Self {
         Self::new(signature_data)
     }
 }
 
-impl From<WavsSignatureData> for crate::solidity_types::SignatureData {
-    fn from(signature_data: WavsSignatureData) -> Self {
+impl From<WarpDriveSignatureData> for crate::solidity_types::SignatureData {
+    fn from(signature_data: WarpDriveSignatureData) -> Self {
         crate::solidity_types::SignatureData {
             signers: signature_data
                 .signers
@@ -168,19 +168,19 @@ mod tests {
 
         // Create the messages for the service handler via .into()
         let msg_1 = ExampleServiceHandlerExecuteMsg::ServiceHandler(
-            ServiceHandlerExecuteMessages::WavsHandleSignedEnvelope {
+            ServiceHandlerExecuteMessages::WarpDriveHandleSignedEnvelope {
                 envelope: envelope.into(),
                 signature_data: signature_data.into(),
             },
         );
-        const EXPECTED_MSG_1_STR:&str = "{\"wavs_handle_signed_envelope\":{\"envelope\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwECAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"signature_data\":{\"signers\":[\"0x2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a\",\"0x0101010101010101010101010101010101010101\"],\"signatures\":[\"010203\",\"040506\"],\"reference_block\":12345}}}";
+        const EXPECTED_MSG_1_STR:&str = "{\"warp_drive_handle_signed_envelope\":{\"envelope\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwECAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"signature_data\":{\"signers\":[\"0x2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a\",\"0x0101010101010101010101010101010101010101\"],\"signatures\":[\"010203\",\"040506\"],\"reference_block\":12345}}}";
 
         let msg_2 = ExampleServiceHandlerExecuteMsg::MyCustomMessage {
             my_field: "Hello".to_string(),
         };
         const EXPECTED_MSG_2_STR: &str = "{\"my_custom_message\":{\"my_field\":\"Hello\"}}";
 
-        // The Wavs message gets a level removed, so we see the inner variant
+        // The WarpDrive message gets a level removed, so we see the inner variant
         let serialized = serde_json::to_string(&msg_1).unwrap();
         assert_eq!(serialized, EXPECTED_MSG_1_STR);
 
@@ -196,7 +196,7 @@ mod tests {
         assert!(matches!(
             exec_msg,
             ExampleServiceHandlerExecuteMsg::ServiceHandler(
-                ServiceHandlerExecuteMessages::WavsHandleSignedEnvelope { .. }
+                ServiceHandlerExecuteMessages::WarpDriveHandleSignedEnvelope { .. }
             )
         ));
 

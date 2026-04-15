@@ -22,11 +22,6 @@ runs:
         components: rustfmt, clippy
         targets: wasm32-unknown-unknown
 
-    - name: Cache Rust dependencies
-      uses: Swatinem/rust-cache@v2
-      with:
-        cache-on-failure: true
-
     - name: Install Just
       uses: extractions/setup-just@v2
 
@@ -36,3 +31,9 @@ runs:
     - name: Create placeholder dist folder for macro expansion
       shell: bash
       run: mkdir -p app/dist
+
+    - name: Cache Rust dependencies
+      uses: Swatinem/rust-cache@v2
+      with:
+        cache-on-failure: true
+        add-job-id: true

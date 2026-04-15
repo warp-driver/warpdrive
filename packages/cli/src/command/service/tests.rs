@@ -8,8 +8,8 @@ use layer_climb::querier::QueryClient as CosmosQueryClient;
 use tempfile::tempdir;
 use utils::init_tracing_tests;
 use utils::service::DEFAULT_IPFS_GATEWAY;
+use warpdrive_types::{Builder, ComponentDigest, SignatureKind, Submit};
 use wasm_pkg_client::PackageRef;
-use wavs_types::{Builder, ComponentDigest, SignatureKind, Submit};
 
 use crate::service_json::ServiceJsonExt;
 
@@ -489,9 +489,9 @@ async fn test_workflow_component_operations() {
 
     // Test adding environment variables
     let env_keys = vec![
-        "WAVS_ENV_API_KEY".to_string(),
-        "WAVS_ENV_SECRET_TOKEN".to_string(),
-        "WAVS_ENV_DATABASE_URL".to_string(),
+        "WARPDRIVE_ENV_API_KEY".to_string(),
+        "WARPDRIVE_ENV_SECRET_TOKEN".to_string(),
+        "WARPDRIVE_ENV_DATABASE_URL".to_string(),
     ];
 
     let env_result = update_workflow_component(
@@ -509,9 +509,9 @@ async fn test_workflow_component_operations() {
     match &env_result {
         ComponentOperationResult::EnvKeys { env_keys, .. } => {
             assert_eq!(env_keys.len(), 3);
-            assert!(env_keys.contains("WAVS_ENV_API_KEY"));
-            assert!(env_keys.contains("WAVS_ENV_SECRET_TOKEN"));
-            assert!(env_keys.contains("WAVS_ENV_DATABASE_URL"));
+            assert!(env_keys.contains("WARPDRIVE_ENV_API_KEY"));
+            assert!(env_keys.contains("WARPDRIVE_ENV_SECRET_TOKEN"));
+            assert!(env_keys.contains("WARPDRIVE_ENV_DATABASE_URL"));
         }
         _ => panic!("Expected EnvKeys result"),
     }
@@ -528,16 +528,21 @@ async fn test_workflow_component_operations() {
         .unwrap();
 
     assert_eq!(component_with_env.env_keys.len(), 3);
-    assert!(component_with_env.env_keys.contains("WAVS_ENV_API_KEY"));
     assert!(component_with_env
         .env_keys
-        .contains("WAVS_ENV_SECRET_TOKEN"));
+        .contains("WARPDRIVE_ENV_API_KEY"));
     assert!(component_with_env
         .env_keys
-        .contains("WAVS_ENV_DATABASE_URL"));
+        .contains("WARPDRIVE_ENV_SECRET_TOKEN"));
+    assert!(component_with_env
+        .env_keys
+        .contains("WARPDRIVE_ENV_DATABASE_URL"));
 
     // Test validation of env keys
-    let invalid_env_keys = vec!["WAVS_ENV_VALID".to_string(), "INVALID_PREFIX".to_string()];
+    let invalid_env_keys = vec![
+        "WARPDRIVE_ENV_VALID".to_string(),
+        "INVALID_PREFIX".to_string(),
+    ];
 
     let invalid_result = update_workflow_component(
         DEFAULT_IPFS_GATEWAY,
@@ -552,7 +557,7 @@ async fn test_workflow_component_operations() {
     // Verify it returns an error for invalid prefix
     assert!(invalid_result.is_err());
     let error_msg = invalid_result.unwrap_err().to_string();
-    assert!(error_msg.contains("must start with 'WAVS_ENV'"));
+    assert!(error_msg.contains("must start with 'WARPDRIVE_ENV'"));
 
     // Test clearing env keys
     let clear_env_result = update_workflow_component(
@@ -1028,7 +1033,7 @@ async fn test_service_validation() {
     let trigger = Trigger::EvmContractEvent {
         address: evm_address,
         chain: evm_chain.clone(),
-        event_hash: wavs_types::ByteArray::new([1u8; 32]),
+        event_hash: warpdrive_types::ByteArray::new([1u8; 32]),
     };
 
     let submit = Submit::Aggregator {
@@ -1236,7 +1241,7 @@ async fn test_service_validation() {
             result
                 .errors
                 .iter()
-                .any(|error| error.contains("doesn't start with 'WAVS_ENV'")),
+                .any(|error| error.contains("doesn't start with 'WARPDRIVE_ENV'")),
             "Validation should catch invalid environment variable prefix"
         );
     }
@@ -1368,9 +1373,9 @@ async fn test_set_component_source_registry() {
     add_workflow(&file_path, Some(workflow_id.clone())).unwrap();
 
     // Test setting a component source to a registry
-    let package = PackageRef::try_from("wavs-tests:square".to_string()).unwrap();
+    let package = PackageRef::try_from("warpdrive-tests:square".to_string()).unwrap();
 
-    // Use wa.dev as the registry domain (WAVS default)
+    // Use wa.dev as the registry domain (WarpDrive default)
     let registry_domain = "wa.dev".to_string();
 
     // Call the unified function to set the component source

@@ -1,57 +1,79 @@
-# WAVS
+# WarpDrive
 
-![Banner](docs/images/wavs.png)
+![Banner](docs/images/warpdrive.png)
 
 [![Project Status: Active -- The project has reached a stable, usable state and is being actively developed.](https://img.shields.io/badge/repo%20status-Active-green.svg?style=flat-square)](https://www.repostatus.org/#active)
 
-## What is WAVS?
+**WarpDrive delivers enterprise-grade, verifiable off-chain compute to the Stellar ecosystem.**
 
-WAVS is a next-generation platform for building and running **Actively Validated Services (AVS)**. It provides a robust infrastructure so you can focus on your service logic, not boilerplate.
+WarpDrive is a trusted compute layer that turns arbitrary off-chain data and processes into provably correct on-chain actions. It leverages Soroban's smart-contract capabilities, modern WASI execution, and flexible vector governance to create a scalable, composable platform for real-world financial and compliance use cases.
 
-**Key Features:**
-- Write services in Rust (more languages coming soon)
-- Compile to WebAssembly (WASM) for portability and speed
-- Deploy as lightweight service components
-- Trigger execution from blockchains, clocks, or other events
-- Run offchain at near-native speed in the WAVS WASI runtime
-- Bring results verifiably onchain
-- Dynamically manage multiple components for flexible, intelligent applications
+Run bots, oracles, automation, and more on Stellar with EigenLayer-grade security.
 
-**What is AVS?**
-An Actively Validated Service (AVS) is a decentralized service that is validated by independent operators. WAVS makes it easy to create, manage, and operate high-performance AVSs.
+## What WarpDrive Does
 
-**Why WASM?**
-WebAssembly (WASM) enables fast, secure, and portable execution of code across platforms. WAVS leverages WASM to run your services efficiently and safely.
+Smart contracts can't reach beyond the ledger — they can't fetch external data, react to real-world events, or coordinate complex multi-step processes without trusting a single vector. WarpDrive removes that constraint by providing cryptographically verifiable off-chain compute that settles back to Stellar.
+
+**Core building blocks:**
+
+- **Projects** — independent, sandboxed deployments, each with its own governance and trust model. Projects share no state and interact only through Soroban contract calls.
+- **Project Specification Repository** — immutable, content-addressable (IPFS) spec describing all circuits, WASI payloads, and policy modules. The on-chain Project Root stores a single hash; upgrades happen by pushing a new spec and bumping that hash.
+- **Verifiable Computers (Vectrs)** — decentralized execution nodes that pull the spec, run circuits inside sandboxed Wasmtime WASI runtimes, and emit signed attestations. Signing keys live outside the sandbox — WASI code cannot forge signatures.
+- **Circuits** — a full unit of off-chain work: an input (on-chain event, cron tick, web2 API), a transform (WASI component in Rust/Go/JS), and an output (Soroban verification contract, EVM chain, IPFS, or another circuit for multi-stage workflows).
+- **Aggregator** — collects attestations from Vectrs and batches them into a single on-chain submission. Cannot forge signatures; multiple aggregators can run to remove censorship concerns.
+- **Verification Module** — Soroban contract that validates attestation proofs and translates verified payloads into contract calls on the Stellar ledger.
+- **Security Module** — defines who can attest and with what weight. Supports PoA (fixed trusted vector set), PoS / EigenLayer-style restaking, or any custom algorithm that maps public keys to weights.
+- **Composable Workflows** — chain circuits together off-chain without touching the blockchain between stages. Multi-stage computations keep the same security guarantees as simple circuits; only the final result settles on-chain.
+
+## Use Cases
+
+- **DeFi automation** — off-chain limit orders, protocol treasury rebalancing, and cross-protocol integrations (e.g. Phoenix × Blend yield optimization on XLM-USDC).
+- **Flexible oracles** — time-weighted average prices with multi-round composition (commit/reveal-style), outlier punishment, and web2 data sources.
+- **User onboarding** — control on-chain actions from Telegram, email (with DKIM verification), BlueSky posts, or OAuth, without requiring users to install a wallet.
+
+For subsystem-level design, see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
+---
+
+## Key Features
+
+- Write circuits in Rust (more languages coming soon)
+- Compile to WebAssembly (WASM) for portability and near-native speed
+- Deploy as lightweight, hot-swappable WASI components
+- Trigger execution from Soroban / Stellar events, EVM events, cron, or web2 APIs
+- Run off-chain at native speed in the WarpDrive WASI runtime (~400µs startup overhead; benchmarked at >10,000 events/sec)
+- Bring results verifiably on-chain via threshold-signed attestations
+- Dynamically manage multiple circuits for flexible, composable applications
 
 ---
 
 ## Release Workflow
 
-This project uses [just](https://github.com/casey/just) for managing releases. Here's the typical workflow:
+This project uses [just](https://github.com/casey/just) for managing releases. Typical workflow:
 
-1. **Make your changes** — develop features, fix bugs, update WIT definitions, etc.
+1. **Make your changes** — develop circuits, fix bugs, update WIT definitions, etc.
 2. **Set the version** — update version numbers across `Cargo.toml` and all WIT package definitions:
    ```bash
    just set-version v2.7.0
    ```
-3. **Create PR and merge** — get your changes reviewed and merged to main
+3. **Create PR and merge** — get your changes reviewed and merged to main.
 4. **Push tags** — after merge, create and push git tags:
    ```bash
    just push-tag v2.7.0
    ```
 
-This creates both a standard tag (`v2.7.0`) and a Go module tag (`wasi/go/v2.7.0`). The standard tag triggers CI to publish the `wavs-types` and `wavs-wasi-utils` crates to crates.io, WASM components to wa.dev, and TypeScript bindings to NPM.
+This creates both a standard tag (`v2.7.0`) and a Go module tag (`wasi/go/v2.7.0`). The standard tag triggers CI to publish the `warpdrive-types` and `warpdrive-wasi-utils` crates to crates.io, WASM components to wa.dev, and TypeScript bindings to NPM.
 
 ---
 
 ## Claude Code Integration
 
-WAVS ships with a `/wavs` skill for [Claude Code](https://claude.ai/code) that gives Claude a full understanding of the WAVS component development workflow, including how to scaffold, build, upload, and deploy components using the MCP tools.
+WarpDrive ships with a `/wavs` skill for [Claude Code](https://claude.ai/code) that teaches Claude the full WarpDrive component development workflow — scaffolding, building, uploading, and deploying circuits via the MCP tools.
 
 Full Claude Code integration requires two independent steps:
 
-1. **Install the skill** — teaches Claude the WAVS workflow and tool reference.
-2. **Register `wavs-mcp`** — connects Claude Code to a live WAVS node so MCP tools actually work.
+1. **Install the skill** — teaches Claude the WarpDrive workflow and tool reference.
+2. **Register `warpdrive-mcp`** — connects Claude Code to a live WarpDrive node so MCP tools actually work.
 
 ### Step 1: Install the skill
 
@@ -69,16 +91,16 @@ bash <(curl -fsSL https://raw.githubusercontent.com/Lay3rLabs/wavs/main/.claude/
 
 After installation, restart Claude Code to pick up the skill.
 
-### Step 2: Register wavs-mcp with Claude Code
+### Step 2: Register warpdrive-mcp with Claude Code
 
-The skill's MCP tools require `wavs-mcp` to be running and registered for each project. Run once per project directory:
+The skill's MCP tools require `warpdrive-mcp` to be running and registered for each project. Run once per project directory:
 
 ```bash
-# From the WAVS repo — auto-detects the running wavs-mcp process:
+# From the WarpDrive repo — auto-detects the running warpdrive-mcp process:
 just setup-claude-mcp /path/to/your-project
 ```
 
-This writes the `mcpServers.wavs` entry into `~/.claude.json` for that project. Restart Claude Code (or reload MCP servers) afterwards.
+This writes the `mcpServers.warp-drive` entry into `~/.claude.json` for that project. Restart Claude Code (or reload MCP servers) afterwards.
 
 See [MCP.md](MCP.md) for full setup and configuration details.
 

@@ -5,8 +5,10 @@ use std::collections::BTreeMap;
 use crate::helpers::{aggregator_exec::execute_aggregator_component, service::make_service};
 use alloy_primitives::Address;
 use utils::init_tracing_tests;
-use wavs_engine::bindings::aggregator::world::wavs::aggregator::output::AggregatorAction;
-use wavs_types::{AggregatorInput, ComponentDigest, EvmSubmitAction, SubmitAction, WasmResponse};
+use warpdrive_engine::bindings::aggregator::world::wavs::aggregator::output::AggregatorAction;
+use warpdrive_types::{
+    AggregatorInput, ComponentDigest, EvmSubmitAction, SubmitAction, WasmResponse,
+};
 
 const COMPONENT_SIMPLE_AGGREGATOR_BYTES: &[u8] =
     include_bytes!("../../../examples/build/components/simple_aggregator.wasm");
@@ -27,13 +29,13 @@ async fn basic_aggregator_execution() {
     let workflow_id = service.workflows.keys().last().unwrap().clone();
 
     let input = AggregatorInput {
-        trigger_action: wavs_types::TriggerAction {
-            config: wavs_types::TriggerConfig {
+        trigger_action: warpdrive_types::TriggerAction {
+            config: warpdrive_types::TriggerConfig {
                 service_id: service.id(),
                 workflow_id,
                 trigger: service.workflows.iter().next().unwrap().1.trigger.clone(),
             },
-            data: wavs_types::TriggerData::default(),
+            data: warpdrive_types::TriggerData::default(),
         },
         operator_response: WasmResponse {
             event_id_salt: None,
@@ -50,7 +52,7 @@ async fn basic_aggregator_execution() {
     match &actions[0] {
         // currently hardcoded in the aggregator component
         AggregatorAction::Submit(submit_action) => {
-            match wavs_types::SubmitAction::try_from(submit_action.clone()).unwrap() {
+            match warpdrive_types::SubmitAction::try_from(submit_action.clone()).unwrap() {
                 SubmitAction::Evm(EvmSubmitAction { chain, address, .. }) => {
                     assert_eq!(chain, expected_chain.parse().unwrap());
                     assert_eq!(address, expected_address.into());

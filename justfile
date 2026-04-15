@@ -4,14 +4,14 @@ WASI_OUT_DIR := "./examples/build/components"
 COMPONENTS_DIR := "./examples/components"
 COSMWASM_OUT_DIR := "./examples/build/contracts"
 REPO_ROOT := `git rev-parse --show-toplevel`
-DOCKER_WAVS_ID := `docker ps | grep wavs | awk '{print $1}'`
+DOCKER_WARPDRIVE_ID := `docker ps | grep warpdrive | awk '{print $1}'`
 ARCH := `uname -m`
 COSMWASM_OPTIMIZER_VERSION := env_var_or_default("COSMWASM_OPTIMIZER_VERSION", "0.17.0")
 
 help:
   just --list
 
-# WAVS Desktop App (React/TypeScript frontend)
+# WarpDrive Desktop App (React/TypeScript frontend)
 app-dev:
     cd app && pnpm tauri dev
 
@@ -27,19 +27,19 @@ app-build-debug:
 app-build-frontend:
     cd app && pnpm build
 
-# builds wavs
+# builds warpdrive
 docker-build TAG="local":
-    {{SUDO}} docker build . -t ghcr.io/lay3rlabs/wavs:{{TAG}}
+    {{SUDO}} docker build . -t ghcr.io/warp-driver/warpdrive:{{TAG}}
 
 # run wavs:latest
 docker-run:
-    {{SUDO}} docker run --rm ghcr.io/lay3rlabs/wavs:latest
+    {{SUDO}} docker run --rm ghcr.io/warp-driver/warpdrive:latest
 
 # stop the running wavs container
 docker-stop:
-    if [ "{{DOCKER_WAVS_ID}}" != "" ]; then \
-        {{SUDO}} docker kill {{DOCKER_WAVS_ID}}; \
-        echo "Stopped container {{DOCKER_WAVS_ID}}"; \
+    if [ "{{DOCKER_WARPDRIVE_ID}}" != "" ]; then \
+        {{SUDO}} docker kill {{DOCKER_WARPDRIVE_ID}}; \
+        echo "Stopped container {{DOCKER_WARPDRIVE_ID}}"; \
     else \
         echo "No container running"; \
     fi
@@ -57,22 +57,23 @@ _install-native HOME DATA:
     @rm -rf "{{DATA}}"
     @mkdir -p "{{HOME}}"
     @mkdir -p "{{DATA}}"
-    @cp "./wavs.toml" "{{HOME}}"
+    @cp "./warpdrive.toml" "{{HOME}}"
     @cp "./.env.example" "{{HOME}}/.env"
     @cargo install --path ./packages/wavs
     @cargo install --path ./packages/cli
     @echo "Add these variables to your system environment:"
     @echo ""
-    @echo "export WAVS_HOME=\"{{HOME}}\""
-    @echo "export WAVS_DATA=\"{{DATA}}/wavs\""
-    @echo "export WAVS_CLI_HOME=\"{{HOME}}\""
-    @echo "export WAVS_CLI_DATA=\"{{DATA}}/wavs-cli\""
-    @echo "export WAVS_DOTENV=\"{{HOME}}/.env\""
+    @echo "export WARPDRIVE_HOME=\"{{HOME}}\""
+    @echo "export WARPDRIVE_DATA=\"{{DATA}}/wavs\""
+    @echo "export WARPDRIVE_CLI_HOME=\"{{HOME}}\""
+    @echo "export WARPDRIVE_CLI_DATA=\"{{DATA}}/warpdrive-cli\""
+    @echo "export WARPDRIVE_DOTENV=\"{{HOME}}/.env\""
 
 wasi-build COMPONENT="*" TAG="latest":
     #!/usr/bin/env bash
     set -euo pipefail
 
+    # FIXME: should we clone this repo and maintain our own image?
     IMAGE_NAME="ghcr.io/lay3rlabs/wasi-builder:{{TAG}}"
 
     # Pull latest (unless tag is local)
@@ -128,29 +129,29 @@ solidity-build CLEAN="":
         rm -rf {{REPO_ROOT}}/out; \
         rm -rf {{REPO_ROOT}}/packages/types/src/contracts/solidity/abi; \
         rm -rf {{REPO_ROOT}}/examples/contracts/solidity/abi; \
-        rm -rf {{REPO_ROOT}}/packages/wavs/tests/contracts/solidity/abi; \
+        rm -rf {{REPO_ROOT}}/packages/warpdrive/tests/contracts/solidity/abi; \
     fi
     mkdir -p {{REPO_ROOT}}/out
     mkdir -p {{REPO_ROOT}}/packages/types/src/contracts/solidity/abi
     mkdir -p {{REPO_ROOT}}/examples/contracts/solidity/abi
     forge build --root {{REPO_ROOT}} --out {{REPO_ROOT}}/out --contracts {{REPO_ROOT}}/contracts/solidity;
     forge build --root {{REPO_ROOT}} --out {{REPO_ROOT}}/out --contracts {{REPO_ROOT}}/examples/contracts/solidity;
-    forge build --root {{REPO_ROOT}} --out {{REPO_ROOT}}/out --contracts {{REPO_ROOT}}/packages/wavs/tests/contracts/solidity;
+    forge build --root {{REPO_ROOT}} --out {{REPO_ROOT}}/out --contracts {{REPO_ROOT}}/packages/warpdrive/tests/contracts/solidity;
     # examples
     cp -r {{REPO_ROOT}}/out/SimpleTrigger.sol {{REPO_ROOT}}/examples/contracts/solidity/abi/
     cp -r {{REPO_ROOT}}/out/ISimpleTrigger.sol {{REPO_ROOT}}/examples/contracts/solidity/abi/
     cp -r {{REPO_ROOT}}/out/SimpleSubmit.sol {{REPO_ROOT}}/examples/contracts/solidity/abi/
     cp -r {{REPO_ROOT}}/out/ISimpleSubmit.sol {{REPO_ROOT}}/examples/contracts/solidity/abi/
-    # wavs-types
-    cp -r {{REPO_ROOT}}/out/IWavsServiceHandler.sol {{REPO_ROOT}}/packages/types/src/contracts/solidity/abi/
-    cp -r {{REPO_ROOT}}/out/IWavsServiceManager.sol {{REPO_ROOT}}/packages/types/src/contracts/solidity/abi/
+    # warpdrive-types
+    cp -r {{REPO_ROOT}}/out/IWarpDriveServiceHandler.sol {{REPO_ROOT}}/packages/types/src/contracts/solidity/abi/
+    cp -r {{REPO_ROOT}}/out/IWarpDriveServiceManager.sol {{REPO_ROOT}}/packages/types/src/contracts/solidity/abi/
     cp -r {{REPO_ROOT}}/out/SimpleServiceManager.sol {{REPO_ROOT}}/packages/types/src/contracts/solidity/abi/
-    # layer-tests mock contracts
+    # warpdrive-tests mock contracts
     cp -r {{REPO_ROOT}}/out/LogSpam.sol {{REPO_ROOT}}/examples/contracts/solidity/abi/
     cp -r {{REPO_ROOT}}/out/TestServiceContracts.sol {{REPO_ROOT}}/examples/contracts/solidity/abi/
     # wavs tests - some funkiness with it sometimes not creating the .sol directory so make sure to create it first
-    mkdir -p {{REPO_ROOT}}/packages/wavs/tests/contracts/solidity/abi/EventEmitter.sol
-    cp -r {{REPO_ROOT}}/out/EventEmitter.sol {{REPO_ROOT}}/packages/wavs/tests/contracts/solidity/abi/
+    mkdir -p {{REPO_ROOT}}/packages/warpdrive/tests/contracts/solidity/abi/EventEmitter.sol
+    cp -r {{REPO_ROOT}}/out/EventEmitter.sol {{REPO_ROOT}}/packages/warpdrive/tests/contracts/solidity/abi/
 
 # compile cosmwasm example contracts
 cosmwasm-build CONTRACT="*":
@@ -167,19 +168,19 @@ cosmwasm-build-inner CONTRACT_PATH:
     @if [ "{{ARCH}}" = "arm64" ]; then \
         docker run --rm \
             -v "{{REPO_ROOT}}:/code" \
-            --mount type=volume,source="layer_wavs_cache",target=/target \
+            --mount type=volume,source="warpdrive_cache",target=/target \
             --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
             cosmwasm/optimizer-arm64:{{COSMWASM_OPTIMIZER_VERSION}} "{{CONTRACT_PATH}}"; \
     else \
         docker run --rm \
             -v "{{REPO_ROOT}}:/code" \
-            --mount type=volume,source="layer_wavs_cache",target=/target \
+            --mount type=volume,source="warpdrive_cache",target=/target \
             --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
             cosmwasm/optimizer:{{COSMWASM_OPTIMIZER_VERSION}} "{{CONTRACT_PATH}}"; \
     fi;
 # on-chain integration test
-test-wavs-e2e:
-    ulimit -n 65536 && RUST_LOG=info,alloy_rpc=off,alloy_provider=off,wasmtime=off,cranelift=off,hyper_util=off cargo test -p layer-tests
+test-warpdrive-e2e:
+    ulimit -n 65536 && RUST_LOG=debug,alloy_rpc=off,alloy_provider=off,wasmtime=off,cranelift=off,hyper_util=off cargo test -p warpdrive-tests
 
 update-submodules:
     git submodule update --init --recursive
@@ -203,22 +204,22 @@ start-all:
   wait
 
 start-wavs:
-    cd packages/wavs && cargo run
+    cd packages/warpdrive && cargo run
 
 start-dev:
     #!/bin/bash -eux
     just start-telemetry &
-    just start-wavs-dev &
+    just start-warpdrive-dev &
     trap 'kill $(jobs -pr)' EXIT
     wait
 
-start-wavs-dev:
+start-warpdrive-dev:
     #!/bin/bash -eu
     ROOT_DIR="$(pwd)"
     TEMP_DIR="$(mktemp -d)"
     trap 'rm -rf "$TEMP_DIR"' EXIT
-    cd packages/wavs && \
-    WAVS_DOTENV="${ROOT_DIR}/.env" WAVS_HOME="../.." WAVS_DATA="$TEMP_DIR" \
+    cd packages/warpdrive && \
+    WARPDRIVE_DOTENV="${ROOT_DIR}/.env" WARPDRIVE_HOME="../.." WARPDRIVE_DATA="$TEMP_DIR" \
     cargo run --features dev -- \
         --dev-endpoints-enabled=true \
         --disable-trigger-networking=true \
@@ -253,21 +254,21 @@ cli-exec COMPONENT INPUT:
 
 # remove fetched WIT dependency directories
 wit-deps-clean:
-    rm -rf wit-definitions/operator/wit/deps
+    rm -rf wit-definitions/vector/wit/deps
     rm -rf wit-definitions/aggregator/wit/deps
     rm -rf wit-definitions/types/wit/deps
 
 # fetch WIT dependencies for each wit-definitions subdirectory
 wit-deps-fetch:
     cd wit-definitions/types && wkg wit fetch
-    cd wit-definitions/operator && wkg wit fetch
+    cd wit-definitions/vector && wkg wit fetch
     cd wit-definitions/aggregator && wkg wit fetch
 
 # remove built WIT .wasm artifacts
 wit-clean:
     rm -f wit-definitions/wasi-tls/*.wasm
     rm -f wit-definitions/types/wavs:types@*.wasm
-    rm -f wit-definitions/operator/wavs:operator@*.wasm
+    rm -f wit-definitions/vector/wavs:operator@*.wasm
     rm -f wit-definitions/aggregator/wavs:aggregator@*.wasm
 
 # build WIT packages via wkg wit build
@@ -282,12 +283,12 @@ _inner-wit-build config-arg:
     just wit-clean
     cd wit-definitions/wasi-tls && wkg wit build{{config-arg}}
     cd wit-definitions/types && wkg wit build{{config-arg}}
-    cd wit-definitions/operator && wkg wit build{{config-arg}}
+    cd wit-definitions/vector && wkg wit build{{config-arg}}
     cd wit-definitions/aggregator && wkg wit build{{config-arg}}
 
 _inner-wit-publish config-arg:
     cd wit-definitions/types && wkg publish wavs:types@*.wasm{{config-arg}}
-    cd wit-definitions/operator && wkg publish wavs:operator@*.wasm{{config-arg}}
+    cd wit-definitions/vector && wkg publish wavs:operator@*.wasm{{config-arg}}
     cd wit-definitions/aggregator && wkg publish wavs:aggregator@*.wasm{{config-arg}}
 
 # update version in root Cargo.toml and all WIT files (eg. just set-version v2.7.0)
@@ -357,54 +358,57 @@ push-tag version:
 
     echo "Successfully created and pushed tags: ${TAG} and ${GO_TAG}"
 
-# downloads the latest solidity repo
-download-solidity branch="dev":
-    # Create a temporary directory
-    rm -rf temp_clone
-    mkdir temp_clone
+# FIXME: These downloads are broken as the source of truth is this repo (many improvements), and they refer to repos outside of our control.
+# If we want to maintain a separate middleware repo, we should make a new repo and port all improvements from this repo
 
-    # Clone the specific branch into the temp directory
-    git -C temp_clone clone --depth=1 --branch {{branch}} --single-branch https://github.com/Lay3rLabs/wavs-middleware.git
+# # downloads the latest solidity repo
+# download-solidity branch="dev":
+#     # Create a temporary directory
+#     rm -rf temp_clone
+#     mkdir temp_clone
 
-    # Clear existing content and create solidity directory
-    rm -rf contracts/solidity
-    rm -rf examples/contracts/solidity
-    mkdir -p contracts/solidity/interfaces
-    mkdir -p examples/contracts/solidity/interfaces
-    mkdir -p examples/contracts/solidity/mocks
+#     # Clone the specific branch into the temp directory
+#     git -C temp_clone clone --depth=1 --branch {{branch}} --single-branch https://github.com/Lay3rLabs/wavs-middleware.git
 
-    # Copy just the interfaces
-    cp temp_clone/wavs-middleware/contracts/src/eigenlayer/ecdsa/interfaces/*.sol contracts/solidity/interfaces/
+#     # Clear existing content and create solidity directory
+#     rm -rf contracts/solidity
+#     rm -rf examples/contracts/solidity
+#     mkdir -p contracts/solidity/interfaces
+#     mkdir -p examples/contracts/solidity/interfaces
+#     mkdir -p examples/contracts/solidity/mocks
 
-    # and, for examples - interfaces and mocks
-    cp temp_clone/wavs-middleware/contracts/src/eigenlayer/ecdsa/interfaces/*.sol examples/contracts/solidity/interfaces/
-    cp temp_clone/wavs-middleware/contracts/src/eigenlayer/ecdsa/mocks/*.sol examples/contracts/solidity/mocks/
+#     # Copy just the interfaces
+#     cp temp_clone/wavs-middleware/contracts/src/eigenlayer/ecdsa/interfaces/*.sol contracts/solidity/interfaces/
 
-    # Clean up
-    rm -rf temp_clone
+#     # and, for examples - interfaces and mocks
+#     cp temp_clone/wavs-middleware/contracts/src/eigenlayer/ecdsa/interfaces/*.sol examples/contracts/solidity/interfaces/
+#     cp temp_clone/wavs-middleware/contracts/src/eigenlayer/ecdsa/mocks/*.sol examples/contracts/solidity/mocks/
 
-# downloads the latest mock cosmwasm contracts from the cw-middleware repo
-# we only need the service-handler and API though, service-manager is handled by middleware
-download-cosmwasm branch="main":
-    # Create a temporary directory
-    rm -rf temp_clone
-    mkdir temp_clone
+#     # Clean up
+#     rm -rf temp_clone
 
-    # Clone the specific branch into the temp directory
-    git -C temp_clone clone --depth=1 --branch {{branch}} --single-branch https://github.com/Lay3rLabs/cw-middleware.git
+# # downloads the latest mock cosmwasm contracts from the cw-middleware repo
+# # we only need the service-handler and API though, service-manager is handled by middleware
+# download-cosmwasm branch="main":
+#     # Create a temporary directory
+#     rm -rf temp_clone
+#     mkdir temp_clone
 
-    # Clear existing content and directories
-    rm -rf examples/contracts/cosmwasm
-    mkdir -p examples/contracts/cosmwasm/mock
-    mkdir -p examples/contracts/cosmwasm/trigger
+#     # Clone the specific branch into the temp directory
+#     git -C temp_clone clone --depth=1 --branch {{branch}} --single-branch https://github.com/Lay3rLabs/cw-middleware.git
 
-    # Copy it over
-    cp -r temp_clone/cw-middleware/packages/contracts/mock/api examples/contracts/cosmwasm/mock/api
-    cp -r temp_clone/cw-middleware/packages/contracts/mock/service-handler examples/contracts/cosmwasm/mock/service-handler
-    cp -r temp_clone/cw-middleware/packages/contracts/trigger examples/contracts/cosmwasm/
+#     # Clear existing content and directories
+#     rm -rf examples/contracts/cosmwasm
+#     mkdir -p examples/contracts/cosmwasm/mock
+#     mkdir -p examples/contracts/cosmwasm/trigger
 
-    # Clean up
-    rm -rf temp_clone
+#     # Copy it over
+#     cp -r temp_clone/cw-middleware/packages/contracts/mock/api examples/contracts/cosmwasm/mock/api
+#     cp -r temp_clone/cw-middleware/packages/contracts/mock/service-handler examples/contracts/cosmwasm/mock/service-handler
+#     cp -r temp_clone/cw-middleware/packages/contracts/trigger examples/contracts/cosmwasm/
+
+#     # Clean up
+#     rm -rf temp_clone
 
 
 wasi-publish version component="*" flags="":
@@ -413,8 +417,8 @@ wasi-publish version component="*" flags="":
 	        id=$(basename "$path"); \
 	        id="${id%.wasm}"; \
 	        id=$(echo "$id" | sed 's/_/-/g'); \
-	        echo "Publishing $path at wavs-tests:$id@{{version}}"; \
-	        wkg publish "$path" --package="wavs-tests:$id@{{version}}" {{flags}}; \
+	        echo "Publishing $path at warpdrive-tests:$id@{{version}}"; \
+	        wkg publish "$path" --package="warpdrive-tests:$id@{{version}}" {{flags}}; \
 	    done; \
 	else \
 	    awk '{print $2}' checksums.txt | while read path; do \
@@ -422,15 +426,15 @@ wasi-publish version component="*" flags="":
 	        id="${id%.wasm}"; \
 	        id=$(echo "$id" | sed 's/_/-/g'); \
 	        if [ "$id" = "{{component}}" ]; then \
-	            echo "Publishing $path at wavs-tests:$id@{{version}}"; \
-	            wkg publish "$path" --package="wavs-tests:$id@{{version}}" {{flags}}; \
+	            echo "Publishing $path at warpdrive-tests:$id@{{version}}"; \
+	            wkg publish "$path" --package="warpdrive-tests:$id@{{version}}" {{flags}}; \
 	        fi; \
 	    done; \
 	fi
 
 ts-bindings:
     rm -rf packages/types/bindings
-    cargo test -p wavs-types --features ts-bindings
+    cargo test -p warpdrive-types --features ts-bindings
     cargo run --bin ts
 
 # Install the WAVS Claude Code skill globally
@@ -440,9 +444,9 @@ install-claude-skill:
     @echo "WAVS skill installed to ~/.claude/skills/wavs"
     @echo "Restart Claude Code to pick up the skill."
 
-# Register wavs-mcp with Claude Code (interactive wizard)
+# Register warpdrive-mcp with Claude Code (interactive wizard)
 setup-claude-mcp:
-    @node packages/wavs-mcp/bin/setup.mjs
+    @node packages/warpdrive-mcp/bin/setup.mjs
 
 debug:
     cargo test --package wavs --features dev --test aggregator_tests send_to_self

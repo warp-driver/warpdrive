@@ -1,6 +1,7 @@
-WAVS - WASI powered AVS runtime
+WarpDrive: Verifiable Off-Chain Compute
 
-Copyright (C) 2024-2025 Layer Labs (Cayman)
+Copyright (C) 2026 WarpDrive
+Copyright (C) 2024-2026 Layer Labs (Cayman) as WAVS
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

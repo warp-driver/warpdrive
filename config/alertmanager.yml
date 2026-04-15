@@ -13,6 +13,6 @@ receivers:
     slack_configs:
       - api_url_file: '/etc/alertmanager/slack_webhook_url'
         channel: '#test'
-        title: 'WAVS Alert: {{ .GroupLabels.alertname }}'
+        title: 'WarpDrive Alert: {{ .GroupLabels.alertname }}'
         text: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
         send_resolved: true

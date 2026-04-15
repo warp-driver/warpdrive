@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import {IWavsServiceHandler} from "../interfaces/IWavsServiceHandler.sol";
-import {IWavsServiceManager} from "../interfaces/IWavsServiceManager.sol";
+import {IWarpDriveServiceHandler} from "../interfaces/IWarpDriveServiceHandler.sol";
+import {IWarpDriveServiceManager} from "../interfaces/IWarpDriveServiceManager.sol";
 
 /**
  * @title TestServiceManager
- * @notice Minimal IWavsServiceManager implementation for integration testing.
+ * @notice Minimal IWarpDriveServiceManager implementation for integration testing.
  *         Performs no validation and exposes helper setters for configuring weights.
  */
-contract TestServiceManager is IWavsServiceManager {
+contract TestServiceManager is IWarpDriveServiceManager {
     string private _serviceURI;
     mapping(address => uint256) private _operatorWeights;
 
@@ -18,8 +18,8 @@ contract TestServiceManager is IWavsServiceManager {
     }
 
     function validate(
-        IWavsServiceHandler.Envelope calldata,
-        IWavsServiceHandler.SignatureData calldata
+        IWarpDriveServiceHandler.Envelope calldata,
+        IWarpDriveServiceHandler.SignatureData calldata
     ) external pure override {
         // Intentionally no-op: tests can rely on successful validation by default.
     }
@@ -61,14 +61,14 @@ contract TestServiceManager is IWavsServiceManager {
 
 /**
  * @title TestServiceHandler
- * @notice Minimal IWavsServiceHandler that defers validation to the configured manager.
+ * @notice Minimal IWarpDriveServiceHandler that defers validation to the configured manager.
  */
-contract TestServiceHandler is IWavsServiceHandler {
-    IWavsServiceManager private immutable _serviceManager;
+contract TestServiceHandler is IWarpDriveServiceHandler {
+    IWarpDriveServiceManager private immutable _serviceManager;
 
     event EnvelopeHandled(bytes payload, address[] signers);
 
-    constructor(IWavsServiceManager serviceManager) {
+    constructor(IWarpDriveServiceManager serviceManager) {
         _serviceManager = serviceManager;
     }
 

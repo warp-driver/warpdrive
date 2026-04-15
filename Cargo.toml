@@ -3,11 +3,11 @@ members = [
     "packages/cli",
     "packages/dev-tool",
     "packages/engine",
-    "packages/layer-tests",
+    "packages/warpdrive-tests",
     "packages/types",
     "packages/utils",
     "packages/version-pins",
-    "packages/wavs",
+    "packages/warpdrive",
     "examples/components/cosmos-query",
     "examples/components/chain-trigger-lookup",
     "examples/components/echo-data",
@@ -37,8 +37,8 @@ split-debuginfo = "unpacked"
 edition = "2021"
 version = "2.8.0"
 license = "GPL-3.0-or-later"
-authors = ["Layer Labs (Cayman)"]
-repository = "https://github.com/Lay3rLabs/WAVS"
+authors = ["WarpDrive"]
+repository = "https://github.com/warp-driver/warpdrive"
 rust-version = "1.91.0"
 
 [workspace.dependencies]
@@ -168,7 +168,7 @@ wasmtime-wasi = { version = "42.0.1", default-features = true }
 wasmtime-wasi-http = "42.0.1"
 wasmtime-wasi-tls = "42.0.1"
 wit-bindgen = "0.53.1"
-wavs-wasi-utils = { path = "packages/wasi-utils" }
+warpdrive-wasi-utils = { path = "packages/wasi-utils" }
 wasip2 = "1.0.1"
 wstd = "0.6.5"
 
@@ -242,12 +242,12 @@ libp2p = { version = "0.56", features = [
 
 # local
 utils = { path = "packages/utils" }
-wavs = { path = "packages/wavs" }
-wavs-engine = { path = "packages/engine" }
-wavs-types = { path = "packages/types" }
-wavs-cli = { path = "packages/cli" }
-wavs-benchmark-common = { path = "packages/wavs/benches/common" }
+warpdrive = { path = "packages/warpdrive" }
+warpdrive-engine = { path = "packages/engine" }
+warpdrive-types = { path = "packages/types" }
+warpdrive-cli = { path = "packages/cli" }
+warpdrive-benchmark-common = { path = "packages/warpdrive/benches/common" }
 example-helpers = { path = "examples/components/_helpers" }
 example-types = { path = "examples/components/_types" }
-cw-wavs-mock-api = { path = "examples/contracts/cosmwasm/mock/api" }
-cw-wavs-trigger-api = { path = "examples/contracts/cosmwasm/trigger/api" }
+cw-warpdrive-mock-api = { path = "examples/contracts/cosmwasm/mock/api" }
+cw-warpdrive-trigger-api = { path = "examples/contracts/cosmwasm/trigger/api" }

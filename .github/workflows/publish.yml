@@ -5,7 +5,7 @@ on:
       - "v*"
 
 env:
-  CRATE_NAME: wavs-types
+  CRATE_NAME: warpdrive-types
   CRATE_PATH: packages/types
 
 permissions:
@@ -41,7 +41,7 @@ jobs:
           # Get the HTTP status code when checking if the crate exists
           # We expect either 200 (exists) or 404 (doesn't exist)
           HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            -H "User-Agent: wavs-ci (https://github.com/Lay3rLabs/WAVS)" \
+            -H "User-Agent: warpdrive-ci (https://github.com/warp-driver/warpdrive)" \
             https://crates.io/api/v1/crates/${{ env.CRATE_NAME }}/${{ steps.version.outputs.version }})
 
           # Handle status codes appropriately
@@ -81,10 +81,10 @@ jobs:
           args: --manifest-path ${{ env.CRATE_PATH }}/Cargo.toml
 
   publish_wasi_utils:
-    name: Verify and Publish wavs-wasi-utils Crate
+    name: Verify and Publish warpdrive-wasi-utils Crate
     runs-on: ubuntu-latest
     env:
-      WASI_CRATE_NAME: wavs-wasi-utils
+      WASI_CRATE_NAME: warpdrive-wasi-utils
       WASI_CRATE_PATH: packages/wasi-utils
     steps:
       - name: Checkout the repo
@@ -109,7 +109,7 @@ jobs:
         shell: bash
         run: |
           HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            -H "User-Agent: wavs-ci (https://github.com/Lay3rLabs/WAVS)" \
+            -H "User-Agent: warpdrive-ci (https://github.com/warp-driver/warpdrive)" \
             https://crates.io/api/v1/crates/${{ env.WASI_CRATE_NAME }}/${{ steps.version.outputs.version }})
 
           if [ "$HTTP_STATUS" = "200" ]; then
@@ -206,7 +206,7 @@ jobs:
         id: npm_exists
         shell: bash
         run: |
-          PACKAGE_NAME="@wavs/types"
+          PACKAGE_NAME="@warpdrive/types"
           VERSION="${{ steps.version.outputs.version }}"
 
           # Check if package version exists on NPM

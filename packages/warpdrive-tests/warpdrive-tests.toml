@@ -1,0 +1,43 @@
+[default]
+log_level = ["info", "warpdrive=debug"]
+
+[warpdrive-tests]
+wavs_concurrency = true
+middleware_concurrency = true
+grouping = false
+evm_middleware_type = "poa"   # "eigenlayer" or "poa"
+# p2p = "kademlia"              # "mdns" (local) or "kademlia" (remote)
+p2p = "mdns"              # "mdns" (local) or "kademlia" (remote)
+
+# Run all tests
+# mode = "all"
+# mode = { "isolated" = [{ evm = "echo_data" }, {evm = "multi_operator"}] }
+# mode = { "isolated" = [{ evm = "echo_data" }, {evm = "multi_operator"}] }
+# mode = { "isolated" = [{ evm = "multi_operator" }] }
+# mode = {"isolated" = [
+#     {evm = "echo_data"},
+#     {evm = "multi_vector"},
+#     {cosmos = "permissions"},
+# ]}
+
+# Run all ethereum tests (same can be done for cosmos, cross-chain, etc.)
+mode = "all_eth"
+
+# Run a specific test
+# mode = { "isolated" = [{ evm = "trigger_backpressure" }] }
+
+# Run a few specific tests
+# mode = {"isolated" = [
+#     {evm = "echo_data"},
+#     {evm = "multi_vector"},
+#     {cosmos = "permissions"},
+# ]}
+
+# Load components from the registry
+# registry = true
+
+# Send tracing to Jaeger
+# jaeger = "http://localhost:4317"
+
+# Send metrics to Prometheus
+# prometheus = "http://localhost:9090"

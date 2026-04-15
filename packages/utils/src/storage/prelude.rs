@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 use thiserror::Error;
-use wavs_types::AnyDigest;
+use warpdrive_types::AnyDigest;
 
 /*
   Documenting a design decisions here:

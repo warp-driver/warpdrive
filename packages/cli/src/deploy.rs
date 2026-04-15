@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, fmt::Display};
-use wavs_types::{ChainKey, Service, ServiceId, Submit, Trigger, WorkflowId};
+use warpdrive_types::{ChainKey, Service, ServiceId, Submit, Trigger, WorkflowId};
 
 use crate::config::Config;
 

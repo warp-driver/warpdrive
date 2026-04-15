@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
 
 use tracing::instrument;
-use wavs_types::AnyDigest;
+use warpdrive_types::AnyDigest;
 
 use super::prelude::*;
 

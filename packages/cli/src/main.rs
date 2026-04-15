@@ -13,7 +13,7 @@ use utils::{
     evm_client::EvmSigningClient,
     service::fetch_service,
 };
-use wavs_cli::{
+use warpdrive_cli::{
     args::Command,
     command::{
         deploy_service::{DeployService, DeployServiceArgs, SetServiceUriArgs},
@@ -25,9 +25,9 @@ use wavs_cli::{
     context::CliContext,
     util::{write_output_file, ComponentInput},
 };
-use wavs_types::SignatureKind;
-use wavs_types::WavsSigner;
-use wavs_types::{ChainKeyId, Envelope, IWavsServiceHandler};
+use warpdrive_types::SignatureKind;
+use warpdrive_types::WavsSigner;
+use warpdrive_types::{ChainKeyId, Envelope, IWarpDriveServiceHandler};
 
 // Shared function to create EVM client with any credential
 // duplicated here instead of using the one in CliContext so
@@ -35,7 +35,7 @@ use wavs_types::{ChainKeyId, Envelope, IWavsServiceHandler};
 async fn new_evm_client_with_credential(
     ctx: &CliContext,
     chain_id: ChainKeyId,
-    credential: &wavs_types::Credential,
+    credential: &warpdrive_types::Credential,
     hd_index: Option<u32>,
 ) -> Result<EvmSigningClient> {
     let chain_config = ctx
@@ -62,7 +62,7 @@ async fn new_evm_client_with_credential(
 async fn new_cosmos_client_with_credential(
     ctx: &CliContext,
     chain_id: ChainKeyId,
-    credential: &wavs_types::Credential,
+    credential: &warpdrive_types::Credential,
     hd_index: Option<u32>,
 ) -> Result<SigningClient> {
     let chain_config = ctx
@@ -155,14 +155,14 @@ async fn main() {
 
             let set_service_url_args = if set_uri {
                 match service.manager {
-                    wavs_types::ServiceManager::Evm { ref chain, .. } => {
+                    warpdrive_types::ServiceManager::Evm { ref chain, .. } => {
                         let provider = new_evm_client(&ctx, chain.id.clone())
                             .await
                             .unwrap()
                             .provider;
                         Some(SetServiceUriArgs::new_evm(provider, service_uri.clone()))
                     }
-                    wavs_types::ServiceManager::Cosmos { ref chain, .. } => {
+                    warpdrive_types::ServiceManager::Cosmos { ref chain, .. } => {
                         let client = new_cosmos_client(&ctx, chain.id.clone()).await.unwrap();
                         Some(SetServiceUriArgs::new_cosmos(client, service_uri.clone()))
                     }
@@ -203,8 +203,8 @@ async fn main() {
             submit_chain,
             submit_handler,
             simulates_trigger,
-            operator_credential,
-            operator_hd_index,
+            vectr_credential,
+            vectr_hd_index,
             args: _,
         } => {
             let config = config
@@ -252,8 +252,8 @@ async fn main() {
             }
 
             // If submit_chain is provided, submit the result to the chain
-            if let (Some(chain_key), Some(handler_address), Some(operator_credential)) =
-                (submit_chain, submit_handler, operator_credential)
+            if let (Some(chain_key), Some(handler_address), Some(vectr_credential)) =
+                (submit_chain, submit_handler, vectr_credential)
             {
                 if res.wasm_responses.is_empty() {
                     tracing::warn!("No WASM response to submit to chain");
@@ -290,31 +290,33 @@ async fn main() {
                             }
                         };
 
-                        // Get operator EVM client for envelope signing
-                        let operator_evm_client = match new_evm_client_with_credential(
+                        // Get vector EVM client for envelope signing
+                        let vectr_evm_client = match new_evm_client_with_credential(
                             &ctx,
                             chain_key.id.clone(),
-                            &operator_credential,
-                            operator_hd_index,
+                            &vectr_credential,
+                            vectr_hd_index,
                         )
                         .await
                         {
                             Ok(client) => client,
                             Err(e) => {
-                                eprintln!("Failed to create operator EVM client: {e}");
+                                eprintln!("Failed to create vector EVM client: {e}");
                                 std::process::exit(1);
                             }
                         };
 
-                        // Create signature using the operator EVM client's signer
+                        // Create signature using the vector EVM client's signer
                         let signature = envelope
-                            .sign(&operator_evm_client.signer, SignatureKind::evm_default())
+                            .sign(&vectr_evm_client.signer, SignatureKind::evm_default())
                             .await
                             .unwrap();
 
                         // Create contract instance
-                        let contract =
-                            IWavsServiceHandler::new(handler_address, evm_client.provider.clone());
+                        let contract = IWarpDriveServiceHandler::new(
+                            handler_address,
+                            evm_client.provider.clone(),
+                        );
 
                         // Get the block number just before the latest block for reference
                         let previous_block = match evm_client.provider.get_block_number().await {
@@ -336,7 +338,7 @@ async fn main() {
                             };
 
                         // Convert to contract types
-                        let contract_envelope = IWavsServiceHandler::Envelope {
+                        let contract_envelope = IWarpDriveServiceHandler::Envelope {
                             eventId: envelope.eventId,
                             ordering: envelope.ordering,
                             payload: envelope.payload,

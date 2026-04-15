@@ -2,14 +2,14 @@ use anyhow::{bail, Context, Result};
 use figment::{providers::Format, Figment};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{marker::PhantomData, path::PathBuf};
-use wavs_types::{Credential, EvmChainConfig};
+use warpdrive_types::{Credential, EvmChainConfig};
 
 use crate::{
     error::EvmClientError,
     evm_client::{EvmEndpoint, EvmSigningClientConfig},
 };
 
-pub use wavs_types::WAVS_ENV_PREFIX;
+pub use warpdrive_types::WARPDRIVE_ENV_PREFIX;
 
 /// The builder we use to build Config
 #[derive(Debug)]
@@ -19,10 +19,10 @@ pub struct ConfigBuilder<CONFIG, ARG> {
 }
 
 pub trait CliEnvExt: Serialize + DeserializeOwned + Default + std::fmt::Debug {
-    // e.g. "WAVS"
+    // e.g. "WarpDrive"
     const ENV_VAR_PREFIX: &'static str;
 
-    // The section identifier in the TOML file, e.g. "wavs", "cli", "aggregator"
+    // The section identifier in the TOML file, e.g. "warpdrive", "cli", "aggregator"
     const TOML_IDENTIFIER: &'static str;
 
     // whether to print debug messages during config loading
@@ -53,8 +53,8 @@ pub trait CliEnvExt: Serialize + DeserializeOwned + Default + std::fmt::Debug {
 }
 
 pub trait ConfigExt: Serialize + DeserializeOwned + Default + std::fmt::Debug {
-    // e.g. "wavs.toml"
-    const FILENAME: &'static str = "wavs.toml";
+    // e.g. "warpdrive.toml"
+    const FILENAME: &'static str = "warpdrive.toml";
 
     // the data directory, which is the root of the data storage
     fn with_data_dir(&mut self, f: fn(&mut PathBuf));
@@ -90,7 +90,7 @@ impl<CONFIG: ConfigExt, ARG: CliEnvExt> ConfigBuilder<CONFIG, ARG> {
             dotenv_paths.push(dotenv_path);
         }
 
-        if let Ok(dotenv_path) = std::env::var("WAVS_DOTENV") {
+        if let Ok(dotenv_path) = std::env::var("WARPDRIVE_DOTENV") {
             dotenv_paths.push(PathBuf::from(dotenv_path));
         }
 
@@ -160,7 +160,7 @@ impl<CONFIG: ConfigExt, ARG: CliEnvExt> ConfigBuilder<CONFIG, ARG> {
 // a helper to try a series of fallback paths, looking for a config file
 #[derive(Clone, Debug)]
 pub struct ConfigFilePath {
-    // the filename to look for in each directory, e.g. "wavs.toml"
+    // the filename to look for in each directory, e.g. "warpdrive.toml"
     pub filename: String,
     // the optional directory set via direct args or env
     pub arg_env_dir: Option<PathBuf>,
@@ -185,7 +185,7 @@ impl ConfigFilePath {
             arg_env_dir,
         } = self;
 
-        const DIRNAME: &str = "wavs";
+        const DIRNAME: &str = "warpdrive";
 
         // the paths returned will be tried in order of pushing
         let mut dirs = Vec::new();
@@ -196,8 +196,8 @@ impl ConfigFilePath {
             dirs.push(dir);
         }
 
-        // literal env var WAVS_HOME
-        if let Ok(dir) = std::env::var("WAVS_HOME") {
+        // literal env var WARPDRIVE_HOME
+        if let Ok(dir) = std::env::var("WARPDRIVE_HOME") {
             dirs.push(dir.into());
         }
 
@@ -208,16 +208,16 @@ impl ConfigFilePath {
         }
 
         // here we want to check the user's home directory directly, not in the `.config` subdirectory
-        // in this case, to not pollute the home directory, it looks for ~/.{dirname}/{filename} (e.g. ~/.wavs/wavs.toml)
+        // in this case, to not pollute the home directory, it looks for ~/.{dirname}/{filename} (e.g. ~/.warpdrive/warpdrive.toml)
         if let Some(dir) = dirs::home_dir().map(|dir| dir.join(format!(".{DIRNAME}"))) {
             dirs.push(dir);
         }
 
-        // checks the `wavs/wavs.toml` file in the system config directory
+        // checks the `warpdrive/warpdrive.toml` file in the system config directory
         // this will vary, but the final path with then be something like:
-        // Linux: ~/.config/wavs/wavs.toml
-        // macOS: ~/Library/Application Support/wavs/wavs.toml
-        // Windows: C:\Users\MyUserName\AppData\Roaming\wavs\wavs.toml
+        // Linux: ~/.config/warpdrive/warpdrive.toml
+        // macOS: ~/Library/Application Support/warpdrive/warpdrive.toml
+        // Windows: C:\Users\MyUserName\AppData\Roaming\wavs\warpdrive.toml
         if let Some(dir) = dirs::config_dir().map(|dir| dir.join(DIRNAME)) {
             dirs.push(dir);
         }
@@ -225,7 +225,7 @@ impl ConfigFilePath {
         // On linux, this may already be added via config_dir above
         // but on macOS and windows, and maybe unix-like environments (msys, wsl, etc)
         // it's helpful to add it explicitly
-        // the final path here typically becomes something like ~/.config/wavs/wavs.toml
+        // the final path here typically becomes something like ~/.config/warpdrive/warpdrive.toml
         if let Some(dir) = std::env::var("XDG_CONFIG_HOME")
             .ok()
             .map(PathBuf::from)
@@ -238,12 +238,12 @@ impl ConfigFilePath {
         // but on systems like Windows, it's helpful to add it explicitly
         // since the system may place the config dir in AppData/Roaming
         // but we want to check the user's home dir first
-        // this will definitively become something like ~/.config/wavs/wavs.toml
+        // this will definitively become something like ~/.config/warpdrive/warpdrive.toml
         if let Some(dir) = dirs::home_dir().map(|dir| dir.join(".config").join(DIRNAME)) {
             dirs.push(dir);
         }
 
-        // Lastly, try /etc/wavs/wavs.toml
+        // Lastly, try /etc/warpdrive/warpdrive.toml
         dirs.push(PathBuf::from("/etc").join(DIRNAME));
 
         // now we have a list of directories to check, we need to add the filename to each
@@ -306,7 +306,7 @@ mod test {
     use std::{collections::BTreeMap, path::PathBuf, sync::LazyLock};
 
     use serde::{Deserialize, Serialize};
-    use wavs_types::{
+    use warpdrive_types::{
         AnyChainConfig, ChainConfigError, ChainConfigs, ChainKey, CosmosChainConfig,
         CosmosChainConfigBuilder, EvmChainConfig, EvmChainConfigBuilder,
     };
@@ -327,7 +327,7 @@ mod test {
     impl Default for TestConfig {
         fn default() -> Self {
             Self {
-                data: PathBuf::from("/var/wavs"),
+                data: PathBuf::from("/var/warpdrive"),
                 port: 8000,
                 log_level: vec!["info".to_string()],
             }
@@ -379,7 +379,7 @@ mod test {
     }
 
     impl CliEnvExt for TestCliEnv {
-        const ENV_VAR_PREFIX: &'static str = "WAVS";
+        const ENV_VAR_PREFIX: &'static str = "WarpDrive";
         const TOML_IDENTIFIER: &'static str = "test";
 
         fn home_dir(&self) -> Option<PathBuf> {
@@ -477,14 +477,14 @@ mod test {
         let config = temp_env::with_vars(
             [(
                 format!("{}_{}", TestCliEnv::ENV_VAR_PREFIX, "LOG_LEVEL"),
-                Some("info, wavs=debug, just_to_confirm_test=debug"),
+                Some("info, warpdrive=debug, just_to_confirm_test=debug"),
             )],
             TestConfig::new,
         );
 
         assert_eq!(
             config.log_level,
-            ["info", "wavs=debug", "just_to_confirm_test=debug"]
+            ["info", "warpdrive=debug", "just_to_confirm_test=debug"]
         );
 
         // replace the var and check that it is now what we expect

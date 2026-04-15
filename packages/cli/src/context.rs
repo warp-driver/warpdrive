@@ -5,7 +5,7 @@ use alloy_provider::Provider;
 use anyhow::{anyhow, Context, Result};
 use layer_climb::prelude::*;
 use utils::{config::EvmChainConfigExt, evm_client::EvmSigningClient};
-use wavs_types::{AnyChainConfig, ChainKey, ChainKeyId, Credential};
+use warpdrive_types::{AnyChainConfig, ChainKey, ChainKeyId, Credential};
 
 use crate::{args::Command, deploy::Deployment};
 

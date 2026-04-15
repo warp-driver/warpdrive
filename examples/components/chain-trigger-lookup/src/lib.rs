@@ -18,7 +18,7 @@ use example_helpers::{
     export_layer_trigger_world,
     trigger::{decode_trigger_event, encode_trigger_output, ChainQuerierExt},
 };
-use wavs_wasi_utils::evm::new_evm_provider;
+use warpdrive_wasi_utils::evm::new_evm_provider;
 
 struct Component;
 

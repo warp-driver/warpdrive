@@ -13,7 +13,9 @@ use example_helpers::bindings::world::{
 use example_helpers::export_layer_trigger_world;
 use example_helpers::trigger::{decode_trigger_event, encode_trigger_output};
 use std::{fs, io::Write, path::Path};
-use wavs_wasi_utils::http::{fetch_json, fetch_string, http_request_get, http_request_post_json};
+use warpdrive_wasi_utils::http::{
+    fetch_json, fetch_string, http_request_get, http_request_post_json,
+};
 use wstd::runtime::block_on;
 
 use anyhow::Result;

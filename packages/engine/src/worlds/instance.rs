@@ -1,16 +1,16 @@
 use std::path::Path;
 
-use utils::config::WAVS_ENV_PREFIX;
+use utils::config::WARPDRIVE_ENV_PREFIX;
+use warpdrive_types::{
+    AllowedHostPermission, ChainConfigs, EventId, Permissions, Service, TriggerData, Workflow,
+    WorkflowId,
+};
 use wasmtime::component::HasSelf;
 use wasmtime::Store;
 use wasmtime::{component::Linker, Engine as WTEngine};
 use wasmtime_wasi::{DirPerms, FilePerms, WasiCtxBuilder, WasiView};
 use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
 use wasmtime_wasi_tls::{WasiTls, WasiTlsCtxBuilder};
-use wavs_types::{
-    AllowedHostPermission, ChainConfigs, EventId, Permissions, Service, TriggerData, Workflow,
-    WorkflowId,
-};
 
 use crate::backend::wasi_keyvalue::context::KeyValueCtxProvider;
 use crate::worlds::aggregator::component::{
@@ -30,21 +30,21 @@ pub enum HostComponentLogger {
 }
 
 pub enum ComponentStore {
-    OperatorComponentStore(Store<OperatorHostComponent>),
+    VectorComponentStore(Store<OperatorHostComponent>),
     AggregatorComponentStore(Store<AggregatorHostComponent>),
 }
 
 impl ComponentStore {
     pub fn get_fuel(&self) -> anyhow::Result<u64> {
         match self {
-            ComponentStore::OperatorComponentStore(store) => Ok(store.get_fuel()?),
+            ComponentStore::VectorComponentStore(store) => Ok(store.get_fuel()?),
             ComponentStore::AggregatorComponentStore(store) => Ok(store.get_fuel()?),
         }
     }
 
     pub fn as_operator_mut(&mut self) -> &mut Store<OperatorHostComponent> {
         match self {
-            ComponentStore::OperatorComponentStore(store) => store,
+            ComponentStore::VectorComponentStore(store) => store,
             _ => unreachable!(),
         }
     }
@@ -58,14 +58,14 @@ impl ComponentStore {
 }
 
 pub enum ComponentLinker {
-    OperatorComponentLinker(Linker<OperatorHostComponent>),
+    VectorComponentLinker(Linker<OperatorHostComponent>),
     AggregatorComponentLinker(Linker<AggregatorHostComponent>),
 }
 
 impl ComponentLinker {
     pub fn as_operator_ref(&self) -> &Linker<OperatorHostComponent> {
         match self {
-            ComponentLinker::OperatorComponentLinker(linker) => linker,
+            ComponentLinker::VectorComponentLinker(linker) => linker,
             _ => unreachable!(),
         }
     }
@@ -89,13 +89,13 @@ pub struct InstanceDepsBuilder<'a, P> {
 }
 
 pub enum InstanceData {
-    Operator { trigger_data: Box<TriggerData> },
+    Vector { trigger_data: Box<TriggerData> },
     Aggregator { event_id: EventId },
 }
 
 impl InstanceData {
     pub fn new_operator(trigger_data: TriggerData) -> Self {
-        InstanceData::Operator {
+        InstanceData::Vector {
             trigger_data: Box::new(trigger_data),
         }
     }
@@ -128,11 +128,11 @@ impl<P: AsRef<Path>> InstanceDepsBuilder<'_, P> {
 
         match (&data, &log) {
             (
-                InstanceData::Operator { .. },
+                InstanceData::Vector { .. },
                 HostComponentLogger::AggregatorHostComponentLogger(_),
             ) => {
                 return Err(EngineError::MismatchedInstanceDataAndLogger {
-                    data: "Operator",
+                    data: "Vector",
                     logger: "Aggregator",
                 });
             }
@@ -142,7 +142,7 @@ impl<P: AsRef<Path>> InstanceDepsBuilder<'_, P> {
             ) => {
                 return Err(EngineError::MismatchedInstanceDataAndLogger {
                     data: "Aggregator",
-                    logger: "Operator",
+                    logger: "Vector",
                 });
             }
             _ => {}
@@ -180,7 +180,7 @@ impl<P: AsRef<Path>> InstanceDepsBuilder<'_, P> {
                     )
                     .map_err(EngineError::AddToLinker)?;
 
-                    (ComponentLinker::OperatorComponentLinker(linker), component)
+                    (ComponentLinker::VectorComponentLinker(linker), component)
                 }
                 HostComponentLogger::AggregatorHostComponentLogger(_) => {
                     let mut linker = Linker::new(engine);
@@ -192,8 +192,10 @@ impl<P: AsRef<Path>> InstanceDepsBuilder<'_, P> {
                     .unwrap();
 
                     let component = match &workflow.submit {
-                        wavs_types::Submit::None => unreachable!(),
-                        wavs_types::Submit::Aggregator { component, .. } => (**component).clone(),
+                        warpdrive_types::Submit::None => unreachable!(),
+                        warpdrive_types::Submit::Aggregator { component, .. } => {
+                            (**component).clone()
+                        }
                     };
                     configure_linker(&mut linker, &component.permissions)?;
 
@@ -240,10 +242,10 @@ impl<P: AsRef<Path>> InstanceDepsBuilder<'_, P> {
             builder.allow_ip_name_lookup(true);
         }
 
-        // read in system env variables that are prefixed with WAVS_ENV and are allowed to access via the component config
+        // read in system env variables that are prefixed with WARPDRIVE_ENV and are allowed to access via the component config
         let env: Vec<_> = std::env::vars()
             .filter(|(key, _)| {
-                key.starts_with(WAVS_ENV_PREFIX) && wavs_component.env_keys.contains(key)
+                key.starts_with(WARPDRIVE_ENV_PREFIX) && wavs_component.env_keys.contains(key)
             })
             .collect();
 
@@ -265,7 +267,7 @@ impl<P: AsRef<Path>> InstanceDepsBuilder<'_, P> {
 
         // create host (what is this actually? some state needed for the linker?)
         let store = match data {
-            InstanceData::Operator { trigger_data } => {
+            InstanceData::Vector { trigger_data } => {
                 let host = OperatorHostComponent {
                     service,
                     workflow_id,
@@ -285,7 +287,7 @@ impl<P: AsRef<Path>> InstanceDepsBuilder<'_, P> {
 
                 configure_store(&mut store, fuel_limit)?;
 
-                ComponentStore::OperatorComponentStore(store)
+                ComponentStore::VectorComponentStore(store)
             }
             InstanceData::Aggregator { event_id } => {
                 let host = AggregatorHostComponent {

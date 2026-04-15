@@ -5,8 +5,8 @@ mod service_manager {
         #[allow(missing_docs)]
         #[sol(rpc)]
         #[derive(Debug)]
-        IWavsServiceManager,
-        "./src/contracts/solidity/abi/IWavsServiceManager.sol/IWavsServiceManager.json"
+        IWarpDriveServiceManager,
+        "./src/contracts/solidity/abi/IWarpDriveServiceManager.sol/IWarpDriveServiceManager.json"
     );
 }
 
@@ -15,33 +15,36 @@ mod service_handler {
         #[allow(missing_docs)]
         #[sol(rpc)]
         #[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq, Eq)]
-        IWavsServiceHandler,
-        "./src/contracts/solidity/abi/IWavsServiceHandler.sol/IWavsServiceHandler.json"
+        IWarpDriveServiceHandler,
+        "./src/contracts/solidity/abi/IWarpDriveServiceHandler.sol/IWarpDriveServiceHandler.json"
     );
 }
 
 pub use service_handler::{
-    IWavsServiceHandler, IWavsServiceHandler::Envelope, IWavsServiceHandler::SignatureData,
+    IWarpDriveServiceHandler, IWarpDriveServiceHandler::Envelope,
+    IWarpDriveServiceHandler::SignatureData,
 };
-pub use service_manager::IWavsServiceManager;
+pub use service_manager::IWarpDriveServiceManager;
 // yup, the service handler interface as seen by the service manager is a different service handler interface
 // even though it's literally a direct import of the same file
 pub use service_manager::{
-    IWavsServiceHandler::Envelope as ServiceManagerEnvelope,
-    IWavsServiceHandler::SignatureData as ServiceManagerSignatureData,
+    IWarpDriveServiceHandler::Envelope as ServiceManagerEnvelope,
+    IWarpDriveServiceHandler::SignatureData as ServiceManagerSignatureData,
 };
 
-pub type IWavsServiceHandlerSigningT =
-    IWavsServiceHandler::IWavsServiceHandlerInstance<DynProvider>;
+pub type IWarpDriveServiceHandlerSigningT =
+    IWarpDriveServiceHandler::IWarpDriveServiceHandlerInstance<DynProvider>;
 
-pub type IWavsServiceHandlerQueryT = IWavsServiceHandler::IWavsServiceHandlerInstance<DynProvider>;
+pub type IWarpDriveServiceHandlerQueryT =
+    IWarpDriveServiceHandler::IWarpDriveServiceHandlerInstance<DynProvider>;
 
-pub type IWavsServiceManagerSigningT =
-    IWavsServiceManager::IWavsServiceManagerInstance<DynProvider>;
+pub type IWarpDriveServiceManagerSigningT =
+    IWarpDriveServiceManager::IWarpDriveServiceManagerInstance<DynProvider>;
 
-pub type IWavsServiceManagerQueryT = IWavsServiceManager::IWavsServiceManagerInstance<DynProvider>;
+pub type IWarpDriveServiceManagerQueryT =
+    IWarpDriveServiceManager::IWarpDriveServiceManagerInstance<DynProvider>;
 
-pub type ServiceManagerError = IWavsServiceManager::IWavsServiceManagerErrors;
+pub type ServiceManagerError = IWarpDriveServiceManager::IWarpDriveServiceManagerErrors;
 
 pub fn decode_service_manager_error(err: alloy_contract::Error) -> Option<ServiceManagerError> {
     err.as_decoded_interface_error::<ServiceManagerError>()

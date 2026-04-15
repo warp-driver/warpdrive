@@ -1,7 +1,7 @@
 use std::{collections::HashSet, time::Duration};
 
+use warpdrive_types::{TriggerAction, WasmResponse};
 use wasmtime::Trap;
-use wavs_types::{TriggerAction, WasmResponse};
 
 use crate::{utils::error::EngineError, worlds::instance::InstanceDeps};
 

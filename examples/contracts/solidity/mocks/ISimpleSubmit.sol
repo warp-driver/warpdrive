@@ -2,7 +2,7 @@
 pragma solidity ^0.8.27;
 
 import {ISimpleTrigger} from "./ISimpleTrigger.sol";
-import {IWavsServiceHandler} from "../interfaces/IWavsServiceHandler.sol";
+import {IWarpDriveServiceHandler} from "../interfaces/IWarpDriveServiceHandler.sol";
 
 /**
  * @title ISimpleSubmit
@@ -29,8 +29,8 @@ interface ISimpleSubmit {
      */
     struct SignedData {
         bytes data;
-        IWavsServiceHandler.SignatureData signatureData;
-        IWavsServiceHandler.Envelope envelope;
+        IWarpDriveServiceHandler.SignatureData signatureData;
+        IWarpDriveServiceHandler.Envelope envelope;
     }
 
     /**

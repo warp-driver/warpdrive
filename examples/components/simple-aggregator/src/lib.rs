@@ -2,8 +2,8 @@ mod gas_oracle;
 mod world;
 
 use example_types::{KvStoreError, KvStoreResult};
-use wavs_types::ChainKey;
-use wavs_wasi_utils::impl_u128_conversions;
+use warpdrive_types::ChainKey;
+use warpdrive_wasi_utils::impl_u128_conversions;
 use world::{
     host,
     wavs::aggregator::input::AggregatorInput,

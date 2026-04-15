@@ -2,8 +2,8 @@
 # docker compose up
 #
 # docker exec -it wavs bash
-# wavs-cli deploy-service --component /wavs/components/evm_trigger_echo.wasm
-# wavs-cli add-task --input "echo value" --service-id <SERVICE_ID>
+# warpdrive-cli deploy-service --component /wavs/components/evm_trigger_echo.wasm
+# warpdrive-cli add-task --input "echo value" --service-id <SERVICE_ID>
 #
 services:
   anvil:
@@ -17,11 +17,11 @@ services:
       ANVIL_IP_ADDR: 0.0.0.0
     command: ["anvil", "--no-cors"]
 
-  # The main instance all WAVS interaction will happen from
+  # The main instance all WarpDrive interaction will happen from
   wavs:
     build: .
-    image: "ghcr.io/lay3rlabs/wavs:local"
-    container_name: "wavs"
+    image: "ghcr.io/warp-driver/warpdrive:local"
+    container_name: "warpdrive"
     stop_signal: SIGKILL
     depends_on: ["anvil"]
     network_mode: "host"
@@ -29,23 +29,23 @@ services:
     ports:
       - "8000:8000"
     environment:
-      WAVS_HOME: "/wavs/packages/wavs"
-      WAVS_CLI_HOME: "/wavs/packages/cli"
-    command: ["wavs"]
+      WARPDRIVE_HOME: "/warpdrive/packages/warpdrive"
+      WARPDRIVE_CLI_HOME: "/warpdrive/packages/cli"
+    command: ["warpdrive"]
     volumes:
-      - "./:/wavs"
-      - "./.docker/cli:/root/wavs/cli/"
+      - "./:/warpdrive"
+      - "./.docker/cli:/root/warpdrive/cli/"
 
   deploy-eigenlayer:
-    image: "ghcr.io/lay3rlabs/wavs:local"
+    image: "ghcr.io/warp-driver/warpdrive:local"
     container_name: "wavs-deploy-eigenlayer"
-    depends_on: ["wavs", "anvil"]
+    depends_on: ["warpdrive", "anvil"]
     restart: "no"
     env_file: "./.env"
-    command: ["wavs-cli", "deploy-eigen-core"]
+    command: ["warpdrive-cli", "deploy-eigen-core"]
     volumes:
-      - "./packages/cli:/wavs"
-      - "./.docker/cli:/root/wavs/cli/"
+      - "./packages/cli:/warpdrive"
+      - "./.docker/cli:/root/warpdrive/cli/"
     network_mode: "host"
 
   # Default all-memory Jaeger

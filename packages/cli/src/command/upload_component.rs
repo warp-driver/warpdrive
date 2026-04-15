@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use wavs_types::ComponentDigest;
+use warpdrive_types::ComponentDigest;
 
 use crate::{clients::HttpClient, config::Config, util::read_component};
 
@@ -33,7 +33,7 @@ impl UploadComponent {
             .upload_component(wasm_bytes)
             .await
             .context(format!(
-                "Failed to upload component '{}' to WAVS endpoint '{}'",
+                "Failed to upload component '{}' to WarpDrive endpoint '{}'",
                 component_path, config.wavs_endpoint
             ))?;
 

@@ -3,14 +3,14 @@ use std::collections::BTreeMap;
 use alloy_sol_types::SolValue;
 use serde::{de::DeserializeOwned, Serialize};
 use utils::{storage::db::WavsDb, test_utils::test_contracts::ISimpleSubmit::DataWithId};
-use wasmtime::{component::Component as WasmtimeComponent, Config as WTConfig, Engine as WTEngine};
-use wavs_engine::{
+use warpdrive_engine::{
     backend::wasi_keyvalue::context::KeyValueCtx,
     bindings::operator::world::host::LogLevel,
     utils::error::EngineError,
     worlds::instance::{HostComponentLogger, InstanceData, InstanceDepsBuilder},
 };
-use wavs_types::{ComponentDigest, ServiceId, WasmResponse, WorkflowId};
+use warpdrive_types::{ComponentDigest, ServiceId, WasmResponse, WorkflowId};
+use wasmtime::{component::Component as WasmtimeComponent, Config as WTConfig, Engine as WTEngine};
 
 use crate::helpers::service::{make_service, make_trigger_action};
 
@@ -101,7 +101,7 @@ pub async fn try_execute_component_raw(
     .build()
     .unwrap();
 
-    let responses = wavs_engine::worlds::operator::execute::execute(
+    let responses = warpdrive_engine::worlds::operator::execute::execute(
         &mut instance_deps,
         trigger_action,
         WasmResponse::DEFAULT_MAX_PAYLOAD_SIZE,

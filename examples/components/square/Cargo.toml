@@ -15,4 +15,4 @@ example-types = { workspace = true }
 crate-type = ["rlib", "cdylib"]
 
 [package.metadata.component]
-package = "wavs-tests:square"
+package = "warpdrive-tests:square"

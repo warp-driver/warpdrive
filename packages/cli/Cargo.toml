@@ -1,6 +1,6 @@
 [package]
-name = "wavs-cli"
-description = "WAVS Types"
+name = "warpdrive-cli"
+description = "WarpDrive Types"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
@@ -11,8 +11,8 @@ publish = false
 
 [dependencies]
 wasm-pkg-client = { workspace = true }
-wavs-types = { workspace = true, features = ["full"] }
-wavs-engine = { workspace = true }
+warpdrive-types = { workspace = true, features = ["full"] }
+warpdrive-engine = { workspace = true }
 utils = { workspace = true }
 clap = { workspace = true }
 anyhow = { workspace = true }

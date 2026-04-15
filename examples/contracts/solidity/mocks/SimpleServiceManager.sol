@@ -1,39 +1,39 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import {IWavsServiceManager} from "../interfaces/IWavsServiceManager.sol";
-import {IWavsServiceHandler} from "../interfaces/IWavsServiceHandler.sol";
+import {IWarpDriveServiceManager} from "../interfaces/IWarpDriveServiceManager.sol";
+import {IWarpDriveServiceHandler} from "../interfaces/IWarpDriveServiceHandler.sol";
 
 /**
  * @title SimpleServiceManager
  * @author Lay3r Labs
  * @notice Contract for the simple service manager
- * @dev This contract implements the IWavsServiceManager interface
+ * @dev This contract implements the IWarpDriveServiceManager interface
  */
-contract SimpleServiceManager is IWavsServiceManager {
+contract SimpleServiceManager is IWarpDriveServiceManager {
     string private serviceURI;
 
     mapping(address => uint256) private operatorWeights;
     uint256 private lastCheckpointThresholdWeight;
     uint256 private lastCheckpointTotalWeight;
 
-    /// @inheritdoc IWavsServiceManager
+    /// @inheritdoc IWarpDriveServiceManager
     function validate(
-        IWavsServiceHandler.Envelope calldata, /* envelope */
-        IWavsServiceHandler.SignatureData calldata signatureData
+        IWarpDriveServiceHandler.Envelope calldata, /* envelope */
+        IWarpDriveServiceHandler.SignatureData calldata signatureData
     ) external view override {
         // Input validation
         if (
             signatureData.signers.length == 0
                 || signatureData.signers.length != signatureData.signatures.length
         ) {
-            revert IWavsServiceManager.InvalidSignatureLength();
+            revert IWarpDriveServiceManager.InvalidSignatureLength();
         }
         if (!(signatureData.referenceBlock < block.number)) {
-            revert IWavsServiceManager.InvalidSignatureBlock();
+            revert IWarpDriveServiceManager.InvalidSignatureBlock();
         }
         if (!_validateOperatorSorting(signatureData.signers)) {
-            revert IWavsServiceManager.InvalidSignatureOrder();
+            revert IWarpDriveServiceManager.InvalidSignatureOrder();
         }
 
         // Get the total operator weight of these signatures
@@ -44,12 +44,12 @@ contract SimpleServiceManager is IWavsServiceManager {
 
         // Avoid 0 weight ever passing this check
         if (signedWeight == 0) {
-            revert IWavsServiceManager.InsufficientQuorumZero();
+            revert IWarpDriveServiceManager.InsufficientQuorumZero();
         }
 
         // Check if the total weight meets the last checkpoint threshold
         if (signedWeight < lastCheckpointThresholdWeight) {
-            revert IWavsServiceManager.InsufficientQuorum(
+            revert IWarpDriveServiceManager.InsufficientQuorum(
                 signedWeight, lastCheckpointThresholdWeight, lastCheckpointTotalWeight
             );
         }
@@ -78,12 +78,12 @@ contract SimpleServiceManager is IWavsServiceManager {
         return true;
     }
 
-    /// @inheritdoc IWavsServiceManager
+    /// @inheritdoc IWarpDriveServiceManager
     function getServiceURI() external view returns (string memory) {
         return serviceURI;
     }
 
-    /// @inheritdoc IWavsServiceManager
+    /// @inheritdoc IWarpDriveServiceManager
     function setServiceURI(
         string calldata _serviceURI
     ) external {
@@ -120,7 +120,7 @@ contract SimpleServiceManager is IWavsServiceManager {
         lastCheckpointTotalWeight = weight;
     }
 
-    /// @inheritdoc IWavsServiceManager
+    /// @inheritdoc IWarpDriveServiceManager
     function getOperatorWeight(
         address operator
     ) external view returns (uint256) {
@@ -143,24 +143,24 @@ contract SimpleServiceManager is IWavsServiceManager {
         return lastCheckpointTotalWeight;
     }
 
-    /// @inheritdoc IWavsServiceManager
+    /// @inheritdoc IWarpDriveServiceManager
     function getLatestOperatorForSigningKey(
         address signingKeyAddress
     ) external pure override returns (address) {
         return signingKeyAddress;
     }
 
-    /// @inheritdoc IWavsServiceManager
+    /// @inheritdoc IWarpDriveServiceManager
     function getDelegationManager() external pure returns (address) {
         return address(0);
     }
 
-    /// @inheritdoc IWavsServiceManager
+    /// @inheritdoc IWarpDriveServiceManager
     function getAllocationManager() external pure returns (address) {
         return address(0);
     }
 
-    /// @inheritdoc IWavsServiceManager
+    /// @inheritdoc IWarpDriveServiceManager
     function getStakeRegistry() external pure returns (address) {
         return address(0);
     }

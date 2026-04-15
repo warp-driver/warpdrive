@@ -10,7 +10,7 @@ use utils::service::fetch_bytes;
 use utils::storage::db::WavsDb;
 use utils::storage::CAStorage;
 use utils::wkg::WkgClient;
-use wavs_types::{ChainConfigs, ComponentDigest, ComponentSource};
+use warpdrive_types::{ChainConfigs, ComponentDigest, ComponentSource};
 
 use crate::utils::error::EngineError;
 

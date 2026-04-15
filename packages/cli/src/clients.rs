@@ -3,11 +3,11 @@ use std::time::Duration;
 use alloy_provider::DynProvider;
 use anyhow::{Context, Result};
 use layer_climb::{prelude::CosmosAddr, signing::SigningClient};
-use wavs_types::{
+use warpdrive_types::{
     contracts::cosmwasm::service_manager::ServiceManagerExecuteMessages, AddServiceRequest,
     ChainKey, ComponentDigest, DeleteServicesRequest, DevTriggerStreamsInfo, GetSignerRequest,
-    IWavsServiceManager::IWavsServiceManagerInstance, P2pStatus, SaveServiceResponse, Service,
-    ServiceManager, SignerResponse, UploadComponentResponse,
+    IWarpDriveServiceManager::IWarpDriveServiceManagerInstance, P2pStatus, SaveServiceResponse,
+    Service, ServiceManager, SignerResponse, UploadComponentResponse,
 };
 
 use crate::command::deploy_service::SetServiceUriArgs;
@@ -49,7 +49,10 @@ impl HttpClient {
         Ok(response.digest)
     }
 
-    pub async fn simulate_trigger(&self, req: wavs_types::SimulatedTriggerRequest) -> Result<()> {
+    pub async fn simulate_trigger(
+        &self,
+        req: warpdrive_types::SimulatedTriggerRequest,
+    ) -> Result<()> {
         let url = format!("{}/dev/triggers", self.endpoint);
 
         let response = self
@@ -137,7 +140,7 @@ impl HttpClient {
         service_manager_address: alloy_primitives::Address,
         service_url: String,
     ) -> Result<()> {
-        let contract = IWavsServiceManagerInstance::new(service_manager_address, provider);
+        let contract = IWarpDriveServiceManagerInstance::new(service_manager_address, provider);
         contract
             .setServiceURI(service_url)
             .send()
@@ -157,7 +160,7 @@ impl HttpClient {
         client
             .contract_execute(
                 &service_manager_address.into(),
-                &ServiceManagerExecuteMessages::WavsSetServiceUri { service_uri },
+                &ServiceManagerExecuteMessages::WarpDriveSetServiceUri { service_uri },
                 vec![],
                 None,
             )
@@ -286,7 +289,7 @@ impl HttpClient {
         service: &Service,
         timeout: Option<Duration>,
     ) -> Result<()> {
-        // wait until WAVS sees the new service
+        // wait until WarpDrive sees the new service
         let service_hash = service.hash()?;
         tokio::time::timeout(timeout.unwrap_or(Duration::from_secs(30)), async {
             loop {

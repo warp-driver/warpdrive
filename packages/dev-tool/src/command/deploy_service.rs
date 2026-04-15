@@ -1,16 +1,16 @@
-use wavs_cli::clients::HttpClient;
-use wavs_types::ComponentDigest;
+use warpdrive_cli::clients::HttpClient;
+use warpdrive_types::ComponentDigest;
 
-use crate::service::{create_service, WAVS_COMPONENT_BYTES};
+use crate::service::{create_service, WARPDRIVE_COMPONENT_BYTES};
 
 pub async fn run(sleep_ms: Option<u64>) {
     let client = HttpClient::new("http://127.0.0.1:8000".to_string());
 
     if client
-        .upload_component(WAVS_COMPONENT_BYTES.clone())
+        .upload_component(WARPDRIVE_COMPONENT_BYTES.clone())
         .await
         .unwrap()
-        != ComponentDigest::hash(&*WAVS_COMPONENT_BYTES)
+        != ComponentDigest::hash(&*WARPDRIVE_COMPONENT_BYTES)
     {
         panic!("wavs component bytes got unexpected hash!");
     }

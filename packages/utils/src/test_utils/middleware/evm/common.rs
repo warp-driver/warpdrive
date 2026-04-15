@@ -4,7 +4,7 @@ use anyhow::{bail, ensure, Result};
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 
-use crate::test_utils::middleware::operator::AvsOperator;
+use crate::test_utils::middleware::vector::AvsOperator;
 
 pub use super::middleware_eigen::EigenlayerMiddleware;
 pub use super::middleware_poa::PoaMiddleware;
@@ -157,7 +157,7 @@ impl MiddlewareServiceManagerConfig {
         Self {
             avs_operators: operators.to_vec(),
             signing_key_addresses: operators.iter().map(|op| op.signer).collect(),
-            operators: operators.iter().map(|op| op.operator).collect(),
+            operators: operators.iter().map(|op| op.vector).collect(),
             quorum_denominator: (operators.len() as u64).max(1), // gotta have at least one operator
             quorum_numerator: required_to_pass,
             threshold: 1,

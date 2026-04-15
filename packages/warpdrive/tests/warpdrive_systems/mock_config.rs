@@ -1,0 +1,11 @@
+use warpdrive::config::Config;
+use warpdrive_types::Credential;
+
+pub fn mock_config() -> Config {
+    Config {
+        signing_mnemonic: Some(Credential::new(
+            "test test test test test test test test test test test junk".to_string(),
+        )),
+        ..warpdrive::config::Config::default()
+    }
+}

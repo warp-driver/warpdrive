@@ -1,6 +1,6 @@
-# wavs-go
+# warpdrive-go
 
-[WAVS](https://wavs.xyz) go-lang bindings for [components](https://github.com/Lay3rLabs/wavs-foundry-template).
+[WarpDrive](https://wavs.xyz) Go bindings for WASI [components](https://github.com/Lay3rLabs/wavs-foundry-template) — lets you write Vectr circuits in Go instead of Rust.
 
 ## Install Wit Bindgen for Go
 
@@ -35,14 +35,14 @@ sudo pacman -Sy tinygo
 tinygo version
 wkg --version
 
-# build the wavs package if you have not already
+# build the warpdrive package if you have not already
 wkg wit build
 
 # move into the golang directory
 cd go/
 
 # generate the Go/ bindings
-# if `error: error executing wasm-tools: module closed with exit_code(1)`, set WAVS_PACKAGE
+# if `error: error executing wasm-tools: module closed with exit_code(1)`, set WARPDRIVE_PACKAGE
 wit-bindgen-go generate -o . ../wit-definitions/operator/wavs:operator@0.6.0-alpha.6.wasm
 
 go mod tidy

@@ -1,0 +1,37 @@
+use axum::{extract::State, response::IntoResponse, Json};
+use warpdrive_types::SaveServiceResponse;
+
+use crate::http::{error::HttpResult, state::HttpState};
+
+#[utoipa::path(
+    post,
+    path = "/dev/services",
+    request_body = warpdrive_types::Service,
+    responses(
+        (status = 200, description = "Service saved successfully", body = warpdrive_types::SaveServiceResponse),
+        (status = 400, description = "Invalid service data"),
+        (status = 404, description = "Service not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    description = "Saves a service and returns its hash (for testing purposes only)"
+)]
+#[axum::debug_handler]
+pub async fn handle_save_service(
+    State(state): State<HttpState>,
+    Json(req): Json<warpdrive_types::Service>,
+) -> impl IntoResponse {
+    match save_service_inner(state, req).await {
+        Ok(resp) => Json(resp).into_response(),
+        Err(e) => e.into_response(),
+    }
+}
+
+async fn save_service_inner(
+    state: HttpState,
+    service: warpdrive_types::Service,
+) -> HttpResult<SaveServiceResponse> {
+    // this does NOT save to the dispatcher, it's just for testing purposes, basically simulating IPFS
+    // the url derived from here is typically used to create a ServiceManager instance, e.g. via SetServiceURI
+    let service_hash = state.save_service_by_hash(&service).await?;
+    Ok(SaveServiceResponse { hash: service_hash })
+}

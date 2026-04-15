@@ -1,4 +1,4 @@
-use wavs_types::ChainKey;
+use warpdrive_types::ChainKey;
 
 use crate::worlds::aggregator::component::AggregatorHostComponent;
 
@@ -38,7 +38,7 @@ impl Host for AggregatorHostComponent {
             .workflows
             .get(&self.workflow_id)
             .and_then(|workflow| match &workflow.submit {
-                wavs_types::Submit::Aggregator { component, .. } => component.config.get(&key),
+                warpdrive_types::Submit::Aggregator { component, .. } => component.config.get(&key),
                 _ => unreachable!(),
             })
             .cloned()
@@ -80,7 +80,9 @@ impl Host for AggregatorHostComponent {
             .workflows
             .get(&self.workflow_id)
             .and_then(|workflow| match &workflow.submit {
-                wavs_types::Submit::Aggregator { component, .. } => Some(component.source.digest()),
+                warpdrive_types::Submit::Aggregator { component, .. } => {
+                    Some(component.source.digest())
+                }
                 _ => unreachable!(),
             })
             .unwrap_or_else(|| {

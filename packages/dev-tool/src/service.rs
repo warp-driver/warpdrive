@@ -1,13 +1,13 @@
 use std::{collections::BTreeMap, sync::LazyLock};
 
 use utils::filesystem::workspace_path;
-use wavs_types::{
+use warpdrive_types::{
     AllowedHostPermission, Component, ComponentDigest, ComponentSource, Service, SignatureKind,
     Submit, WorkflowId,
 };
 
-pub static SERVICE_MANAGER: LazyLock<wavs_types::ServiceManager> =
-    LazyLock::new(|| wavs_types::ServiceManager::Evm {
+pub static SERVICE_MANAGER: LazyLock<warpdrive_types::ServiceManager> =
+    LazyLock::new(|| warpdrive_types::ServiceManager::Evm {
         chain: "evm:31337".parse().unwrap(),
         address: Default::default(),
     });
@@ -15,7 +15,7 @@ pub static SERVICE_MANAGER: LazyLock<wavs_types::ServiceManager> =
 pub static WORKFLOW_ID: LazyLock<WorkflowId> =
     LazyLock::new(|| WorkflowId::new("workflow").unwrap());
 
-pub static WAVS_COMPONENT_BYTES: LazyLock<Vec<u8>> = LazyLock::new(|| {
+pub static WARPDRIVE_COMPONENT_BYTES: LazyLock<Vec<u8>> = LazyLock::new(|| {
     let wavs_component_path = workspace_path()
         .join("examples")
         .join("build")
@@ -34,7 +34,7 @@ pub static AGGREGATOR_COMPONENT_BYTES: LazyLock<Vec<u8>> = LazyLock::new(|| {
 });
 
 pub fn create_service(sleep_ms: Option<u64>) -> Service {
-    let wavs_component_digest = ComponentDigest::hash(&*WAVS_COMPONENT_BYTES);
+    let wavs_component_digest = ComponentDigest::hash(&*WARPDRIVE_COMPONENT_BYTES);
 
     let aggregator_component_digest = ComponentDigest::hash(&*AGGREGATOR_COMPONENT_BYTES);
 
@@ -42,11 +42,11 @@ pub fn create_service(sleep_ms: Option<u64>) -> Service {
         name: "Dev Test Service".to_string(),
         workflows: std::collections::BTreeMap::from([(
             WORKFLOW_ID.clone(),
-            wavs_types::Workflow {
-                trigger: wavs_types::Trigger::Manual,
-                component: wavs_types::Component {
+            warpdrive_types::Workflow {
+                trigger: warpdrive_types::Trigger::Manual,
+                component: warpdrive_types::Component {
                     source: ComponentSource::Digest(wavs_component_digest),
-                    permissions: wavs_types::Permissions {
+                    permissions: warpdrive_types::Permissions {
                         file_system: false,
                         allowed_http_hosts: AllowedHostPermission::None,
                         raw_sockets: false,
@@ -67,7 +67,7 @@ pub fn create_service(sleep_ms: Option<u64>) -> Service {
                 submit: Submit::Aggregator {
                     component: Box::new(Component {
                         source: ComponentSource::Digest(aggregator_component_digest),
-                        permissions: wavs_types::Permissions {
+                        permissions: warpdrive_types::Permissions {
                             file_system: false,
                             allowed_http_hosts: AllowedHostPermission::None,
                             raw_sockets: false,
@@ -82,7 +82,7 @@ pub fn create_service(sleep_ms: Option<u64>) -> Service {
                 },
             },
         )]),
-        status: wavs_types::ServiceStatus::Active,
+        status: warpdrive_types::ServiceStatus::Active,
         manager: SERVICE_MANAGER.clone(),
     }
 }

@@ -6,7 +6,7 @@ use cosmwasm_std::{StdResult, Uint256};
 use layer_climb_address::EvmAddr;
 
 use crate::contracts::cosmwasm::{
-    service_handler::{WavsEnvelope, WavsSignatureData},
+    service_handler::{WarpDriveEnvelope, WarpDriveSignatureData},
     service_manager::error::WavsValidateError,
 };
 
@@ -18,8 +18,8 @@ use crate::contracts::cosmwasm::{
 ///
 /// ```rust
 /// use cosmwasm_schema::cw_serde;
-/// use wavs_types::contracts::cosmwasm::service_manager::ServiceManagerQueryMessages;
-/// use wavs_types::contracts::cosmwasm::service_manager::ServiceManagerExecuteMessages;
+/// use warpdrive_types::contracts::cosmwasm::service_manager::ServiceManagerQueryMessages;
+/// use warpdrive_types::contracts::cosmwasm::service_manager::ServiceManagerExecuteMessages;
 ///
 /// #[cw_serde]
 /// #[schemaifier(mute_warnings)]
@@ -44,14 +44,14 @@ use crate::contracts::cosmwasm::{
 /// }
 /// ```
 ///
-/// This allows WAVS to call your contract with the `ServiceManager` messages,
+/// This allows WarpDrive to call your contract with the `ServiceManager` messages,
 /// without needing to know your full `QueryMsg` or `ExecuteMsg` types
 #[cw_serde]
 pub enum ServiceManagerExecuteMessages {
-    /// Set the service URI for the WAVS service manager
-    WavsSetServiceUri { service_uri: String },
+    /// Set the service URI for the WarpDrive service manager
+    WarpDriveSetServiceUri { service_uri: String },
     /// Update quorum threshold
-    WavsSetQuorumThreshold {
+    WarpDriveSetQuorumThreshold {
         numerator: Uint256,
         denominator: Uint256,
     },
@@ -60,28 +60,28 @@ pub enum ServiceManagerExecuteMessages {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum ServiceManagerQueryMessages {
-    /// Get the given operator's current weight
+    /// Get the given vector's current weight
     #[returns(cosmwasm_std::Uint256)]
-    WavsOperatorWeight { operator_address: EvmAddr },
+    WarpDriveOperatorWeight { vector_address: EvmAddr },
 
     /// Validate a signed envelope
-    #[returns(WavsValidateResult)]
-    WavsValidate {
-        envelope: WavsEnvelope,
-        signature_data: WavsSignatureData,
+    #[returns(WarpDriveValidateResult)]
+    WarpDriveValidate {
+        envelope: WarpDriveEnvelope,
+        signature_data: WarpDriveSignatureData,
     },
 
     /// Get the service URI
     #[returns(String)]
-    WavsServiceUri {},
+    WarpDriveServiceUri {},
 
-    /// Get the latest operator address for a given signing key address
+    /// Get the latest vector address for a given signing key address
     #[returns(Option<EvmAddr>)]
-    WavsLatestOperatorForSigningKey { signing_key_addr: EvmAddr },
+    WarpDriveLatestOperatorForSigningKey { signing_key_addr: EvmAddr },
 
     /// Get the current quorum threshold
     #[returns(QuorumThreshold)]
-    WavsQuorumThreshold {},
+    WarpDriveQuorumThreshold {},
 }
 
 /// Quorum threshold configuration
@@ -94,18 +94,18 @@ pub struct QuorumThreshold {
 /// The result of validating a signed envelope
 // TODO: make `Try` once it's stable: https://doc.rust-lang.org/std/ops/trait.Try.html
 #[cw_serde]
-pub enum WavsValidateResult {
+pub enum WarpDriveValidateResult {
     Ok,
     Err(WavsValidateError),
 }
 
-impl WavsValidateResult {
+impl WarpDriveValidateResult {
     pub fn is_ok(&self) -> bool {
-        matches!(self, WavsValidateResult::Ok)
+        matches!(self, WarpDriveValidateResult::Ok)
     }
 
     pub fn is_err(&self) -> bool {
-        matches!(self, WavsValidateResult::Err(_))
+        matches!(self, WarpDriveValidateResult::Err(_))
     }
 
     pub fn into_std(self) -> StdResult<()> {
@@ -113,11 +113,11 @@ impl WavsValidateResult {
     }
 }
 
-impl From<WavsValidateResult> for StdResult<()> {
-    fn from(result: WavsValidateResult) -> Self {
+impl From<WarpDriveValidateResult> for StdResult<()> {
+    fn from(result: WarpDriveValidateResult) -> Self {
         match result {
-            WavsValidateResult::Ok => Ok(()),
-            WavsValidateResult::Err(err) => Err(err.into()),
+            WarpDriveValidateResult::Ok => Ok(()),
+            WarpDriveValidateResult::Err(err) => Err(err.into()),
         }
     }
 }
@@ -152,12 +152,12 @@ mod tests {
 
         // Create the messages for the service handler via .into()
         let msg_1 = ExampleServiceManagerExecuteMsg::ServiceManager(
-            ServiceManagerExecuteMessages::WavsSetServiceUri {
+            ServiceManagerExecuteMessages::WarpDriveSetServiceUri {
                 service_uri: service_uri.to_string(),
             },
         );
         let expected_msg_1 =
-            format!(r#"{{"wavs_set_service_uri":{{"service_uri":"{service_uri}"}}}}"#);
+            format!(r#"{{"warp_drive_set_service_uri":{{"service_uri":"{service_uri}"}}}}"#);
 
         let msg_2 = ExampleServiceManagerExecuteMsg::MyCustomMessage {
             my_field: "Hello".to_string(),
@@ -180,7 +180,7 @@ mod tests {
         assert!(matches!(
             exec_msg,
             ExampleServiceManagerExecuteMsg::ServiceManager(
-                ServiceManagerExecuteMessages::WavsSetServiceUri { .. }
+                ServiceManagerExecuteMessages::WarpDriveSetServiceUri { .. }
             )
         ));
 
@@ -216,12 +216,12 @@ mod tests {
 
         // Create the messages for the service manger via .into()
         let msg_1 = ExampleServiceManagerQueryMsg::ServiceManager(
-            ServiceManagerQueryMessages::WavsValidate {
+            ServiceManagerQueryMessages::WarpDriveValidate {
                 envelope: envelope.into(),
                 signature_data: signature_data.into(),
             },
         );
-        const EXPECTED_MSG_1_STR:&str = "{\"wavs_validate\":{\"envelope\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwECAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"signature_data\":{\"signers\":[\"0x2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a\",\"0x0101010101010101010101010101010101010101\"],\"signatures\":[\"010203\",\"040506\"],\"reference_block\":12345}}}";
+        const EXPECTED_MSG_1_STR:&str = "{\"warp_drive_validate\":{\"envelope\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwECAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"signature_data\":{\"signers\":[\"0x2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a\",\"0x0101010101010101010101010101010101010101\"],\"signatures\":[\"010203\",\"040506\"],\"reference_block\":12345}}}";
 
         let msg_2 = ExampleServiceManagerQueryMsg::MyCustomMessage {
             my_field: "Hello".to_string(),
@@ -244,7 +244,7 @@ mod tests {
         assert!(matches!(
             query_msg,
             ExampleServiceManagerQueryMsg::ServiceManager(
-                ServiceManagerQueryMessages::WavsValidate { .. }
+                ServiceManagerQueryMessages::WarpDriveValidate { .. }
             )
         ));
 

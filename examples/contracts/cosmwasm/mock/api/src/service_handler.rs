@@ -1,6 +1,6 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{HexBinary, Uint64};
-use wavs_types::contracts::cosmwasm::service_handler::{
+use warpdrive_types::contracts::cosmwasm::service_handler::{
     ServiceHandlerExecuteMessages, ServiceHandlerQueryMessages,
 };
 
@@ -31,7 +31,7 @@ pub enum QueryMsg {
     #[returns(TriggerMessageResponse)]
     TriggerMessage { trigger_id: Uint64 },
 
-    #[returns(wavs_types::contracts::cosmwasm::service_handler::WavsSignatureData)]
+    #[returns(warpdrive_types::contracts::cosmwasm::service_handler::WarpDriveSignatureData)]
     SignatureData { trigger_id: Uint64 },
 
     #[serde(untagged)]

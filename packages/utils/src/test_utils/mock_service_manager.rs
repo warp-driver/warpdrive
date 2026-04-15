@@ -5,7 +5,7 @@ use anyhow::Result;
 use std::time::Duration;
 use tokio::time::sleep;
 
-use wavs_types::IWavsServiceManager::IWavsServiceManagerInstance;
+use warpdrive_types::IWarpDriveServiceManager::IWarpDriveServiceManagerInstance;
 
 use crate::{
     evm_client::EvmSigningClient,
@@ -118,7 +118,7 @@ impl MockEvmServiceManager {
             .await
     }
 
-    /// Validate that operators are properly registered in the service manager
+    /// Validate that vectors are properly registered in the service manager
     pub async fn validate_operator_registration(
         &self,
         config: &MiddlewareServiceManagerConfig,
@@ -130,16 +130,16 @@ impl MockEvmServiceManager {
             let mut all_valid = true;
 
             for avs_operator in &config.avs_operators {
-                // Check if the signer-to-operator mapping is correctly registered
+                // Check if the signer-to-vector mapping is correctly registered
                 let registered_operator = self
                     .get_latest_operator_for_signing_key(avs_operator.signer)
                     .await?;
-                if registered_operator != avs_operator.operator {
+                if registered_operator != avs_operator.vector {
                     if attempt < MAX_RETRIES - 1 {
                         tracing::debug!(
-                            "Attempt {}: Expected operator {} for signer {}, got {}. Retrying...",
+                            "Attempt {}: Expected vector {} for signer {}, got {}. Retrying...",
                             attempt + 1,
-                            avs_operator.operator,
+                            avs_operator.vector,
                             avs_operator.signer,
                             registered_operator
                         );
@@ -147,27 +147,29 @@ impl MockEvmServiceManager {
                         break;
                     } else {
                         return Err(anyhow::anyhow!(
-                            "Operator registration failed: Expected operator {} for signer {}, got {}",
-                            avs_operator.operator, avs_operator.signer, registered_operator
+                            "Vector registration failed: Expected vector {} for signer {}, got {}",
+                            avs_operator.vector,
+                            avs_operator.signer,
+                            registered_operator
                         ));
                     }
                 }
 
-                // Check if the operator has weight
-                let weight = self.get_operator_weight(avs_operator.operator).await?;
+                // Check if the vector has weight
+                let weight = self.get_operator_weight(avs_operator.vector).await?;
                 if weight == 0 {
                     if attempt < MAX_RETRIES - 1 {
                         tracing::debug!(
-                            "Attempt {}: Operator {} has 0 weight. Retrying...",
+                            "Attempt {}: Vector {} has 0 weight. Retrying...",
                             attempt + 1,
-                            avs_operator.operator
+                            avs_operator.vector
                         );
                         all_valid = false;
                         break;
                     } else {
                         return Err(anyhow::anyhow!(
-                            "Operator {} has 0 weight after configuration",
-                            avs_operator.operator
+                            "Vector {} has 0 weight after configuration",
+                            avs_operator.vector
                         ));
                     }
                 }
@@ -175,7 +177,7 @@ impl MockEvmServiceManager {
 
             if all_valid {
                 tracing::debug!(
-                    "Operator registration validated successfully on attempt {}",
+                    "Vector registration validated successfully on attempt {}",
                     attempt + 1
                 );
                 return Ok(());
@@ -185,12 +187,12 @@ impl MockEvmServiceManager {
         }
 
         Err(anyhow::anyhow!(
-            "Operator registration validation failed after {} attempts",
+            "Vector registration validation failed after {} attempts",
             MAX_RETRIES
         ))
     }
 
-    /// Get the latest operator for a given signing key with retry logic
+    /// Get the latest vector for a given signing key with retry logic
     async fn get_latest_operator_for_signing_key(
         &self,
         signing_key: Address,
@@ -199,7 +201,7 @@ impl MockEvmServiceManager {
         const VALIDATION_RETRY_DELAY: Duration = Duration::from_millis(200);
 
         for attempt in 0..VALIDATION_RETRIES {
-            let service_manager = IWavsServiceManagerInstance::new(
+            let service_manager = IWarpDriveServiceManagerInstance::new(
                 self.service_manager.address,
                 &self.client.provider,
             );
@@ -233,23 +235,23 @@ impl MockEvmServiceManager {
         unreachable!()
     }
 
-    /// Get the operator weight with retry logic
-    async fn get_operator_weight(&self, operator: Address) -> anyhow::Result<u64> {
+    /// Get the vector weight with retry logic
+    async fn get_operator_weight(&self, vector: Address) -> anyhow::Result<u64> {
         const VALIDATION_RETRIES: usize = 10;
         const VALIDATION_RETRY_DELAY: Duration = Duration::from_millis(200);
 
         for attempt in 0..VALIDATION_RETRIES {
-            let service_manager = IWavsServiceManagerInstance::new(
+            let service_manager = IWarpDriveServiceManagerInstance::new(
                 self.service_manager.address,
                 &self.client.provider,
             );
 
-            match service_manager.getOperatorWeight(operator).call().await {
+            match service_manager.getOperatorWeight(vector).call().await {
                 Ok(result) => {
                     // Convert U256 to u64 safely
                     let weight = result
                         .try_into()
-                        .map_err(|_| anyhow::anyhow!("Operator weight too large for u64"))?;
+                        .map_err(|_| anyhow::anyhow!("Vector weight too large for u64"))?;
                     return Ok(weight);
                 }
                 Err(e) => {

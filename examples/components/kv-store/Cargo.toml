@@ -15,4 +15,4 @@ serde_json = { workspace = true }
 crate-type = ["rlib", "cdylib"]
 
 [package.metadata.component]
-package = "wavs-tests:kv-store"
+package = "warpdrive-tests:kv-store"
