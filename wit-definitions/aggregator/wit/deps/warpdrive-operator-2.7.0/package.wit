@@ -1,8 +1,8 @@
-package wavs:operator@2.7.0;
+package warpdrive:operator@2.7.0;
 
 interface input {
-  use wavs:types/service@2.7.0.{service-id, workflow-id, trigger};
-  use wavs:types/events@2.7.0.{trigger-data};
+  use warpdrive:types/service@2.7.0.{service-id, workflow-id, trigger};
+  use warpdrive:types/events@2.7.0.{trigger-data};
 
   record trigger-config {
     service-id: service-id,
@@ -17,7 +17,7 @@ interface input {
 }
 
 interface output {
-  use wavs:types/events@2.7.0.{event-id};
+  use warpdrive:types/events@2.7.0.{event-id};
 
   record wasm-response {
     /// arbitrary payload returned from the component
@@ -33,11 +33,11 @@ interface output {
   }
 }
 
-world wavs-world {
-  import wavs:types/core@2.7.0;
-  import wavs:types/chain@2.7.0;
-  import wavs:types/service@2.7.0;
-  import wavs:types/events@2.7.0;
+world warpdrive-world {
+  import warpdrive:types/core@2.7.0;
+  import warpdrive:types/chain@2.7.0;
+  import warpdrive:types/service@2.7.0;
+  import warpdrive:types/events@2.7.0;
   import input;
   import output;
   import wasi:io/poll@0.2.0;
@@ -47,10 +47,10 @@ world wavs-world {
   import wasi:http/types@0.2.0;
   import wasi:http/outgoing-handler@0.2.0;
   import host: interface {
-    use wavs:types/chain@2.7.0.{evm-chain-config, cosmos-chain-config};
-    use wavs:types/service@2.7.0.{service-and-workflow-id, workflow-and-workflow-id};
-    use wavs:types/core@2.7.0.{log-level};
-    use wavs:types/events@2.7.0.{event-id};
+    use warpdrive:types/chain@2.7.0.{evm-chain-config, cosmos-chain-config};
+    use warpdrive:types/service@2.7.0.{service-and-workflow-id, workflow-and-workflow-id};
+    use warpdrive:types/core@2.7.0.{log-level};
+    use warpdrive:types/events@2.7.0.{event-id};
 
     get-evm-chain-config: func(chain-key: string) -> option<evm-chain-config>;
 

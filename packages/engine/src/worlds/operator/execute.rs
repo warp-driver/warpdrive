@@ -13,7 +13,7 @@ pub async fn execute(
 ) -> Result<Vec<WasmResponse>, EngineError> {
     let service_id = trigger.config.service_id.clone();
     let workflow_id = trigger.config.workflow_id.clone();
-    let input: crate::bindings::operator::world::wavs::operator::input::TriggerAction =
+    let input: crate::bindings::operator::world::warpdrive::operator::input::TriggerAction =
         trigger.try_into().map_err(EngineError::Input)?;
 
     // Even though we have epochs forcing timeouts within WASI
@@ -24,7 +24,7 @@ pub async fn execute(
             let service_id = service_id.clone();
             let workflow_id = workflow_id.clone();
             async move {
-                crate::bindings::operator::world::WavsWorld::instantiate_async(
+                crate::bindings::operator::world::WarpdriveWorld::instantiate_async(
                     deps.store.as_operator_mut(),
                     &deps.component,
                     deps.linker.as_operator_ref(),

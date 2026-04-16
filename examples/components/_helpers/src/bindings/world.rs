@@ -3,7 +3,7 @@
 #![allow(clippy::too_many_arguments)]
 
 wit_bindgen::generate!({
-    world: "wavs-world",
+    world: "warpdrive-world",
     path: "../../../wit-definitions/operator/wit",
     pub_export_macro: true,
     generate_all,

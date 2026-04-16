@@ -7,10 +7,10 @@ use wasmtime::Trap;
 use crate::utils::error::EngineError;
 use crate::{bindings::aggregator::world::AggregatorWorld, worlds::instance::InstanceDeps};
 
-pub use crate::bindings::aggregator::world::wavs::aggregator::output::{
+pub use crate::bindings::aggregator::world::warpdrive::aggregator::output::{
     AggregatorAction, SubmitAction,
 };
-use crate::bindings::aggregator::world::wavs::types::chain::AnyTxHash;
+use crate::bindings::aggregator::world::warpdrive::types::chain::AnyTxHash;
 
 pub async fn execute_input(
     deps: &mut InstanceDeps,

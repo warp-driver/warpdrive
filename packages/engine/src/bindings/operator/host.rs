@@ -8,7 +8,7 @@ impl super::world::host::Host for OperatorHostComponent {
     fn get_cosmos_chain_config(
         &mut self,
         chain: String,
-    ) -> Option<super::world::wavs::types::chain::CosmosChainConfig> {
+    ) -> Option<super::world::warpdrive::types::chain::CosmosChainConfig> {
         let chain = ChainKey::new(chain).ok()?;
 
         self.chain_configs
@@ -21,7 +21,7 @@ impl super::world::host::Host for OperatorHostComponent {
     fn get_evm_chain_config(
         &mut self,
         chain: String,
-    ) -> Option<super::world::wavs::types::chain::EvmChainConfig> {
+    ) -> Option<super::world::warpdrive::types::chain::EvmChainConfig> {
         let chain = ChainKey::new(chain).ok()?;
 
         self.chain_configs

@@ -1,6 +1,6 @@
 use example_helpers::bindings::world::{
     host,
-    wavs::{
+    warpdrive::{
         operator::{input::TriggerAction, output::WasmResponse},
         types::{
             core::LogLevel,

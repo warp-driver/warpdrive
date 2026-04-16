@@ -5,7 +5,7 @@ use alloy_provider::Provider;
 use anyhow::Context;
 use example_helpers::bindings::world::{
     host::{self, LogLevel},
-    wavs::{
+    warpdrive::{
         operator::{
             input::{TriggerAction, TriggerData},
             output::WasmResponse,

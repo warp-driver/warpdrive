@@ -5,7 +5,7 @@ use wstd::runtime::block_on;
 
 use crate::world::{
     host,
-    wavs::types::events::{TriggerData, TriggerDataEvmContractEvent},
+    warpdrive::types::events::{TriggerData, TriggerDataEvmContractEvent},
 };
 
 pub fn is_valid_tx(trigger_data: TriggerData) -> Result<bool, String> {

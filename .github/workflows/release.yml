@@ -46,7 +46,7 @@ jobs:
       - name: Fetch WIT dependencies
         run: |
           cd wit-definitions/types && wkg wit fetch
-          cd ../../wit-definitions/vector && wkg wit fetch
+          cd ../../wit-definitions/operator && wkg wit fetch
           cd ../../wit-definitions/aggregator && wkg wit fetch
 
       - name: Set IMAGE_TAG
@@ -108,7 +108,7 @@ jobs:
       - name: Fetch WIT dependencies
         run: |
           cd wit-definitions/types && wkg wit fetch
-          cd ../../wit-definitions/vector && wkg wit fetch
+          cd ../../wit-definitions/operator && wkg wit fetch
           cd ../../wit-definitions/aggregator && wkg wit fetch
 
       - name: Set IMAGE_TAG

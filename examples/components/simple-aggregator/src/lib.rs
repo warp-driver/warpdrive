@@ -6,11 +6,11 @@ use warpdrive_types::ChainKey;
 use warpdrive_wasi_utils::impl_u128_conversions;
 use world::{
     host,
-    wavs::aggregator::input::AggregatorInput,
-    wavs::aggregator::output::{
+    warpdrive::aggregator::input::AggregatorInput,
+    warpdrive::aggregator::output::{
         AggregatorAction, CosmosAddress, CosmosSubmitAction, EvmSubmitAction, SubmitAction, U128,
     },
-    wavs::types::chain::{AnyTxHash, EvmAddress},
+    warpdrive::types::chain::{AnyTxHash, EvmAddress},
     Guest,
 };
 

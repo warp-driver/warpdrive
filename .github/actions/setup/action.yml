@@ -22,8 +22,10 @@ runs:
         components: rustfmt, clippy
         targets: wasm32-unknown-unknown
 
-    - name: Install Just
-      uses: extractions/setup-just@v2
+    - name: Install Task
+      uses: arduino/setup-task@v2
+      with:
+        version: 3.x
 
     - name: Install Foundry
       uses: foundry-rs/foundry-toolchain@v1

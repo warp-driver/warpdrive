@@ -4,10 +4,10 @@ mod world;
 use example_types::{KvStoreError, KvStoreResult};
 use world::{
     host,
-    wavs::aggregator::input::AggregatorInput,
-    wavs::aggregator::output::{AggregatorAction, EvmSubmitAction, SubmitAction, TimerAction},
-    wavs::types::chain::{AnyTxHash, EvmAddress},
-    wavs::types::core::Duration,
+    warpdrive::aggregator::input::AggregatorInput,
+    warpdrive::aggregator::output::{AggregatorAction, EvmSubmitAction, SubmitAction, TimerAction},
+    warpdrive::types::chain::{AnyTxHash, EvmAddress},
+    warpdrive::types::core::Duration,
     Guest,
 };
 

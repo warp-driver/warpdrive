@@ -1,0 +1,473 @@
+version: "3"
+
+vars:
+  SUDO:
+    sh: 'if groups 2>/dev/null | grep -q docker; then echo ""; else echo "sudo"; fi'
+  WASI_OUT_DIR: ./examples/build/components
+  COMPONENTS_DIR: ./examples/components
+  COSMWASM_OUT_DIR: ./examples/build/contracts
+  REPO_ROOT:
+    sh: git rev-parse --show-toplevel
+  ARCH:
+    sh: uname -m
+  COSMWASM_OPTIMIZER_VERSION: '{{.COSMWASM_OPTIMIZER_VERSION | default "0.17.0"}}'
+
+tasks:
+  app-dev:
+    desc: Start Tauri desktop app with hot reload
+    dir: app
+    cmd: pnpm tauri dev
+
+  app-dev-frontend:
+    desc: Start Vite frontend dev server only
+    dir: app
+    cmd: pnpm dev
+
+  app-build-release:
+    desc: Build Tauri desktop app (release)
+    dir: app
+    cmd: pnpm tauri build
+
+  app-build-debug:
+    desc: Build Tauri desktop app (debug)
+    dir: app
+    cmd: pnpm tauri build --debug
+
+  app-build-frontend:
+    desc: Build Vite frontend only
+    dir: app
+    cmd: pnpm build
+
+  docker-build:
+    desc: Build warpdrive Docker image
+    vars:
+      TAG: '{{.TAG | default "local"}}'
+    cmd: '{{.SUDO}} docker build . -t ghcr.io/warp-driver/warpdrive:{{.TAG}}'
+
+  docker-run:
+    desc: Run warpdrive:latest Docker container
+    cmd: '{{.SUDO}} docker run --rm ghcr.io/warp-driver/warpdrive:latest'
+
+  docker-stop:
+    desc: Stop running warpdrive Docker container
+    cmd: |
+      ID=$(docker ps | grep warpdrive | awk '{print $1}')
+      if [ "$ID" != "" ]; then
+        {{.SUDO}} docker kill "$ID"
+        echo "Stopped container $ID"
+      else
+        echo "No container running"
+      fi
+
+  install-native:
+    desc: Install warpdrive and CLI binaries via cargo
+    vars:
+      HOME: '{{.HOME}}'
+      DATA: '{{.DATA | default .HOME}}'
+    cmds:
+      - task: _install-native
+        vars:
+          HOME: '{{.HOME}}'
+          DATA: '{{.DATA}}'
+
+  _install-native:
+    internal: true
+    vars:
+      HOME: '{{.HOME}}'
+      DATA: '{{.DATA}}'
+    cmds:
+      - rm -rf "{{.HOME}}"
+      - rm -rf "{{.DATA}}"
+      - mkdir -p "{{.HOME}}"
+      - mkdir -p "{{.DATA}}"
+      - cp "./warpdrive.toml" "{{.HOME}}"
+      - cp "./.env.example" "{{.HOME}}/.env"
+      - cargo install --path ./packages/warpdrive
+      - cargo install --path ./packages/cli
+      - |
+        echo "Add these variables to your system environment:"
+        echo ""
+        echo "export WARPDRIVE_HOME=\"{{.HOME}}\""
+        echo "export WARPDRIVE_DATA=\"{{.DATA}}/warpdrive\""
+        echo "export WARPDRIVE_CLI_HOME=\"{{.HOME}}\""
+        echo "export WARPDRIVE_CLI_DATA=\"{{.DATA}}/warpdrive-cli\""
+        echo "export WARPDRIVE_DOTENV=\"{{.HOME}}/.env\""
+
+  wasi-build:
+    desc: Build WASI components in Docker
+    vars:
+      COMPONENT: '{{.COMPONENT | default "*"}}'
+      TAG: '{{.TAG | default "latest"}}'
+    cmds:
+      - cmd: |
+          set -euo pipefail
+
+          IMAGE_NAME="ghcr.io/lay3rlabs/wasi-builder:{{.TAG}}"
+
+          if [ "{{.TAG}}" != "local" ]; then
+            docker pull $IMAGE_NAME
+          fi
+
+          if [ "{{.COMPONENT}}" = "*" ]; then
+            docker run --rm \
+              -v "$(pwd):/docker" \
+              -v "$(pwd)/{{.WASI_OUT_DIR}}:/docker/output" \
+              -e HOST_UID=$(id -u) -e HOST_GID=$(id -g) \
+              -e COMPONENTS_DIR="{{.COMPONENTS_DIR}}" \
+              -e EXCLUDE_FOLDERS="_helpers,_types" \
+              "$IMAGE_NAME"
+          else
+            docker run --rm \
+              -v "$(pwd):/docker" \
+              -v "$(pwd)/{{.WASI_OUT_DIR}}:/docker/output" \
+              -e HOST_UID=$(id -u) -e HOST_GID=$(id -g) \
+              -e COMPONENTS_DIR="{{.COMPONENTS_DIR}}" \
+              "$IMAGE_NAME" "{{.COMPONENT}}"
+          fi
+      - task: generate-checksums
+
+  generate-checksums:
+    desc: Generate SHA256 checksums for built WASM files
+    cmd: |
+      set -euo pipefail
+      CHECKSUM_FILE="checksums.txt"
+
+      if [ ! -d "{{.WASI_OUT_DIR}}" ]; then
+        echo "Error: Output directory {{.WASI_OUT_DIR}} not found"
+        exit 1
+      fi
+
+      if ! ls "{{.WASI_OUT_DIR}}"/*.wasm >/dev/null 2>&1; then
+        echo "No WASM files found in {{.WASI_OUT_DIR}}"
+        exit 1
+      fi
+
+      echo "Generating checksums for WASM files in {{.WASI_OUT_DIR}}..."
+      sha256sum "{{.WASI_OUT_DIR}}"/*.wasm > "$CHECKSUM_FILE"
+      echo "Checksums written to $CHECKSUM_FILE"
+      cat "$CHECKSUM_FILE"
+
+  wasi-publish:
+    desc: Publish WASM components to wa.dev registry
+    vars:
+      VERSION: '{{.VERSION}}'
+      COMPONENT: '{{.COMPONENT | default "*"}}'
+      FLAGS: '{{.FLAGS | default ""}}'
+    cmd: |
+      if [ "{{.COMPONENT}}" = "*" ]; then
+        awk '{print $2}' checksums.txt | while read path; do
+          id=$(basename "$path")
+          id="${id%.wasm}"
+          id=$(echo "$id" | sed 's/_/-/g')
+          echo "Publishing $path at warpdrive-tests:$id@{{.VERSION}}"
+          wkg publish "$path" --package="warpdrive-tests:$id@{{.VERSION}}" {{.FLAGS}}
+        done
+      else
+        awk '{print $2}' checksums.txt | while read path; do
+          id=$(basename "$path")
+          id="${id%.wasm}"
+          id=$(echo "$id" | sed 's/_/-/g')
+          if [ "$id" = "{{.COMPONENT}}" ]; then
+            echo "Publishing $path at warpdrive-tests:$id@{{.VERSION}}"
+            wkg publish "$path" --package="warpdrive-tests:$id@{{.VERSION}}" {{.FLAGS}}
+          fi
+        done
+      fi
+
+  solidity-build:
+    desc: Compile Solidity contracts and copy ABIs
+    vars:
+      CLEAN: '{{.CLEAN | default ""}}'
+    cmd: |
+      set -euo pipefail
+
+      if [ "{{.CLEAN}}" = "clean" ]; then
+        rm -rf {{.REPO_ROOT}}/out
+        rm -rf {{.REPO_ROOT}}/packages/types/src/contracts/solidity/abi
+        rm -rf {{.REPO_ROOT}}/examples/contracts/solidity/abi
+        rm -rf {{.REPO_ROOT}}/packages/warpdrive/tests/contracts/solidity/abi
+      fi
+
+      mkdir -p {{.REPO_ROOT}}/out
+      mkdir -p {{.REPO_ROOT}}/packages/types/src/contracts/solidity/abi
+      mkdir -p {{.REPO_ROOT}}/examples/contracts/solidity/abi
+
+      forge build --root {{.REPO_ROOT}} --out {{.REPO_ROOT}}/out --contracts {{.REPO_ROOT}}/contracts/solidity
+      forge build --root {{.REPO_ROOT}} --out {{.REPO_ROOT}}/out --contracts {{.REPO_ROOT}}/examples/contracts/solidity
+      forge build --root {{.REPO_ROOT}} --out {{.REPO_ROOT}}/out --contracts {{.REPO_ROOT}}/packages/warpdrive/tests/contracts/solidity
+
+      cp -r {{.REPO_ROOT}}/out/SimpleTrigger.sol {{.REPO_ROOT}}/examples/contracts/solidity/abi/
+      cp -r {{.REPO_ROOT}}/out/ISimpleTrigger.sol {{.REPO_ROOT}}/examples/contracts/solidity/abi/
+      cp -r {{.REPO_ROOT}}/out/SimpleSubmit.sol {{.REPO_ROOT}}/examples/contracts/solidity/abi/
+      cp -r {{.REPO_ROOT}}/out/ISimpleSubmit.sol {{.REPO_ROOT}}/examples/contracts/solidity/abi/
+      cp -r {{.REPO_ROOT}}/out/IWarpDriveServiceHandler.sol {{.REPO_ROOT}}/packages/types/src/contracts/solidity/abi/
+      cp -r {{.REPO_ROOT}}/out/IWarpDriveServiceManager.sol {{.REPO_ROOT}}/packages/types/src/contracts/solidity/abi/
+      cp -r {{.REPO_ROOT}}/out/SimpleServiceManager.sol {{.REPO_ROOT}}/packages/types/src/contracts/solidity/abi/
+      cp -r {{.REPO_ROOT}}/out/LogSpam.sol {{.REPO_ROOT}}/examples/contracts/solidity/abi/
+      cp -r {{.REPO_ROOT}}/out/TestServiceContracts.sol {{.REPO_ROOT}}/examples/contracts/solidity/abi/
+      mkdir -p {{.REPO_ROOT}}/packages/warpdrive/tests/contracts/solidity/abi/EventEmitter.sol
+      cp -r {{.REPO_ROOT}}/out/EventEmitter.sol {{.REPO_ROOT}}/packages/warpdrive/tests/contracts/solidity/abi/
+
+  cosmwasm-build:
+    desc: Compile CosmWasm example contracts
+    cmds:
+      - rm -rf ./artifacts/*.wasm
+      - rm -rf {{.COSMWASM_OUT_DIR}}
+      - mkdir -p {{.COSMWASM_OUT_DIR}}
+      - task: _cosmwasm-build-inner
+        vars:
+          CONTRACT_PATH: examples/contracts/cosmwasm/trigger/simple
+      - task: _cosmwasm-build-inner
+        vars:
+          CONTRACT_PATH: examples/contracts/cosmwasm/mock/service-handler
+      - cp ./artifacts/*.wasm {{.COSMWASM_OUT_DIR}}
+
+  _cosmwasm-build-inner:
+    internal: true
+    vars:
+      CONTRACT_PATH: '{{.CONTRACT_PATH}}'
+    cmd: |
+      if [ "{{.ARCH}}" = "arm64" ]; then
+        docker run --rm \
+          -v "{{.REPO_ROOT}}:/code" \
+          --mount type=volume,source="warpdrive_cache",target=/target \
+          --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+          cosmwasm/optimizer-arm64:{{.COSMWASM_OPTIMIZER_VERSION}} "{{.CONTRACT_PATH}}"
+      else
+        docker run --rm \
+          -v "{{.REPO_ROOT}}:/code" \
+          --mount type=volume,source="warpdrive_cache",target=/target \
+          --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+          cosmwasm/optimizer:{{.COSMWASM_OPTIMIZER_VERSION}} "{{.CONTRACT_PATH}}"
+      fi
+
+  wit-deps-clean:
+    desc: Remove fetched WIT dependency directories
+    cmds:
+      - rm -rf wit-definitions/operator/wit/deps
+      - rm -rf wit-definitions/aggregator/wit/deps
+      - rm -rf wit-definitions/types/wit/deps
+
+  wit-deps-fetch:
+    desc: Fetch WIT dependencies for each wit-definitions subdirectory
+    cmds:
+      - cd wit-definitions/types && wkg wit fetch
+      - cd wit-definitions/operator && wkg wit fetch
+      - cd wit-definitions/aggregator && wkg wit fetch
+
+  wit-clean:
+    desc: Remove built WIT .wasm artifacts
+    cmds:
+      - rm -f wit-definitions/wasi-tls/*.wasm
+      - rm -f wit-definitions/types/warpdrive:types@*.wasm
+      - rm -f wit-definitions/operator/warpdrive:operator@*.wasm
+      - rm -f wit-definitions/aggregator/warpdrive:aggregator@*.wasm
+
+  wit-build:
+    desc: Build WIT packages via wkg wit build
+    vars:
+      CONFIG: '{{.CONFIG | default ""}}'
+    cmds:
+      - task: _inner-wit-build
+        vars:
+          CONFIG_ARG: '{{if .CONFIG}} --config ../../{{.CONFIG}}{{end}}'
+
+  wit-publish:
+    desc: Publish WIT packages to registry
+    vars:
+      CONFIG: '{{.CONFIG | default ""}}'
+    cmds:
+      - task: _inner-wit-publish
+        vars:
+          CONFIG_ARG: '{{if .CONFIG}} --config ../../{{.CONFIG}}{{end}}'
+
+  _inner-wit-build:
+    internal: true
+    vars:
+      CONFIG_ARG: '{{.CONFIG_ARG | default ""}}'
+    cmds:
+      - task: wit-clean
+      - cd wit-definitions/wasi-tls && wkg wit build{{.CONFIG_ARG}}
+      - cd wit-definitions/types && wkg wit build{{.CONFIG_ARG}} && wasm-tools strip -d package-docs warpdrive:types@*.wasm -o tmp.wasm && mv tmp.wasm warpdrive:types@*.wasm
+      - cd wit-definitions/operator && wkg wit build{{.CONFIG_ARG}} && wasm-tools strip -d package-docs warpdrive:operator@*.wasm -o tmp.wasm && mv tmp.wasm warpdrive:operator@*.wasm
+      - cd wit-definitions/aggregator && wkg wit build{{.CONFIG_ARG}} && wasm-tools strip -d package-docs warpdrive:aggregator@*.wasm -o tmp.wasm && mv tmp.wasm warpdrive:aggregator@*.wasm
+
+  _inner-wit-publish:
+    internal: true
+    vars:
+      CONFIG_ARG: '{{.CONFIG_ARG | default ""}}'
+    cmds:
+      - cmd: cd wit-definitions/types && wkg publish warpdrive:types@*.wasm{{.CONFIG_ARG}}
+        ignore_error: true
+      - cmd: cd wit-definitions/operator && wkg publish warpdrive:operator@*.wasm{{.CONFIG_ARG}}
+        ignore_error: true
+      - cmd: cd wit-definitions/aggregator && wkg publish warpdrive:aggregator@*.wasm{{.CONFIG_ARG}}
+        ignore_error: true
+
+  start-all:
+    desc: Start anvil and warpdrive in background
+    cmd: |
+      task start-anvil &
+      task start-warpdrive &
+      trap 'kill $(jobs -pr)' EXIT
+      wait
+
+  start-warpdrive:
+    desc: Run warpdrive node
+    dir: packages/warpdrive
+    cmd: cargo run
+
+  start-dev:
+    desc: Start warpdrive with telemetry (Jaeger + Prometheus)
+    cmd: |
+      task start-telemetry &
+      task start-warpdrive-dev &
+      trap 'kill $(jobs -pr)' EXIT
+      wait
+
+  start-warpdrive-dev:
+    desc: Run warpdrive in dev mode with temp data directory
+    cmd: |
+      ROOT_DIR="$(pwd)"
+      TEMP_DIR="$(mktemp -d)"
+      trap 'rm -rf "$TEMP_DIR"' EXIT
+      cd packages/warpdrive && \
+      WARPDRIVE_DOTENV="${ROOT_DIR}/.env" WARPDRIVE_HOME="../.." WARPDRIVE_DATA="$TEMP_DIR" \
+      cargo run --features dev -- \
+        --dev-endpoints-enabled=true \
+        --disable-trigger-networking=true \
+        --disable-submission-networking=true \
+        --prometheus="http://127.0.0.1:9090" \
+        --jaeger="http://127.0.0.1:4317" \
+        --prometheus-push-interval-secs=1
+
+  start-anvil:
+    desc: Start local EVM testnet (anvil) on :8545
+    cmd: anvil
+
+  start-jaeger:
+    desc: Start Jaeger tracing UI on :16686
+    cmd: docker run --rm -p 4317:4317 -p 16686:16686 jaegertracing/jaeger:2.5.0
+
+  start-prometheus:
+    desc: Start Prometheus metrics on :9090
+    cmd: docker run --rm --name prometheus --network host -v ./config/prometheus.yml:/etc/prometheus/prometheus.yml -v ./config/alerts.yml:/etc/prometheus/alerts.yml prom/prometheus --config.file=/etc/prometheus/prometheus.yml --web.enable-otlp-receiver
+
+  start-alertmanager:
+    desc: Start Alertmanager on :9093
+    cmd: docker run --rm --name alertmanager --network host -v ./config/alertmanager.yml:/etc/alertmanager/alertmanager.yml prom/alertmanager:v0.27.0 --config.file=/etc/alertmanager/alertmanager.yml
+
+  start-telemetry:
+    desc: Start all telemetry services (Prometheus, Alertmanager, Jaeger)
+    cmd: |
+      task start-prometheus &
+      task start-alertmanager &
+      task start-jaeger &
+      wait
+
+  test-warpdrive-e2e:
+    desc: Run on-chain integration tests
+    cmd: ulimit -n 65536 && RUST_LOG=info,alloy_rpc=off,alloy_provider=off,wasmtime=off,cranelift=off,hyper_util=off cargo test -p warpdrive-tests
+
+  cli-exec:
+    desc: "Execute a WASI component via CLI (e.g. task cli-exec COMPONENT=./examples/build/components/echo_data.wasm INPUT='hello world')"
+    vars:
+      COMPONENT: '{{.COMPONENT}}'
+      INPUT: '{{.INPUT}}'
+    dir: packages/cli
+    cmd: cargo run exec --component {{.COMPONENT}} --input '{{.INPUT}}'
+
+  dev-tool:
+    desc: Run dev-tool utilities
+    dir: packages/dev-tool
+    cmd: RUST_LOG=info cargo run -- {{.CLI_ARGS}}
+
+  lint:
+    desc: Check formatting and run clippy
+    cmds:
+      - cargo fmt --all -- --check
+      - cargo clippy --all-targets --all-features -- -D warnings
+
+  lint-fix:
+    desc: Auto-fix formatting and clippy issues
+    cmds:
+      - cargo fmt --all
+      - cargo fix --workspace --all-targets --all-features --allow-dirty --allow-staged
+      - cargo clippy --fix --workspace --all-targets --all-features --allow-dirty -- -D warnings
+      - cargo check --workspace --all-targets --all-features
+
+  ts-bindings:
+    desc: Generate TypeScript bindings from Rust types
+    cmds:
+      - rm -rf packages/types/bindings
+      - cargo test -p warpdrive-types --features ts-bindings
+      - cargo run --bin ts
+
+  set-version:
+    desc: "Update version in Cargo.toml and WIT files (e.g. task set-version VERSION=2.7.0)"
+    vars:
+      VERSION: '{{.VERSION}}'
+    cmd: |
+      set -euo pipefail
+
+      VERSION="{{.VERSION}}"
+      if [[ "$VERSION" == v* ]]; then
+        VERSION="${VERSION#v}"
+      fi
+
+      echo "Setting version to: ${VERSION}"
+
+      if command -v gsed >/dev/null 2>&1; then
+        SED_CMD="gsed -i"
+      else
+        SED_CMD="sed -i"
+      fi
+
+      $SED_CMD 's/^version = ".*"/version = "'"${VERSION}"'"/' Cargo.toml
+
+      find wit-definitions -name "*.wit" -type f | while read -r file; do
+        $SED_CMD 's/^package warpdrive:\([^@]*\)@.*/package warpdrive:\1@'"${VERSION}"';/' "$file"
+        $SED_CMD 's|use warpdrive:\([^/]*/[^@]*\)@[^[:space:]]*|use warpdrive:\1@'"${VERSION}"'|g' "$file"
+      done
+
+      echo "Version updated to ${VERSION} in all files"
+
+  push-tag:
+    desc: "Create and push git tags (e.g. task push-tag VERSION=v2.7.0)"
+    vars:
+      VERSION: '{{.VERSION}}'
+    cmd: |
+      set -euo pipefail
+
+      if [[ "{{.VERSION}}" != v* ]]; then
+        TAG="v{{.VERSION}}"
+      else
+        TAG="{{.VERSION}}"
+      fi
+
+      GO_TAG="wasi/go/${TAG}"
+
+      echo "Creating tags: ${TAG} and ${GO_TAG}"
+
+      if git rev-parse "${TAG}" >/dev/null 2>&1; then
+        echo "Error: Tag ${TAG} already exists"
+        exit 1
+      fi
+
+      if git rev-parse "${GO_TAG}" >/dev/null 2>&1; then
+        echo "Error: Tag ${GO_TAG} already exists"
+        exit 1
+      fi
+
+      git tag "${TAG}" -m "Release ${TAG}"
+      git tag "${GO_TAG}" -m "Go module release ${TAG}"
+
+      echo "Pushing tags to origin..."
+      git push origin "${TAG}"
+      git push origin "${GO_TAG}"
+
+      echo "Successfully created and pushed tags: ${TAG} and ${GO_TAG}"
+
+  update-submodules:
+    desc: Update git submodules recursively
+    cmd: git submodule update --init --recursive

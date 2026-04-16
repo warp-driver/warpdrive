@@ -65,4 +65,4 @@ jobs:
       - uses: ./.github/actions/setup
 
       - name: Build WASI components
-        run: just wasi-build
+        run: task wasi-build

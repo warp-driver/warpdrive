@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-For context on this codebase, read the `docs/` directory and the `justfile`.
+For context on this codebase, read the `docs/` directory and the `Taskfile.yml`.
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -13,7 +13,7 @@ WarpDrive (WebAssembly-based Actively Validated Services) is a platform for runn
 Run the following before each commit to ensure that the repo works.
 
 ```bash
-just wasi-build
+task wasi-build
 cargo check --all-targets --all-features
 cargo build
 cargo test
@@ -21,13 +21,13 @@ cargo test
 
 ## Build, Lint, and Test Commands
 
-All build automation is in `justfile`. Run `just` to see all targets.
+All build automation is in `Taskfile.yml`. Run `task --list` to see all targets.
 
 ### Rust
 
 ```bash
-just lint           # Check formatting and clippy (non-mutating)
-just lint-fix       # Auto-fix formatting and clippy issues
+task lint           # Check formatting and clippy (non-mutating)
+task lint-fix       # Auto-fix formatting and clippy issues
 cargo build         # Debug build
 cargo build --release
 ```
@@ -35,25 +35,25 @@ cargo build --release
 ### WASI Components (WebAssembly)
 
 ```bash
-just wasi-build-native [COMPONENT]   # Build WASI components natively
-just wasi-build-docker [COMPONENT]   # Build in Docker (cross-platform)
-just generate-checksums              # Regenerate checksums.txt
+task wasi-build                    # Build all WASI components in Docker
+task wasi-build COMPONENT=echo-data # Build a single component
+task generate-checksums            # Regenerate checksums.txt
 ```
 
 ### Smart Contracts
 
 ```bash
-just solidity-build    # Forge build for Solidity contracts
-just cosmwasm-build    # Docker-based CosmWasm build
+task solidity-build    # Forge build for Solidity contracts
+task cosmwasm-build    # Docker-based CosmWasm build
 ```
 
 ### Desktop App (Tauri + React)
 
 ```bash
-just app-dev           # Full Tauri dev with hot reload
-just app-dev-frontend  # Vite frontend dev server only
-just app-build-release # Release build
-just app-build-frontend # Vite build only
+task app-dev           # Full Tauri dev with hot reload
+task app-dev-frontend  # Vite frontend dev server only
+task app-build-release # Release build
+task app-build-frontend # Vite build only
 ```
 
 ### Tests
@@ -61,7 +61,7 @@ just app-build-frontend # Vite build only
 E2E integration tests run on-chain with a live WarpDrive node:
 
 ```bash
-just test-warpdrive-e2e
+task test-warpdrive-e2e
 # or directly:
 cargo test -p warpdrive-tests
 ```
@@ -71,17 +71,17 @@ To run a subset of tests, edit `packages/warpdrive-tests/warpdrive-tests.toml` t
 ### Running the Stack
 
 ```bash
-just start-dev           # WarpDrive + Jaeger + Prometheus (full dev stack)
-just start-warpdrive-dev      # WarpDrive only with dev config
-just start-anvil         # Local EVM testnet on :8545
-just start-jaeger        # Tracing UI at http://localhost:16686
-just start-prometheus    # Metrics UI at http://localhost:9090
+task start-dev           # WarpDrive + Jaeger + Prometheus (full dev stack)
+task start-warpdrive-dev # WarpDrive only with dev config
+task start-anvil         # Local EVM testnet on :8545
+task start-jaeger        # Tracing UI at http://localhost:16686
+task start-prometheus    # Metrics UI at http://localhost:9090
 ```
 
 Development tools for sending triggers and deploying services:
 ```bash
-just dev-tool deploy-service --sleep-ms 10
-just dev-tool send-triggers --count 1000
+task dev-tool -- deploy-service --sleep-ms 10
+task dev-tool -- send-triggers --count 1000
 ```
 
 ## Architecture
@@ -118,14 +118,6 @@ Tauri 2 desktop app with a React 19 + Vite 7 frontend. The Tauri backend in `app
 - `examples/components/` — WASI component source code (echo, kv-store, aggregator, cosmos-query, etc.)
 - `examples/contracts/` — Example Solidity and CosmWasm contracts
 - `examples/build/components/` — Compiled WASM output; `checksums.txt` tracks SHA256 hashes
-
-### External Dependencies (downloaded via `just`)
-
-```bash
-just download-wit        # WIT interface definitions (wavs-wasi)
-just download-solidity   # Solidity middleware contracts
-just download-cosmwasm   # CosmWasm middleware contracts
-```
 
 ## Environment
 

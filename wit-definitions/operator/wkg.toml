@@ -6,5 +6,5 @@ homepage = "https://www.wavs.xyz/"
 repository = "https://github.com/Lay3rLabs/WAVS"
 
 [overrides]
-"wavs:types" = { path = "../types/wit" }
+"warpdrive:types" = { path = "../types/wit" }
 "wasi:tls" = { path = "../wasi-tls/wit" }
