@@ -6,7 +6,7 @@ use crate::bindings::world::warpdrive::{
         },
         service::ServiceManager,
     },
-    vector::{input as component_input, output as component_output},
+    vectr::{input as component_input, output as component_output},
 };
 use alloy_provider::RootProvider;
 use alloy_sol_types::SolValue;

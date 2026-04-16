@@ -36,7 +36,7 @@ mod tests {
     //
     // wit_bindgen::generate!({
     //     world: "warpdrive-world",
-    //     path: "../../wit-definitions/vector/wit",
+    //     path: "../../wit-definitions/vectr/wit",
     //     //async: true,
     // });
     //

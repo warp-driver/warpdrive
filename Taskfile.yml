@@ -244,7 +244,7 @@ tasks:
   wit-deps-clean:
     desc: Remove fetched WIT dependency directories
     cmds:
-      - rm -rf wit-definitions/vector/wit/deps
+      - rm -rf wit-definitions/vectr/wit/deps
       - rm -rf wit-definitions/aggregator/wit/deps
       - rm -rf wit-definitions/types/wit/deps
 
@@ -252,7 +252,7 @@ tasks:
     desc: Fetch WIT dependencies for each wit-definitions subdirectory
     cmds:
       - cd wit-definitions/types && wkg wit fetch
-      - cd wit-definitions/vector && wkg wit fetch
+      - cd wit-definitions/vectr && wkg wit fetch
       - cd wit-definitions/aggregator && wkg wit fetch
 
   wit-clean:
@@ -260,7 +260,7 @@ tasks:
     cmds:
       - rm -f wit-definitions/wasi-tls/*.wasm
       - rm -f wit-definitions/types/warpdrive:types@*.wasm
-      - rm -f wit-definitions/vector/warpdrive:vector@*.wasm
+      - rm -f wit-definitions/vectr/warpdrive:vectr@*.wasm
       - rm -f wit-definitions/aggregator/warpdrive:aggregator@*.wasm
 
   wit-build:
@@ -289,7 +289,7 @@ tasks:
       - task: wit-clean
       - cd wit-definitions/wasi-tls && wkg wit build{{.CONFIG_ARG}}
       - cd wit-definitions/types && wkg wit build{{.CONFIG_ARG}} && wasm-tools strip -d package-docs warpdrive:types@*.wasm -o tmp.wasm && mv tmp.wasm warpdrive:types@*.wasm
-      - cd wit-definitions/vector && wkg wit build{{.CONFIG_ARG}} && wasm-tools strip -d package-docs warpdrive:vector@*.wasm -o tmp.wasm && mv tmp.wasm warpdrive:vector@*.wasm
+      - cd wit-definitions/vectr && wkg wit build{{.CONFIG_ARG}} && wasm-tools strip -d package-docs warpdrive:vectr@*.wasm -o tmp.wasm && mv tmp.wasm warpdrive:vectr@*.wasm
       - cd wit-definitions/aggregator && wkg wit build{{.CONFIG_ARG}} && wasm-tools strip -d package-docs warpdrive:aggregator@*.wasm -o tmp.wasm && mv tmp.wasm warpdrive:aggregator@*.wasm
 
   _inner-wit-publish:
@@ -299,7 +299,7 @@ tasks:
     cmds:
       - cmd: cd wit-definitions/types && wkg publish warpdrive:types@*.wasm{{.CONFIG_ARG}}
         ignore_error: true
-      - cmd: cd wit-definitions/vector && wkg publish warpdrive:vector@*.wasm{{.CONFIG_ARG}}
+      - cmd: cd wit-definitions/vectr && wkg publish warpdrive:vectr@*.wasm{{.CONFIG_ARG}}
         ignore_error: true
       - cmd: cd wit-definitions/aggregator && wkg publish warpdrive:aggregator@*.wasm{{.CONFIG_ARG}}
         ignore_error: true

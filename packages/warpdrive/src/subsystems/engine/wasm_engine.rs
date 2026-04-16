@@ -101,7 +101,7 @@ impl<S: CAStorage + Send + Sync + 'static> WasmEngine<S> {
         Ok(digests?)
     }
 
-    /// This will execute a contract that implements the warpdrive:vector wit interface
+    /// This will execute a contract that implements the warpdrive:vectr wit interface
     #[instrument(skip(self, service, trigger_action), fields(subsys = "Engine"))]
     pub async fn execute_operator_component(
         &self,

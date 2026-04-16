@@ -7,7 +7,7 @@ use crate::{
     bindings::operator::world::warpdrive::types::chain as component_chain,
     bindings::operator::world::warpdrive::types::core as component_core,
     bindings::operator::world::warpdrive::types::service as component_service,
-    bindings::operator::world::warpdrive::vector::output as component_output,
+    bindings::operator::world::warpdrive::vectr::output as component_output,
 };
 
 use crate::bindings::aggregator::world::warpdrive::aggregator::output as aggregator_output;

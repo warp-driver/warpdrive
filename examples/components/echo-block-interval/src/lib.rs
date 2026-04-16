@@ -3,7 +3,7 @@ use example_helpers::bindings::world::{
     host,
     warpdrive::{
         types::{events::TriggerDataBlockInterval, service::TriggerBlockInterval},
-        vector::{
+        vectr::{
             input::{Trigger, TriggerAction, TriggerData},
             output::WasmResponse,
         },

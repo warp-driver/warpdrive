@@ -1,6 +1,6 @@
 use example_helpers::bindings::world::{
     host,
-    warpdrive::vector::{
+    warpdrive::vectr::{
         input::{TriggerAction, TriggerData},
         output::WasmResponse,
     },

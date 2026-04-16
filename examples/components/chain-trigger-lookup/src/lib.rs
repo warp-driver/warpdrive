@@ -7,7 +7,7 @@ use example_helpers::bindings::world::{
     host::{self, LogLevel},
     warpdrive::{
         types::events::{TriggerDataCosmosContractEvent, TriggerDataEvmContractEvent},
-        vector::{
+        vectr::{
             input::{TriggerAction, TriggerData},
             output::WasmResponse,
         },

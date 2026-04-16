@@ -5,7 +5,7 @@ use example_helpers::bindings::world::{
             core::LogLevel,
             service::{ComponentSource, ServiceAndWorkflowId},
         },
-        vector::{input::TriggerAction, output::WasmResponse},
+        vectr::{input::TriggerAction, output::WasmResponse},
     },
     Guest,
 };
