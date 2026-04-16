@@ -1,7 +1,7 @@
 use warpdrive_wasi_utils::impl_u128_conversions;
 
 use crate::bindings::{
-    aggregator::world::warpdrive::vector::input as aggregator_operator_input,
+    aggregator::world::warpdrive::vector::input as aggregator_vector_input,
     aggregator::world::warpdrive::{
         aggregator::input as aggregator_input,
         aggregator::output::{self as aggregator_output, U128},
@@ -515,11 +515,11 @@ impl From<warpdrive_types::WasmResponse> for aggregator_input::WasmResponse {
     }
 }
 
-impl TryFrom<warpdrive_types::TriggerConfig> for aggregator_operator_input::TriggerConfig {
+impl TryFrom<warpdrive_types::TriggerConfig> for aggregator_vector_input::TriggerConfig {
     type Error = anyhow::Error;
 
     fn try_from(config: warpdrive_types::TriggerConfig) -> Result<Self, Self::Error> {
-        Ok(aggregator_operator_input::TriggerConfig {
+        Ok(aggregator_vector_input::TriggerConfig {
             service_id: config.service_id.to_string(),
             workflow_id: config.workflow_id.to_string(),
             trigger: config.trigger.try_into()?,
@@ -527,7 +527,7 @@ impl TryFrom<warpdrive_types::TriggerConfig> for aggregator_operator_input::Trig
     }
 }
 
-impl TryFrom<warpdrive_types::TriggerData> for aggregator_operator_input::TriggerData {
+impl TryFrom<warpdrive_types::TriggerData> for aggregator_vector_input::TriggerData {
     type Error = anyhow::Error;
 
     fn try_from(src: warpdrive_types::TriggerData) -> Result<Self, Self::Error> {
@@ -542,7 +542,7 @@ impl TryFrom<warpdrive_types::TriggerData> for aggregator_operator_input::Trigge
                 block_hash,
                 block_timestamp,
                 tx_index,
-            } => Ok(aggregator_operator_input::TriggerData::EvmContractEvent(
+            } => Ok(aggregator_vector_input::TriggerData::EvmContractEvent(
                 aggregator_events::TriggerDataEvmContractEvent {
                     chain: chain.to_string(),
                     log: aggregator_events::EvmEventLog {
@@ -570,7 +570,7 @@ impl TryFrom<warpdrive_types::TriggerData> for aggregator_operator_input::Trigge
                 event,
                 event_index,
                 block_height,
-            } => Ok(aggregator_operator_input::TriggerData::CosmosContractEvent(
+            } => Ok(aggregator_vector_input::TriggerData::CosmosContractEvent(
                 aggregator_events::TriggerDataCosmosContractEvent {
                     contract_address: contract_address.into(),
                     chain: chain.to_string(),
@@ -589,14 +589,14 @@ impl TryFrom<warpdrive_types::TriggerData> for aggregator_operator_input::Trigge
             warpdrive_types::TriggerData::BlockInterval {
                 chain,
                 block_height,
-            } => Ok(aggregator_operator_input::TriggerData::BlockInterval(
+            } => Ok(aggregator_vector_input::TriggerData::BlockInterval(
                 aggregator_events::TriggerDataBlockInterval {
                     chain: chain.to_string(),
                     block_height,
                 },
             )),
             warpdrive_types::TriggerData::Cron { trigger_time } => Ok(
-                aggregator_operator_input::TriggerData::Cron(aggregator_events::TriggerDataCron {
+                aggregator_vector_input::TriggerData::Cron(aggregator_events::TriggerDataCron {
                     trigger_time: trigger_time.into(),
                 }),
             ),
@@ -616,7 +616,7 @@ impl TryFrom<warpdrive_types::TriggerData> for aggregator_operator_input::Trigge
                     .map(|value| serde_json::to_string(&value))
                     .transpose()?;
 
-                Ok(aggregator_operator_input::TriggerData::AtprotoEvent(
+                Ok(aggregator_vector_input::TriggerData::AtprotoEvent(
                     aggregator_events::TriggerDataAtprotoEvent {
                         sequence,
                         timestamp,
@@ -632,7 +632,7 @@ impl TryFrom<warpdrive_types::TriggerData> for aggregator_operator_input::Trigge
                 ))
             }
             warpdrive_types::TriggerData::Raw(data) => {
-                Ok(aggregator_operator_input::TriggerData::Raw(data))
+                Ok(aggregator_vector_input::TriggerData::Raw(data))
             }
         }
     }
