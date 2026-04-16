@@ -2,11 +2,11 @@ use anyhow::Result;
 use example_helpers::bindings::world::{
     host,
     warpdrive::{
-        operator::{
+        types::{events::TriggerDataBlockInterval, service::TriggerBlockInterval},
+        vector::{
             input::{Trigger, TriggerAction, TriggerData},
             output::WasmResponse,
         },
-        types::{events::TriggerDataBlockInterval, service::TriggerBlockInterval},
     },
     wasi::keyvalue::{atomics, store},
     Guest,

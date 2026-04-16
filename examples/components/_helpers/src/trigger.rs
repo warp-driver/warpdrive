@@ -1,12 +1,12 @@
 // Helpers to work with "trigger id" flows - which our example components do
 use crate::bindings::world::warpdrive::{
-    operator::{input as component_input, output as component_output},
     types::{
         events::{
             TriggerDataAtprotoEvent, TriggerDataCosmosContractEvent, TriggerDataEvmContractEvent,
         },
         service::ServiceManager,
     },
+    vector::{input as component_input, output as component_output},
 };
 use alloy_provider::RootProvider;
 use alloy_sol_types::SolValue;

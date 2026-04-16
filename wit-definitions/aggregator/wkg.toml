@@ -8,4 +8,4 @@ repository = "https://github.com/Lay3rLabs/WAVS"
 [overrides]
 "warpdrive:types" = { path = "../types/wit" }
 "wasi:tls" = { path = "../wasi-tls/wit" }
-"warpdrive:operator" = { path = "../operator/wit" }
+"warpdrive:vector" = { path = "../vector/wit" }

@@ -45,7 +45,7 @@ the other imported package dependencies.
 
 ## Publishing to a Warg Registry
 
-Currently, the [`warpdrive:operator`](https://wa.dev/warpdrive:operator) WIT package is published on [wa.dev](https://wa.dev).
+Currently, the [`warpdrive:vector`](https://wa.dev/warpdrive:vector) WIT package is published on [wa.dev](https://wa.dev).
 
 In order to use the `wkg publish` command, we need to first authenticate and configure with the `warg` CLI.
 

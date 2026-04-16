@@ -35,7 +35,7 @@ split-debuginfo = "unpacked"
 
 [workspace.package]
 edition = "2021"
-version = "2.8.0"
+version = "2.9.0"
 license = "GPL-3.0-or-later"
 authors = ["WarpDrive"]
 repository = "https://github.com/warp-driver/warpdrive"

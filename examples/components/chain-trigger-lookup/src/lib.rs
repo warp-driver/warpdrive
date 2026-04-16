@@ -6,11 +6,11 @@ use anyhow::Context;
 use example_helpers::bindings::world::{
     host::{self, LogLevel},
     warpdrive::{
-        operator::{
+        types::events::{TriggerDataCosmosContractEvent, TriggerDataEvmContractEvent},
+        vector::{
             input::{TriggerAction, TriggerData},
             output::WasmResponse,
         },
-        types::events::{TriggerDataCosmosContractEvent, TriggerDataEvmContractEvent},
     },
     Guest,
 };

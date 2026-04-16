@@ -4,7 +4,7 @@
 
 wit_bindgen::generate!({
     world: "warpdrive-world",
-    path: "../../../wit-definitions/operator/wit",
+    path: "../../../wit-definitions/vector/wit",
     pub_export_macro: true,
     generate_all,
     with: {

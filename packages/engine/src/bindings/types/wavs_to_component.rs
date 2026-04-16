@@ -1,7 +1,7 @@
 use warpdrive_wasi_utils::impl_u128_conversions;
 
 use crate::bindings::{
-    aggregator::world::warpdrive::operator::input as aggregator_operator_input,
+    aggregator::world::warpdrive::vector::input as aggregator_operator_input,
     aggregator::world::warpdrive::{
         aggregator::input as aggregator_input,
         aggregator::output::{self as aggregator_output, U128},
@@ -11,11 +11,11 @@ use crate::bindings::{
         },
     },
     operator::world::warpdrive::{
-        operator::{input as component_input, output as component_output},
         types::{
             chain as component_chain, core as component_core, events as component_events,
             service as component_service,
         },
+        vector::{input as component_input, output as component_output},
     },
 };
 

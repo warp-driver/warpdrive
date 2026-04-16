@@ -1,6 +1,6 @@
 use example_helpers::bindings::world::{
     host,
-    warpdrive::operator::{input::TriggerAction, output::WasmResponse},
+    warpdrive::vector::{input::TriggerAction, output::WasmResponse},
     Guest,
 };
 
