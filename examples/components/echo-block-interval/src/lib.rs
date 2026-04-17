@@ -1,14 +1,14 @@
 use anyhow::Result;
 use example_helpers::bindings::world::{
     host,
-    wasi::keyvalue::{atomics, store},
-    wavs::{
-        operator::{
+    warpdrive::{
+        types::{events::TriggerDataBlockInterval, service::TriggerBlockInterval},
+        vectr::{
             input::{Trigger, TriggerAction, TriggerData},
             output::WasmResponse,
         },
-        types::{events::TriggerDataBlockInterval, service::TriggerBlockInterval},
     },
+    wasi::keyvalue::{atomics, store},
     Guest,
 };
 use example_helpers::export_layer_trigger_world;

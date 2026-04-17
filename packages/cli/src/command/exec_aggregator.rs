@@ -132,19 +132,19 @@ impl ExecAggregator {
             log: HostComponentLogger::AggregatorHostComponentLogger(
                 |_service_id, _workflow_id, _digest, level, message| {
                     match level {
-                warpdrive_engine::bindings::aggregator::world::wavs::types::core::LogLevel::Error => {
+                warpdrive_engine::bindings::aggregator::world::warpdrive::types::core::LogLevel::Error => {
                     tracing::error!("{}", message)
                 }
-                warpdrive_engine::bindings::aggregator::world::wavs::types::core::LogLevel::Warn => {
+                warpdrive_engine::bindings::aggregator::world::warpdrive::types::core::LogLevel::Warn => {
                     tracing::warn!("{}", message)
                 }
-                warpdrive_engine::bindings::aggregator::world::wavs::types::core::LogLevel::Info => {
+                warpdrive_engine::bindings::aggregator::world::warpdrive::types::core::LogLevel::Info => {
                     tracing::info!("{}", message)
                 }
-                warpdrive_engine::bindings::aggregator::world::wavs::types::core::LogLevel::Debug => {
+                warpdrive_engine::bindings::aggregator::world::warpdrive::types::core::LogLevel::Debug => {
                     tracing::debug!("{}", message)
                 }
-                warpdrive_engine::bindings::aggregator::world::wavs::types::core::LogLevel::Trace => {
+                warpdrive_engine::bindings::aggregator::world::warpdrive::types::core::LogLevel::Trace => {
                     tracing::trace!("{}", message)
                 }
             }

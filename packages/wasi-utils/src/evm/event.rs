@@ -1,6 +1,6 @@
 /// Decode a given `log_data` into a typed event `T`.
 ///
-/// The log data comes from the WIT bindings at https://wa.dev/wavs:operator#layer-types-evm-event-log-data
+/// The log data comes from the WIT bindings at https://wa.dev/warpdrive:types#chain-evm-event-log-data
 /// * `topics` should be a Vec<Vec<u8>>`.
 /// * `data` should be a `Vec<u8>`.
 ///
@@ -49,7 +49,7 @@ mod tests {
         event MyEvent(uint256 indexed id, address user, uint256 amount);
     }
 
-    // The log data comes from the WIT bindings at https://wa.dev/wavs:operator#layer-types-evm-event-log-data
+    // The log data comes from the WIT bindings at https://wa.dev/warpdrive:types#chain-evm-event-log-data
     struct EvmEventLogData {
         topics: Vec<Vec<u8>>,
         data: Vec<u8>,

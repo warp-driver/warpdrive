@@ -18,7 +18,7 @@ services:
     command: ["anvil", "--no-cors"]
 
   # The main instance all WarpDrive interaction will happen from
-  wavs:
+  warpdrive:
     build: .
     image: "ghcr.io/warp-driver/warpdrive:local"
     container_name: "warpdrive"

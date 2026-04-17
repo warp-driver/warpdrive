@@ -4,7 +4,7 @@ use std::{path::Path, sync::RwLock};
 use tracing::{event, instrument, span};
 use utils::storage::db::WavsDb;
 use utils::telemetry::EngineMetrics;
-use warpdrive_engine::bindings::aggregator::world::wavs::types::chain::AnyTxHash;
+use warpdrive_engine::bindings::aggregator::world::warpdrive::types::chain::AnyTxHash;
 use warpdrive_engine::{
     backend::wasi_keyvalue::context::KeyValueCtx,
     common::base_engine::{BaseEngine, BaseEngineConfig},
@@ -101,7 +101,7 @@ impl<S: CAStorage + Send + Sync + 'static> WasmEngine<S> {
         Ok(digests?)
     }
 
-    /// This will execute a contract that implements the wavs:operator wit interface
+    /// This will execute a contract that implements the warpdrive:vectr wit interface
     #[instrument(skip(self, service, trigger_action), fields(subsys = "Engine"))]
     pub async fn execute_operator_component(
         &self,
@@ -193,7 +193,7 @@ impl<S: CAStorage + Send + Sync + 'static> WasmEngine<S> {
         results.map_err(|e| e.into())
     }
 
-    /// This will execute a contract that implements the wavs:aggregator wit interface
+    /// This will execute a contract that implements the warpdrive:aggregator wit interface
     #[instrument(
         skip(self, service, trigger_action, operator_response),
         fields(subsys = "Engine")

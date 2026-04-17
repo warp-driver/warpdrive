@@ -1,11 +1,11 @@
 use example_helpers::bindings::world::{
     host,
-    wavs::{
-        operator::{input::TriggerAction, output::WasmResponse},
+    warpdrive::{
         types::{
             core::LogLevel,
             service::{ComponentSource, ServiceAndWorkflowId},
         },
+        vectr::{input::TriggerAction, output::WasmResponse},
     },
     Guest,
 };

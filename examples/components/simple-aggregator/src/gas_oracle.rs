@@ -1,4 +1,4 @@
-use crate::world::{host, wavs::types::core::LogLevel};
+use crate::world::{host, warpdrive::types::core::LogLevel};
 use serde::Deserialize;
 use warpdrive_wasi_utils::http::{fetch_json, http_request_get};
 use wstd::runtime::block_on;

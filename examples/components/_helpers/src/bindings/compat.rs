@@ -1,6 +1,6 @@
 use layer_climb::prelude::CosmosAddr;
 
-use super::world::wavs::types::chain as component_chain;
+use super::world::warpdrive::types::chain as component_chain;
 
 impl From<component_chain::CosmosEvent> for cosmwasm_std::Event {
     fn from(event: component_chain::CosmosEvent) -> Self {

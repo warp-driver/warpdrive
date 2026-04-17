@@ -3,14 +3,14 @@ use warpdrive_types::ChainKey;
 use crate::worlds::aggregator::component::AggregatorHostComponent;
 
 use super::world::host::Host;
-use super::world::wavs::types::core::LogLevel;
-use super::world::wavs::types::service::{ServiceAndWorkflowId, WorkflowAndWorkflowId};
+use super::world::warpdrive::types::core::LogLevel;
+use super::world::warpdrive::types::service::{ServiceAndWorkflowId, WorkflowAndWorkflowId};
 
 impl Host for AggregatorHostComponent {
     fn get_cosmos_chain_config(
         &mut self,
         chain: String,
-    ) -> Option<super::world::wavs::types::chain::CosmosChainConfig> {
+    ) -> Option<super::world::warpdrive::types::chain::CosmosChainConfig> {
         let chain = ChainKey::new(chain).ok()?;
 
         self.chain_configs
@@ -23,7 +23,7 @@ impl Host for AggregatorHostComponent {
     fn get_evm_chain_config(
         &mut self,
         chain: String,
-    ) -> Option<super::world::wavs::types::chain::EvmChainConfig> {
+    ) -> Option<super::world::warpdrive::types::chain::EvmChainConfig> {
         let chain = ChainKey::new(chain).ok()?;
 
         self.chain_configs

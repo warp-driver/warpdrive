@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use crate::helpers::{aggregator_exec::execute_aggregator_component, service::make_service};
 use alloy_primitives::Address;
 use utils::init_tracing_tests;
-use warpdrive_engine::bindings::aggregator::world::wavs::aggregator::output::AggregatorAction;
+use warpdrive_engine::bindings::aggregator::world::warpdrive::aggregator::output::AggregatorAction;
 use warpdrive_types::{
     AggregatorInput, ComponentDigest, EvmSubmitAction, SubmitAction, WasmResponse,
 };

@@ -47,62 +47,101 @@ For subsystem-level design, see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ---
 
+## Development
+
+### Prerequisites
+
+- **Rust** (toolchain pinned in `rust-toolchain.toml`) — install via [rustup](https://rustup.rs/)
+- **Docker** — required for WASI component builds, CosmWasm builds, and telemetry services
+- **Node.js 20+** and **pnpm** — required for the desktop app (`task app-*` recipes)
+- **Foundry** (`forge`, `cast`, `anvil`) — required for Solidity builds and the local EVM testnet. Install: `curl -L https://foundry.paradigm.xyz | bash && foundryup`
+- **Go 1.23+** — only needed if you're working on the Go WASI bindings under `wasi/go/`
+
+### Install Task
+
+This project uses [Task](https://taskfile.dev) to run builds, tests, and release workflows:
+
+```bash
+# macOS
+brew install go-task
+
+# Linux (via install script)
+sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+
+# Or via Go
+go install github.com/go-task/task/v3/cmd/task@latest
+```
+
+### Install wkg and wasm-tools
+
+`wkg` is the WASM package manager (used for WIT fetch / build / publish). `wasm-tools` is used by the WIT build step to strip custom sections:
+
+```bash
+cargo install wkg wasm-tools
+
+# Point wkg at the default registry (one-time)
+wkg config --default-registry wa.dev
+```
+
+### Fetch WIT dependencies
+
+WIT packages under `wit-definitions/` pull standard WASI interfaces from `wa.dev`. Cross-package references within the repo (`warpdrive:types`, `warpdrive:vectr`) are resolved locally via `wkg.toml` overrides.
+
+```bash
+task wit-deps-fetch
+```
+
+### Environment
+
+Copy `.env.example` to `.env` and fill in credentials:
+
+```bash
+cp .env.example .env
+```
+
+### Common commands
+
+List all available tasks:
+
+```bash
+task --list
+```
+
+```bash
+task lint                    # Check formatting and clippy
+task lint-fix                # Auto-fix formatting and clippy issues
+task wasi-build              # Build all WASI components in Docker
+task solidity-build          # Compile Solidity contracts and copy ABIs
+task cosmwasm-build          # Compile CosmWasm example contracts
+task wit-build               # Build WIT packages
+task test-warpdrive-e2e      # Run on-chain integration tests
+task ts-bindings             # Generate TypeScript bindings
+task start-dev               # Start warpdrive with telemetry (Jaeger + Prometheus)
+task start-warpdrive-dev     # Run warpdrive in dev mode
+task start-anvil             # Start local EVM testnet
+task app-dev                 # Start Tauri desktop app with hot reload
+```
+
+See [`Taskfile.yml`](Taskfile.yml) for the full list.
+
+---
+
 ## Release Workflow
 
-This project uses [just](https://github.com/casey/just) for managing releases. Typical workflow:
+Typical release flow:
 
 1. **Make your changes** — develop circuits, fix bugs, update WIT definitions, etc.
 2. **Set the version** — update version numbers across `Cargo.toml` and all WIT package definitions:
    ```bash
-   just set-version v2.7.0
+   task set-version VERSION=v2.7.0
    ```
 3. **Create PR and merge** — get your changes reviewed and merged to main.
 4. **Push tags** — after merge, create and push git tags:
    ```bash
-   just push-tag v2.7.0
+   task push-tag VERSION=v2.7.0
    ```
 
 This creates both a standard tag (`v2.7.0`) and a Go module tag (`wasi/go/v2.7.0`). The standard tag triggers CI to publish the `warpdrive-types` and `warpdrive-wasi-utils` crates to crates.io, WASM components to wa.dev, and TypeScript bindings to NPM.
-
----
-
-## Claude Code Integration
-
-WarpDrive ships with a `/wavs` skill for [Claude Code](https://claude.ai/code) that teaches Claude the full WarpDrive component development workflow — scaffolding, building, uploading, and deploying circuits via the MCP tools.
-
-Full Claude Code integration requires two independent steps:
-
-1. **Install the skill** — teaches Claude the WarpDrive workflow and tool reference.
-2. **Register `warpdrive-mcp`** — connects Claude Code to a live WarpDrive node so MCP tools actually work.
-
-### Step 1: Install the skill
-
-**In-repo (automatic):** If you're working inside this repository, the `/wavs` skill is available automatically. No installation needed.
-
-**Global (repo cloned):**
-```bash
-just install-claude-skill
-```
-
-**Global (no clone needed):**
-```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Lay3rLabs/wavs/main/.claude/skills/wavs/install.sh)
-```
-
-After installation, restart Claude Code to pick up the skill.
-
-### Step 2: Register warpdrive-mcp with Claude Code
-
-The skill's MCP tools require `warpdrive-mcp` to be running and registered for each project. Run once per project directory:
-
-```bash
-# From the WarpDrive repo — auto-detects the running warpdrive-mcp process:
-just setup-claude-mcp /path/to/your-project
-```
-
-This writes the `mcpServers.warp-drive` entry into `~/.claude.json` for that project. Restart Claude Code (or reload MCP servers) afterwards.
-
-See [MCP.md](MCP.md) for full setup and configuration details.
 
 ---
 For more guides, architecture details, and examples, see the [docs folder](docs/README.md).

@@ -35,8 +35,8 @@ mod tests {
     // 2. just punts the problem since we'd want to write unit tests for any of our wit types
     //
     // wit_bindgen::generate!({
-    //     world: "wavs-world",
-    //     path: "../../wit-definitions/operator/wit",
+    //     world: "warpdrive-world",
+    //     path: "../../wit-definitions/vectr/wit",
     //     //async: true,
     // });
     //

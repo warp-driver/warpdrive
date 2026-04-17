@@ -408,7 +408,7 @@ fn http_logs_polling() {
             } else {
                 "WARN".to_string()
             },
-            target: "wavs::test".to_string(),
+            target: "warpdrive::test".to_string(),
             fields: format!("message=\"entry {i}\""),
         });
     }
@@ -501,7 +501,7 @@ fn http_logs_zero_limit_clamped() {
         id: 0, // assigned by push()
         timestamp_ms: 1000,
         level: "INFO".to_string(),
-        target: "wavs::test".to_string(),
+        target: "warpdrive::test".to_string(),
         fields: "message=\"hello\"".to_string(),
     });
 
@@ -573,7 +573,7 @@ fn http_logs_sse_replay_ordering() {
             } else {
                 "WARN".to_string()
             },
-            target: "wavs::test".to_string(),
+            target: "warpdrive::test".to_string(),
             fields: format!("message=\"sse-entry {i}\""),
         });
     }

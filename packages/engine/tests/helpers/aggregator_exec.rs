@@ -1,7 +1,9 @@
 use utils::storage::db::WavsDb;
 use warpdrive_engine::{
     backend::wasi_keyvalue::context::KeyValueCtx,
-    bindings::aggregator::world::{host::LogLevel, wavs::aggregator::output::AggregatorAction},
+    bindings::aggregator::world::{
+        host::LogLevel, warpdrive::aggregator::output::AggregatorAction,
+    },
     worlds::instance::{HostComponentLogger, InstanceData, InstanceDepsBuilder},
 };
 use warpdrive_types::{

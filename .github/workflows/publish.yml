@@ -150,7 +150,7 @@ jobs:
         run: cargo install wkg
 
       - name: Build WASI components
-        run: just wasi-build
+        run: task wasi-build
 
       - name: Check if checksums.txt changed
         run: git diff --exit-code -- checksums.txt
@@ -163,9 +163,9 @@ jobs:
         # This is a workaround to set the warg configuration without installing the `warg-cli`.
         run: |
           cat > wkg-config.toml << EOF
-          default_registry = "wavs.wa.dev"
+          default_registry = "warpdrive.wa.dev"
 
-          [registry."wavs.wa.dev".warg]
+          [registry."warpdrive.wa.dev".warg]
           auth_token = "$WA_DEV_AUTH_TOKEN"
           signing_key = "$WA_DEV_SIGNING_KEY"
           EOF
@@ -173,7 +173,7 @@ jobs:
       - name: Run wasi-publish
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          just wasi-publish version="$VERSION" flags="--config wkg-config.toml"
+          task wasi-publish VERSION="$VERSION" FLAGS="--config wkg-config.toml"
 
   publish_npm:
     name: Publish TypeScript Bindings to NPM
@@ -200,7 +200,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Generate TypeScript bindings
-        run: just ts-bindings
+        run: task ts-bindings
 
       - name: Check if package exists on NPM
         id: npm_exists

@@ -5,12 +5,12 @@ use alloy_provider::Provider;
 use anyhow::Context;
 use example_helpers::bindings::world::{
     host::{self, LogLevel},
-    wavs::{
-        operator::{
+    warpdrive::{
+        types::events::{TriggerDataCosmosContractEvent, TriggerDataEvmContractEvent},
+        vectr::{
             input::{TriggerAction, TriggerData},
             output::WasmResponse,
         },
-        types::events::{TriggerDataCosmosContractEvent, TriggerDataEvmContractEvent},
     },
     Guest,
 };
