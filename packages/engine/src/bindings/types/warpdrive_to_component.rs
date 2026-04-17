@@ -15,7 +15,7 @@ use crate::bindings::{
             chain as component_chain, core as component_core, events as component_events,
             service as component_service,
         },
-        vector::{input as component_input, output as component_output},
+        vectr::{input as component_input, output as component_output},
     },
 };
 
