@@ -44,10 +44,6 @@ jobs:
           docker-images: false
           swap-storage: true
 
-      - name: Configure POA middleware
-        run: |
-          sed -i 's/evm_middleware_type = ".*"/evm_middleware_type = "poa"/' packages/warpdrive-tests/warpdrive-tests.toml
-
       - name: Build tests first
         run: cargo test --workspace --no-run --locked
 
