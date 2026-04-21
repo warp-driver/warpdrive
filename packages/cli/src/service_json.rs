@@ -75,6 +75,32 @@ impl ServiceJsonExt for ServiceBuilder {
                             ));
                         }
                     }
+                    Trigger::StellarContractEvent {
+                        chain: _,
+                        contract_id,
+                        topics,
+                    } => {
+                        if contract_id.is_empty() {
+                            errors.push(format!(
+                                "Workflow '{}' has an empty contract ID in Stellar trigger",
+                                workflow_id
+                            ));
+                        }
+                        if topics.is_empty() {
+                            errors.push(format!(
+                                "Workflow '{}' has empty topics in Stellar trigger",
+                                workflow_id
+                            ));
+                        }
+
+                        if topics.len() > 4 {
+                            errors.push(format!(
+                                "Workflow '{}' has too many topics in Stellar trigger: expected at most 4 but got {}",
+                                workflow_id,
+                                topics.len()
+                            ));
+                        }
+                    }
                     Trigger::Cron {
                         schedule,
                         start_time,

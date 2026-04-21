@@ -252,7 +252,7 @@ impl TriggerManager {
                     );
 
                     self.metrics
-                        .record_trigger_fired(action.data.chain(), action.data.trigger_type());
+                        .record_trigger_fired(action.data.chain(), action.data.trigger_type_str());
                 }
                 DispatcherCommand::ChangeServiceUri { service_id, uri } => {
                     tracing_service_info!(

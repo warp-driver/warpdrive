@@ -1,6 +1,7 @@
 use std::{collections::BTreeMap, str::FromStr};
 
 use iri_string::types::UriString;
+use stellar_xdr::curr::ScVal;
 use warpdrive_types::WorkflowId;
 
 use crate::{
@@ -29,6 +30,17 @@ impl TryFrom<component_service::Trigger> for warpdrive_types::Trigger {
                     address: source.address.into(),
                     chain: source.chain.parse()?,
                     event_hash: source.event_hash.try_into()?,
+                }
+            }
+            component_service::Trigger::StellarContractEvent(source) => {
+                warpdrive_types::Trigger::StellarContractEvent {
+                    contract_id: source.contract_id,
+                    chain: source.chain.parse()?,
+                    topics: source
+                        .topics
+                        .into_iter()
+                        .map(warpdrive_types::StellarTopicSegment::try_from)
+                        .collect::<anyhow::Result<Vec<_>>>()?,
                 }
             }
             component_service::Trigger::BlockInterval(source) => {
@@ -344,5 +356,24 @@ impl TryFrom<aggregator_output::CosmosAddress> for layer_climb::prelude::CosmosA
     fn try_from(addr: aggregator_output::CosmosAddress) -> Result<Self, Self::Error> {
         let prefix = &addr.bech32_addr[..addr.prefix_len as usize];
         layer_climb::prelude::CosmosAddr::new_str(&addr.bech32_addr, Some(prefix))
+    }
+}
+
+impl TryFrom<component_service::StellarTopicSegment> for warpdrive_types::StellarTopicSegment {
+    type Error = anyhow::Error;
+
+    fn try_from(src: component_service::StellarTopicSegment) -> Result<Self, Self::Error> {
+        Ok(match src {
+            component_service::StellarTopicSegment::Wildcard => {
+                warpdrive_types::StellarTopicSegment::Wildcard
+            }
+            component_service::StellarTopicSegment::RestWildcard => {
+                warpdrive_types::StellarTopicSegment::RestWildcard
+            }
+            component_service::StellarTopicSegment::Exact(lit_str) => {
+                let lit: ScVal = serde_json::from_str(&lit_str)?;
+                warpdrive_types::StellarTopicSegment::Exact(lit)
+            }
+        })
     }
 }

@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::num::{NonZeroU32, NonZeroU64};
 use std::str::FromStr;
+use stellar_xdr::curr::ScVal;
 use thiserror::Error;
 use utoipa::ToSchema;
 use wasm_pkg_common::package::PackageRef;
@@ -300,6 +301,12 @@ pub enum Trigger {
         #[cfg_attr(feature = "ts-bindings", ts(type = "string"))]
         event_hash: ByteArray<32>,
     },
+    StellarContractEvent {
+        chain: ChainKey,
+        contract_id: String,
+        /// Maximum of 4 topic segments, can be exact values or wildcards
+        topics: Vec<StellarTopicSegment>,
+    },
     BlockInterval {
         /// The chain to use for the block interval
         chain: ChainKey,
@@ -335,6 +342,20 @@ pub enum Trigger {
     },
     // not a real trigger, just for testing
     Manual,
+}
+
+/// Stellar topic segments can be exact values, single-level wildcards, or multi-level wildcards.
+/// There's maximum 4 segments per-topic
+#[cfg_attr(feature = "ts-bindings", derive(TS))]
+#[cfg_attr(feature = "ts-bindings", ts(export))]
+#[derive(Hash, Serialize, Deserialize, Clone, Debug, PartialEq, Eq, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum StellarTopicSegment {
+    #[schema(value_type = String)]
+    #[cfg_attr(feature = "ts-bindings", ts(type = "string"))]
+    Exact(ScVal),
+    Wildcard,
+    RestWildcard,
 }
 
 /// The data that came from the trigger and is passed to the component after being converted into the WIT-friendly type
@@ -380,6 +401,22 @@ pub enum TriggerData {
         block_timestamp: Option<u64>,
         /// Index of the Transaction in the block
         tx_index: u64,
+    },
+    StellarContractEvent {
+        /// The chain where the event was emitted
+        chain: ChainKey,
+        /// The contract that emitted the event
+        contract_id: String,
+        /// The event type
+        event_type: String,
+        ledger: u32,
+        ledger_closed_at: String,
+        event_id: String,
+        operation_index: Option<u32>,
+        transaction_index: Option<u32>,
+        tx_hash: String,
+        topic: Vec<String>,
+        value: String,
     },
     BlockInterval {
         /// The chain where the blocks are checked
@@ -428,10 +465,11 @@ impl TriggerData {
         TriggerData::Raw(data.as_ref().to_vec())
     }
 
-    pub fn trigger_type(&self) -> &str {
+    pub fn trigger_type_str(&self) -> &str {
         match self {
             TriggerData::CosmosContractEvent { .. } => "cosmos_contract_event",
             TriggerData::EvmContractEvent { .. } => "evm_contract_event",
+            TriggerData::StellarContractEvent { .. } => "stellar_contract_event",
             TriggerData::BlockInterval { .. } => "block_interval",
             TriggerData::Cron { .. } => "cron",
             TriggerData::AtProtoEvent { .. } => "atproto_event",
@@ -443,6 +481,7 @@ impl TriggerData {
         match self {
             TriggerData::CosmosContractEvent { chain, .. }
             | TriggerData::EvmContractEvent { chain, .. }
+            | TriggerData::StellarContractEvent { chain, .. }
             | TriggerData::BlockInterval { chain, .. } => Some(chain),
             TriggerData::Cron { .. } | TriggerData::AtProtoEvent { .. } | TriggerData::Raw(_) => {
                 None

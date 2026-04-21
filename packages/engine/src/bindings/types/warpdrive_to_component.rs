@@ -48,6 +48,20 @@ impl TryFrom<warpdrive_types::Trigger> for component_service::Trigger {
                     event_hash: event_hash.as_slice().to_vec(),
                 },
             ),
+            warpdrive_types::Trigger::StellarContractEvent {
+                contract_id,
+                chain,
+                topics,
+            } => component_service::Trigger::StellarContractEvent(
+                component_service::TriggerStellarContractEvent {
+                    contract_id,
+                    chain: chain.to_string(),
+                    topics: topics
+                        .into_iter()
+                        .map(component_service::StellarTopicSegment::try_from)
+                        .collect::<anyhow::Result<Vec<_>>>()?,
+                },
+            ),
             warpdrive_types::Trigger::BlockInterval {
                 chain,
                 n_blocks,
@@ -80,6 +94,43 @@ impl TryFrom<warpdrive_types::Trigger> for component_service::Trigger {
                 repo_did,
                 action: action.map(|a| a.to_string()),
             }),
+        })
+    }
+}
+
+impl TryFrom<warpdrive_types::StellarTopicSegment> for component_service::StellarTopicSegment {
+    type Error = anyhow::Error;
+
+    fn try_from(src: warpdrive_types::StellarTopicSegment) -> Result<Self, Self::Error> {
+        Ok(match src {
+            warpdrive_types::StellarTopicSegment::Wildcard => {
+                component_service::StellarTopicSegment::Wildcard
+            }
+            warpdrive_types::StellarTopicSegment::RestWildcard => {
+                component_service::StellarTopicSegment::RestWildcard
+            }
+            warpdrive_types::StellarTopicSegment::Exact(lit) => {
+                let lit_str = serde_json::to_string(&lit)?;
+                component_service::StellarTopicSegment::Exact(lit_str)
+            }
+        })
+    }
+}
+impl TryFrom<warpdrive_types::StellarTopicSegment> for aggregator_service::StellarTopicSegment {
+    type Error = anyhow::Error;
+
+    fn try_from(src: warpdrive_types::StellarTopicSegment) -> Result<Self, Self::Error> {
+        Ok(match src {
+            warpdrive_types::StellarTopicSegment::Wildcard => {
+                aggregator_service::StellarTopicSegment::Wildcard
+            }
+            warpdrive_types::StellarTopicSegment::RestWildcard => {
+                aggregator_service::StellarTopicSegment::RestWildcard
+            }
+            warpdrive_types::StellarTopicSegment::Exact(lit) => {
+                let lit_str = serde_json::to_string(&lit)?;
+                aggregator_service::StellarTopicSegment::Exact(lit_str)
+            }
         })
     }
 }
@@ -431,6 +482,38 @@ impl TryFrom<warpdrive_types::TriggerData> for component_input::TriggerData {
                     block_height,
                 },
             )),
+            warpdrive_types::TriggerData::StellarContractEvent {
+                chain,
+                contract_id,
+                event_type,
+                ledger,
+                ledger_closed_at,
+                event_id,
+                operation_index,
+                transaction_index,
+                tx_hash,
+                topic,
+                value,
+            } => {
+                let event = component_events::StellarEvent {
+                    event_type,
+                    ledger,
+                    ledger_closed_at: ledger_closed_at.into(),
+                    event_id,
+                    operation_index,
+                    transaction_index,
+                    transaction_hash: tx_hash,
+                    topic,
+                    value,
+                };
+                Ok(component_input::TriggerData::StellarContractEvent(
+                    component_events::TriggerDataStellarContractEvent {
+                        chain: chain.to_string(),
+                        contract_id,
+                        event,
+                    },
+                ))
+            }
             warpdrive_types::TriggerData::BlockInterval {
                 chain,
                 block_height,
@@ -586,6 +669,38 @@ impl TryFrom<warpdrive_types::TriggerData> for aggregator_vectr_input::TriggerDa
                     block_height,
                 },
             )),
+            warpdrive_types::TriggerData::StellarContractEvent {
+                chain,
+                contract_id,
+                event_type,
+                ledger,
+                ledger_closed_at,
+                event_id,
+                operation_index,
+                transaction_index,
+                tx_hash,
+                topic,
+                value,
+            } => {
+                let event = aggregator_events::StellarEvent {
+                    event_type,
+                    ledger,
+                    ledger_closed_at: ledger_closed_at.into(),
+                    event_id,
+                    operation_index,
+                    transaction_index,
+                    transaction_hash: tx_hash,
+                    topic,
+                    value,
+                };
+                Ok(aggregator_vectr_input::TriggerData::StellarContractEvent(
+                    aggregator_events::TriggerDataStellarContractEvent {
+                        chain: chain.to_string(),
+                        contract_id,
+                        event,
+                    },
+                ))
+            }
             warpdrive_types::TriggerData::BlockInterval {
                 chain,
                 block_height,
@@ -865,6 +980,20 @@ impl TryFrom<warpdrive_types::Trigger> for aggregator_service::Trigger {
                     address: address.into(),
                     chain: chain.to_string(),
                     event_type,
+                },
+            ),
+            warpdrive_types::Trigger::StellarContractEvent {
+                chain,
+                contract_id,
+                topics,
+            } => aggregator_service::Trigger::StellarContractEvent(
+                aggregator_service::TriggerStellarContractEvent {
+                    chain: chain.to_string(),
+                    contract_id,
+                    topics: topics
+                        .into_iter()
+                        .map(aggregator_service::StellarTopicSegment::try_from)
+                        .collect::<anyhow::Result<Vec<_>>>()?,
                 },
             ),
             warpdrive_types::Trigger::BlockInterval {
