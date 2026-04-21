@@ -7,7 +7,7 @@ middleware_concurrency = true
 grouping = false
 evm_middleware_type = "poa"
 p2p = "mdns"
-mode = { "isolated" = [{ evm = "echo_data" }] }
+mode = { "isolated" = [{ stellar = "echo_data" }] }
 
 
 # Run all tests
