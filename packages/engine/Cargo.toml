@@ -30,6 +30,7 @@ iri-string = { workspace = true }
 wasm-pkg-client = { workspace = true }
 serde_json = { workspace = true }
 const-hex = { workspace = true }
+stellar-xdr = {workspace = true}
 
 [dev-dependencies]
 serde = { workspace = true }
