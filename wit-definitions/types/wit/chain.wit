@@ -8,6 +8,7 @@ interface chain {
     variant any-tx-hash {
         evm(evm-tx-hash),
         cosmos(cosmos-tx-hash),
+        stellar(stellar-tx-hash),
     }
 
     record cosmos-address {
@@ -59,5 +60,20 @@ interface chain {
         chain-id: string,
         ws-endpoints: list<string>,
         http-endpoint: option<string>,
+    }
+
+    type stellar-tx-hash = string;
+
+    // This matches the data from the `stellar-rpc-client` crate
+    record stellar-event {
+        event-type: string,
+        ledger: u32,
+        ledger-closed-at: string,
+        event-id: string,
+        operation-index: option<u32>,
+        transaction-index: option<u32>,
+        transaction-hash: stellar-tx-hash,
+        topic: list<string>,
+        value: string
     }
 }

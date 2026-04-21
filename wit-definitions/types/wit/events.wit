@@ -1,5 +1,5 @@
 interface events {
-    use chain.{chain-key, evm-address, evm-event-log, cosmos-address, cosmos-event};
+    use chain.{chain-key, evm-address, evm-event-log, cosmos-address, cosmos-event, stellar-event};
     use core.{timestamp};
     type event-id = list<u8>; // 20-byte unique hash
 
@@ -7,6 +7,7 @@ interface events {
     variant trigger-data {
         evm-contract-event(trigger-data-evm-contract-event),
         cosmos-contract-event(trigger-data-cosmos-contract-event),
+        stellar-contract-event(trigger-data-stellar-contract-event),
         block-interval(trigger-data-block-interval),
         cron(trigger-data-cron),
         atproto-event(trigger-data-atproto-event),
@@ -24,6 +25,12 @@ interface events {
         event: cosmos-event,
         event-index: u64,
         block-height: u64
+    }
+
+    record trigger-data-stellar-contract-event {
+        contract-id: string,
+        chain: chain-key,
+        event: stellar-event,
     }
 
     record trigger-data-block-interval {

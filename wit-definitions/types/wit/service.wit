@@ -90,6 +90,7 @@ interface service {
     variant trigger {
         evm-contract-event(trigger-evm-contract-event),
         cosmos-contract-event(trigger-cosmos-contract-event),
+        stellar-contract-event(trigger-stellar-contract-event),
         block-interval(trigger-block-interval),
         cron(trigger-cron),
         atproto-event(trigger-atproto-event),
@@ -106,6 +107,12 @@ interface service {
         address: cosmos-address,
         chain: chain-key,
         event-type: string
+    }
+
+    record trigger-stellar-contract-event {
+        contract-id: string,
+        chain: chain-key,
+        topics: list<stellar-topic-segment>
     }
 
     record trigger-block-interval {
@@ -125,6 +132,14 @@ interface service {
         collection: string,
         repo-did: option<string>,
         action: option<string>
+    }
+
+    variant stellar-topic-segment {
+        // the string representation here is `serde_json` encoded ScVal types
+        // and so they can be decoded into actual ScVal types to be used in event matching
+        exact(string),
+        wildcard,
+        rest-wildcard
     }
 
 
