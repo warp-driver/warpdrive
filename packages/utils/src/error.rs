@@ -45,3 +45,29 @@ pub enum EvmClientError {
     #[error("Unable to get block height")]
     BlockHeight,
 }
+
+pub type StellarClientResult<T> = std::result::Result<T, StellarClientError>;
+
+#[derive(Debug, Error)]
+pub enum StellarClientError {
+    #[error("Not implemented")]
+    NotImplemented,
+
+    #[error("RPC error: {0}")]
+    Rpc(#[from] stellar_rpc_client::Error),
+
+    #[error("Invalid ledger range, start: {start} end: {end}")]
+    InvalidLedgerRange { start: u32, end: u32 },
+
+    #[error("Too many topic segments provided (max is 4, got {0})")]
+    TooManyTopicSegments(usize),
+
+    #[error("Invalid wildcard segment: {0}")]
+    InvalidWildcard(String),
+
+    #[error("The \"**\" wildcard is only supported as the final topic segment")]
+    RestWildcardMustBeLast,
+
+    #[error("Failed to parse xdr: {0}")]
+    FilterParse(#[from] stellar_xdr::curr::Error),
+}

@@ -4,9 +4,13 @@ use std::{
 };
 
 use bimap::BiMap;
-use utils::telemetry::TriggerMetrics;
+use utils::{
+    error::{StellarClientError, StellarClientResult},
+    telemetry::TriggerMetrics,
+};
 use warpdrive_types::{
-    AtProtoAction, ByteArray, ChainKey, ServiceId, Trigger, TriggerConfig, WorkflowId,
+    AtProtoAction, ByteArray, ChainKey, ServiceId, StellarTopicSegment, Trigger, TriggerConfig,
+    WorkflowId,
 };
 
 use crate::{
@@ -33,6 +37,9 @@ pub struct LookupMaps {
     pub triggers_by_evm_contract_event: Arc<
         RwLock<HashMap<(ChainKey, alloy_primitives::Address, ByteArray<32>), HashSet<LookupId>>>,
     >,
+    /// lookup id by (chain id, contract id, topics)
+    pub triggers_by_stellar_contract_event:
+        Arc<RwLock<HashMap<(ChainKey, String, NormalizedStellarTopicKey), HashSet<LookupId>>>>,
     /// lookup id by (collection, optional repo_did, optional action) for exact matches
     pub triggers_by_atproto_event_exact:
         Arc<RwLock<HashMap<(String, Option<String>, Option<AtProtoAction>), HashSet<LookupId>>>>,
@@ -52,6 +59,34 @@ pub struct LookupMaps {
     pub cron_scheduler: CronScheduler,
 }
 
+// Stellar topics can have up to 4 segments, and each segment can be a string or a wildcard
+// we'll normalize them into a fixed-size array for easier hashing and comparison
+// and fill all wildcards
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct NormalizedStellarTopicKey {
+    segments: [StellarTopicSegment; 4],
+}
+
+impl NormalizedStellarTopicKey {
+    pub fn new(topic: Vec<StellarTopicSegment>) -> Self {
+        let mut segments: [StellarTopicSegment; 4] = [
+            StellarTopicSegment::Wildcard,
+            StellarTopicSegment::Wildcard,
+            StellarTopicSegment::Wildcard,
+            StellarTopicSegment::Wildcard,
+        ];
+
+        for (i, segment) in topic.into_iter().take(4).enumerate() {
+            segments[i] = match segment {
+                StellarTopicSegment::Exact(s) => StellarTopicSegment::Exact(s),
+                _ => StellarTopicSegment::Wildcard,
+            }
+        }
+
+        Self { segments }
+    }
+}
+
 impl LookupMaps {
     pub fn new(services: Services, metrics: TriggerMetrics) -> Self {
         Self {
@@ -59,6 +94,7 @@ impl LookupMaps {
             lookup_id: Arc::new(AtomicUsize::new(0)),
             triggers_by_cosmos_contract_event: Arc::new(RwLock::new(HashMap::new())),
             triggers_by_evm_contract_event: Arc::new(RwLock::new(HashMap::new())),
+            triggers_by_stellar_contract_event: Arc::new(RwLock::new(HashMap::new())),
             triggers_by_atproto_event_exact: Arc::new(RwLock::new(HashMap::new())),
             triggers_by_atproto_event_pattern: Arc::new(RwLock::new(HashMap::new())),
             block_schedulers: BlockSchedulers::default(),
@@ -155,6 +191,23 @@ impl LookupMaps {
             } => {
                 let key = (chain.clone(), address.clone(), event_type.clone());
                 self.triggers_by_cosmos_contract_event
+                    .write()
+                    .unwrap()
+                    .entry(key)
+                    .or_default()
+                    .insert(lookup_id);
+            }
+            Trigger::StellarContractEvent {
+                chain,
+                contract_id,
+                topics,
+            } => {
+                let key = (
+                    chain.clone(),
+                    contract_id.clone(),
+                    NormalizedStellarTopicKey::new(topics),
+                );
+                self.triggers_by_stellar_contract_event
                     .write()
                     .unwrap()
                     .entry(key)
@@ -287,6 +340,22 @@ impl LookupMaps {
                         }
                     }
                 }
+                Trigger::StellarContractEvent {
+                    chain,
+                    contract_id,
+                    topics,
+                } => {
+                    let mut lock = self.triggers_by_stellar_contract_event.write().unwrap();
+                    let normalized_topics = NormalizedStellarTopicKey::new(topics);
+                    if let Some(set) =
+                        lock.get_mut(&(chain.clone(), contract_id.clone(), normalized_topics))
+                    {
+                        set.remove(&lookup_id);
+                        if set.is_empty() {
+                            lock.remove(&(chain, contract_id, normalized_topics));
+                        }
+                    }
+                }
                 Trigger::BlockInterval { chain, .. } => {
                     // Remove from block scheduler
                     if let Some(mut scheduler) = self.block_schedulers.get_mut(&chain) {
@@ -343,6 +412,8 @@ impl LookupMaps {
             self.triggers_by_evm_contract_event.write().unwrap();
         let mut triggers_by_cosmos_contract_event =
             self.triggers_by_cosmos_contract_event.write().unwrap();
+        let mut triggers_by_stellar_contract_event =
+            self.triggers_by_stellar_contract_event.write().unwrap();
         let mut triggers_by_atproto_event_exact =
             self.triggers_by_atproto_event_exact.write().unwrap();
         let mut triggers_by_atproto_event_pattern =
@@ -400,6 +471,27 @@ impl LookupMaps {
                                         chain.clone(),
                                         address.clone(),
                                         event_type.clone(),
+                                    ));
+                                }
+                            }
+                        }
+                        Trigger::StellarContractEvent {
+                            chain,
+                            contract_id,
+                            topics,
+                        } => {
+                            let normalized_topics = NormalizedStellarTopicKey::new(topics.clone());
+                            if let Some(set) = triggers_by_stellar_contract_event.get_mut(&(
+                                chain.clone(),
+                                contract_id.clone(),
+                                normalized_topics.clone(),
+                            )) {
+                                set.remove(lookup_id);
+                                if set.is_empty() {
+                                    triggers_by_stellar_contract_event.remove(&(
+                                        chain.clone(),
+                                        contract_id.clone(),
+                                        normalized_topics.clone(),
                                     ));
                                 }
                             }

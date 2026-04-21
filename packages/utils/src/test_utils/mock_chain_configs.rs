@@ -3,7 +3,9 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use warpdrive_types::{ChainConfigs, CosmosChainConfigBuilder, EvmChainConfigBuilder};
+use warpdrive_types::{
+    ChainConfigs, CosmosChainConfigBuilder, EvmChainConfigBuilder, StellarChainConfigBuilder,
+};
 
 pub fn mock_chain_configs() -> Arc<RwLock<ChainConfigs>> {
     Arc::new(RwLock::new(ChainConfigs {
@@ -27,6 +29,16 @@ pub fn mock_chain_configs() -> Arc<RwLock<ChainConfigs>> {
                 gas_denom: "ustake".to_string(),
                 gas_price: 0.025,
                 faucet_endpoint: None,
+            },
+        )]
+        .into_iter()
+        .collect(),
+        stellar: vec![(
+            "stellar".try_into().unwrap(),
+            StellarChainConfigBuilder {
+                chain_poll_interval_ms: 1000,
+                rpc_url: "http://localhost:8000".to_string(),
+                friendbot_url: None,
             },
         )]
         .into_iter()

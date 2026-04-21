@@ -310,7 +310,7 @@ mod test {
     use serde::{Deserialize, Serialize};
     use warpdrive_types::{
         AnyChainConfig, ChainConfigError, ChainConfigs, ChainKey, CosmosChainConfig,
-        CosmosChainConfigBuilder, EvmChainConfig, EvmChainConfigBuilder,
+        CosmosChainConfigBuilder, EvmChainConfig, EvmChainConfigBuilder, StellarChainConfigBuilder,
     };
 
     use crate::{
@@ -1168,6 +1168,16 @@ mod test {
                     },
                 ),
             ]
+            .into_iter()
+            .collect(),
+            stellar: vec![(
+                "stellar".try_into().unwrap(),
+                StellarChainConfigBuilder {
+                    chain_poll_interval_ms: 1000,
+                    rpc_url: "http://localhost:8000".to_string(),
+                    friendbot_url: None,
+                },
+            )]
             .into_iter()
             .collect(),
             dev: BTreeMap::new(),

@@ -7,10 +7,19 @@ use crate::{
     config::Config,
     dispatcher::DispatcherCommand,
     services::Services,
-    subsystems::trigger::streams::{
-        cosmos_stream::StreamTriggerCosmosContractEvent,
-        evm_stream::client::{EvmTriggerStreams, EvmTriggerStreamsController},
-        local_command_stream,
+    subsystems::trigger::{
+        lookup::NormalizedStellarTopicKey,
+        streams::{
+            cosmos_stream::StreamTriggerCosmosContractEvent,
+            evm_stream::client::{EvmTriggerStreams, EvmTriggerStreamsController},
+            local_command_stream,
+            stellar_stream::{
+                channels::{StellarChannelReceivers, StellarChannelSenders, StellarChannels},
+                controller::StellarStreamController,
+                poller::{start_stellar_event_poller, start_stellar_ledger_poller},
+                start_stellar_ledger_stream,
+            },
+        },
     },
     tracing_service_info, AppContext,
 };
@@ -26,13 +35,14 @@ use std::{
     num::NonZeroU64,
     sync::Arc,
 };
+use streams::stellar_stream::{client::StellarStreamClient, start_stellar_event_stream};
 use streams::{cosmos_stream, cron_stream, evm_stream, MultiplexedStream, StreamTriggers};
 use tracing::instrument;
 use utils::telemetry::TriggerMetrics;
 use warpdrive_types::{
     contracts::cosmwasm::service_manager::event::WavsServiceUriUpdatedEvent, AnyChainConfig,
-    ByteArray, ChainConfigs, ChainKey, IWarpDriveServiceManager, ServiceId, Trigger, TriggerAction,
-    TriggerConfig, TriggerData,
+    ByteArray, ChainConfigs, ChainKey, IWarpDriveServiceManager, ServiceId, StellarTopicSegment,
+    Trigger, TriggerAction, TriggerConfig, TriggerData,
 };
 
 #[derive(Debug)]
@@ -49,6 +59,13 @@ pub enum TriggerCommand {
         chain: ChainKey,
         addresses: Vec<alloy_primitives::Address>,
         event_hashes: Vec<alloy_primitives::B256>,
+    },
+    WatchStellarContractEvents {
+        chain: ChainKey,
+        contract_id_and_topics: Vec<(String, Vec<Vec<StellarTopicSegment>>)>,
+    },
+    WatchStellarBlocks {
+        chain: ChainKey,
     },
     StartListeningAtProto,
     ManualTrigger(Box<TriggerAction>),
@@ -79,6 +96,24 @@ impl TriggerCommand {
                     chain: chain.clone(),
                 }]
             }
+            Trigger::StellarContractEvent {
+                chain,
+                contract_id,
+                topics,
+            } => {
+                vec![
+                    Self::StartListeningChain {
+                        chain: chain.clone(),
+                    },
+                    Self::WatchStellarContractEvents {
+                        chain: chain.clone(),
+                        contract_id_and_topics: vec![(
+                            contract_id.to_string(),
+                            vec![topics.clone()],
+                        )],
+                    },
+                ]
+            }
             Trigger::BlockInterval { chain, .. } => match chain_configs.get_chain(chain) {
                 Some(chain_config) => match chain_config {
                     AnyChainConfig::Evm(_) => {
@@ -95,6 +130,16 @@ impl TriggerCommand {
                         vec![Self::StartListeningChain {
                             chain: chain.clone(),
                         }]
+                    }
+                    AnyChainConfig::Stellar(_) => {
+                        vec![
+                            Self::StartListeningChain {
+                                chain: chain.clone(),
+                            },
+                            Self::WatchStellarBlocks {
+                                chain: chain.clone(),
+                            },
+                        ]
                     }
                 },
                 None => {
@@ -130,6 +175,7 @@ pub struct TriggerManager {
     pub disable_networking: bool,
     pub services: Services,
     pub evm_controllers: Arc<std::sync::RwLock<HashMap<ChainKey, EvmTriggerStreamsController>>>,
+    pub stellar_controllers: Arc<std::sync::RwLock<HashMap<ChainKey, StellarStreamController>>>,
     pub config: Config,
 }
 
@@ -155,6 +201,7 @@ impl TriggerManager {
             disable_networking: config.disable_trigger_networking,
             services,
             evm_controllers: Arc::new(std::sync::RwLock::new(HashMap::new())),
+            stellar_controllers: Arc::new(std::sync::RwLock::new(HashMap::new())),
             config: config.clone(),
         })
     }
@@ -286,7 +333,7 @@ impl TriggerManager {
     #[instrument(skip(self), fields(subsys = "TriggerManager"))]
     async fn start_watcher(
         &self,
-        mut kill_receiver: tokio::sync::broadcast::Receiver<()>,
+        kill_receiver: tokio::sync::broadcast::Receiver<()>,
     ) -> Result<(), TriggerError> {
         let mut multiplexed_stream: MultiplexedStream = SelectAll::new();
 
@@ -546,6 +593,111 @@ impl TriggerManager {
                                         *chain_state = StreamStartState::Connected;
                                     }
                                 }
+
+                                AnyChainConfig::Stellar(chain_config) => {
+                                    if chain_config.rpc_url.is_empty() {
+                                        return Err(TriggerError::StellarMissingRpc(chain.clone()));
+                                    }
+
+                                    let chain_key: ChainKey = (&chain_config).into();
+
+                                    if self
+                                        .stellar_controllers
+                                        .read()
+                                        .unwrap()
+                                        .get(&chain_key)
+                                        .is_none()
+                                    {
+                                        let controller =
+                                            StellarStreamController::new(chain_config.clone())?;
+
+                                        let channels = StellarChannels::new();
+
+                                        let StellarChannelReceivers {
+                                            event_rx,
+                                            ledger_rx,
+                                        } = channels.receivers;
+
+                                        let StellarChannelSenders {
+                                            ledger_tx,
+                                            event_tx,
+                                        } = channels.senders;
+
+                                        // Start the event stream from the perspective of what the trigger needs
+                                        // this does not directly interact with the chain - we send to it from a channel later
+                                        // in other words, these streams are more like a mapping from native Stellar events/ledgers
+                                        // to our internal StreamTriggers, and the pollers which we will create a bit further below
+                                        // are what actually interact with the chain and send data to these streams
+                                        let event_stream = start_stellar_event_stream(
+                                            chain,
+                                            event_rx,
+                                            self.metrics.clone(),
+                                        )
+                                        .await;
+
+                                        let ledger_stream = start_stellar_ledger_stream(
+                                            chain,
+                                            ledger_rx,
+                                            self.metrics.clone(),
+                                        )
+                                        .await;
+
+                                        let (event_stream, ledger_stream) =
+                                            match (event_stream, ledger_stream) {
+                                                (Ok(event_stream), Ok(ledger_stream)) => {
+                                                    (event_stream, ledger_stream)
+                                                }
+                                                (Err(err), _) | (_, Err(err)) => {
+                                                    tracing::error!(
+                                                    "Failed to start Stellar event stream: {:?}",
+                                                    err
+                                                );
+                                                    if let Some(chain_state) =
+                                                        listening_chain_states.get_mut(&chain)
+                                                    {
+                                                        *chain_state = StreamStartState::Waiting;
+                                                    }
+                                                    continue;
+                                                }
+                                            };
+
+                                        // Now create the pollers. For right now, they just run forever once kicked off
+                                        // However, the event poller's filters can be adjusted on the fly via the shared client
+                                        tokio::spawn({
+                                            let controller = controller.clone();
+                                            async move {
+                                                start_stellar_event_poller(controller, event_tx)
+                                            }
+                                        });
+
+                                        tokio::spawn({
+                                            let controller = controller.clone();
+                                            async move {
+                                                start_stellar_ledger_poller(controller, ledger_tx)
+                                            }
+                                        });
+
+                                        // Now that we'll be sending into the streams, we can multiplex them in
+                                        multiplexed_stream.push(event_stream);
+                                        multiplexed_stream.push(ledger_stream);
+
+                                        // and stash our controller so we can adjust filters and polling on the fly based on trigger configs
+                                        self.stellar_controllers
+                                            .write()
+                                            .unwrap()
+                                            .insert(chain_key, controller);
+
+                                        if let Some(chain_state) =
+                                            listening_chain_states.get_mut(&chain)
+                                        {
+                                            *chain_state = StreamStartState::Connected;
+                                        }
+                                    } else {
+                                        tracing::warn!(
+                                            "Stellar stream for chain {chain} is already running"
+                                        );
+                                    }
+                                }
                             }
                         }
                         TriggerCommand::WatchEvmContractEvents {
@@ -573,6 +725,39 @@ impl TriggerManager {
                                 None => {
                                     tracing::error!(
                                         "No EVM controller found for chain {chain}, cannot watch blocks"
+                                    );
+                                    continue;
+                                }
+                            }
+                        }
+                        TriggerCommand::WatchStellarContractEvents {
+                            chain,
+                            contract_id_and_topics,
+                        } => match self.stellar_controllers.read().unwrap().get(&chain) {
+                            Some(controller) => {
+                                controller.client.update_event_filters(move |filters| {
+                                    for (contract_id, topics) in contract_id_and_topics {
+                                        for topic in topics {
+                                            filters.add_filter(contract_id.clone(), topic);
+                                        }
+                                    }
+                                });
+                            }
+                            None => {
+                                tracing::error!(
+                                        "No Stellar controller found for chain {chain}, cannot watch contract event"
+                                    );
+                                continue;
+                            }
+                        },
+                        TriggerCommand::WatchStellarBlocks { chain } => {
+                            match self.stellar_controllers.read().unwrap().get(&chain) {
+                                Some(controller) => {
+                                    controller.enable_ledger_polling();
+                                }
+                                None => {
+                                    tracing::error!(
+                                        "No Stellar controller found for chain {chain}, cannot watch blocks"
                                     );
                                     continue;
                                 }
@@ -725,6 +910,53 @@ impl TriggerManager {
                         }
                     }
                 }
+
+                StreamTriggers::StellarEvent {
+                    chain,
+                    contract_id,
+                    event_type,
+                    ledger,
+                    ledger_closed_at,
+                    event_id,
+                    operation_index,
+                    transaction_index,
+                    tx_hash,
+                    topic,
+                    value,
+                } => {
+                    // TODO - see if it's a ServiceURIUpdated for service manager
+
+                    // Handle regular events
+
+                    let triggers_by_contract_event_lock = self
+                        .lookup_maps
+                        .triggers_by_stellar_contract_event
+                        .read()
+                        .unwrap();
+
+                    let normalized_topic_key = NormalizedStellarTopicKey::new(topic);
+
+                    if let Some(lookup_ids) = triggers_by_contract_event_lock.get(&(
+                        chain.clone(),
+                        contract_id.clone(),
+                        normalized_topic_key,
+                    )) {
+                        let trigger_data = TriggerData::StellarContractEvent {
+                            chain,
+                            contract_id,
+                            event_type,
+                            ledger,
+                            ledger_closed_at,
+                            event_id,
+                            operation_index,
+                            transaction_index,
+                            tx_hash,
+                            topic,
+                            value,
+                        };
+                    }
+                }
+
                 StreamTriggers::Cosmos {
                     contract_events,
                     chain,
@@ -815,6 +1047,9 @@ impl TriggerManager {
                     block_height,
                 } => {
                     dispatcher_commands.extend(self.process_blocks(chain, block_height));
+                }
+                StreamTriggers::StellarLedgerSequence { chain, ledger } => {
+                    dispatcher_commands.extend(self.process_blocks(chain, ledger as u64));
                 }
                 StreamTriggers::Cron { hits } => {
                     // Process each cron hit (group of triggers at the same scheduled time)

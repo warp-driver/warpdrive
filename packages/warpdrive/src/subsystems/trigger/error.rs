@@ -1,6 +1,6 @@
 use iri_string::types::CreationError;
 use thiserror::Error;
-use utils::error::EvmClientError;
+use utils::error::{EvmClientError, StellarClientError};
 use warpdrive_types::{ByteArray, ChainKey, ServiceId, WorkflowId};
 
 use crate::{
@@ -63,4 +63,8 @@ pub enum TriggerError {
     JetstreamConfig(String),
     #[error("Jetstream parsing error: {0}")]
     JetstreamParse(String),
+    #[error("StellarClient (chain {0}): missing rpc endpoint")]
+    StellarMissingRpc(ChainKey),
+    #[error("StellarClient: {0}")]
+    StellarClient(#[from] StellarClientError),
 }

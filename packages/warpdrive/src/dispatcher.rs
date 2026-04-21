@@ -980,6 +980,12 @@ async fn query_service_from_address(
 
             service_uri
         }
+
+        AnyChainConfig::Stellar(_) => {
+            return Err(DispatcherError::Config(
+                "Stellar chain type is not supported yet".to_string(),
+            ));
+        }
     };
 
     let service_uri = UriString::try_from(service_uri)?;

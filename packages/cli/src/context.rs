@@ -167,6 +167,11 @@ impl CliContext {
                     .contract_info(&address)
                     .await
                     .is_ok(),
+
+                AnyChainConfig::Stellar(_) => {
+                    // climb doesn't have a concept of stellar addresses
+                    false
+                }
             },
         )
     }

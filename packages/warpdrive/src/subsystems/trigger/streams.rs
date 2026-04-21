@@ -3,6 +3,7 @@ pub mod cosmos_stream;
 pub mod cron_stream;
 pub mod evm_stream;
 pub mod local_command_stream;
+pub mod stellar_stream;
 
 use crate::subsystems::trigger::{
     streams::atproto_jetstream::AtProtoEvent,
@@ -48,6 +49,25 @@ pub enum StreamTriggers {
         tx_index: u64,
         block_timestamp: Option<u64>,
         log_index: u64,
+    },
+    StellarEvent {
+        chain: ChainKey,
+        /// The contract that emitted the event
+        contract_id: String,
+        /// The event type
+        event_type: String,
+        ledger: u32,
+        ledger_closed_at: String,
+        event_id: String,
+        operation_index: Option<u32>,
+        transaction_index: Option<u32>,
+        tx_hash: String,
+        topic: Vec<String>,
+        value: String,
+    },
+    StellarLedgerSequence {
+        chain: ChainKey,
+        ledger: u32,
     },
     // We need a separate stream for EVM block interval triggers
     EvmBlock {

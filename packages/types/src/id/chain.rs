@@ -117,6 +117,7 @@ pub struct ChainKeyNamespace(String);
 impl ChainKeyNamespace {
     pub const EVM: &str = "evm";
     pub const COSMOS: &str = "cosmos";
+    pub const STELLAR: &str = "stellar";
     pub const DEV: &str = "dev";
 
     pub fn new(s: impl Into<String>) -> ChainKeyResult<Self> {
