@@ -481,7 +481,7 @@ impl LookupMaps {
 
                             let controller = stellar_controllers.read().unwrap();
                             let client = &controller
-                                .get(&chain)
+                                .get(chain)
                                 .as_ref()
                                 .ok_or_else(|| TriggerError::StellarMissingClient(chain.clone()))?
                                 .client;

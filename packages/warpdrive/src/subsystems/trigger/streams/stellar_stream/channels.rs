@@ -36,3 +36,9 @@ impl StellarChannels {
         }
     }
 }
+
+impl Default for StellarChannels {
+    fn default() -> Self {
+        Self::new()
+    }
+}

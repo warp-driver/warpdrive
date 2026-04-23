@@ -57,7 +57,7 @@ pub async fn start_stellar_event_stream(
                 }
                 None => {
                     tracing::warn!("Received event without transaction hash: {:?}", event);
-                    return None;
+                    None
                 }
             }
         }

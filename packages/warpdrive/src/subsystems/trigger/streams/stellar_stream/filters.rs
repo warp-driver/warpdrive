@@ -56,10 +56,7 @@ impl StellarEventFilter {
 impl EventFilters {
     pub fn add_filter(&mut self, filter: StellarEventFilter) -> StellarClientResult<StellarRpcId> {
         let id = self.list.insert(filter.clone());
-        self.dedupe_list
-            .entry(filter)
-            .or_insert_with(Vec::new)
-            .push(id);
+        self.dedupe_list.entry(filter).or_default().push(id);
 
         Ok(id)
     }

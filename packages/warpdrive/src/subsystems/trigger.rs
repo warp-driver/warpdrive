@@ -659,6 +659,7 @@ impl TriggerManager {
                                             let controller = controller.clone();
                                             async move {
                                                 start_stellar_event_poller(controller, event_tx)
+                                                    .await
                                             }
                                         });
 
@@ -666,6 +667,7 @@ impl TriggerManager {
                                             let controller = controller.clone();
                                             async move {
                                                 start_stellar_ledger_poller(controller, ledger_tx)
+                                                    .await
                                             }
                                         });
 
