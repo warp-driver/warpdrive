@@ -4,13 +4,9 @@ use std::{
 };
 
 use bimap::BiMap;
-use utils::{
-    error::{StellarClientError, StellarClientResult},
-    telemetry::TriggerMetrics,
-};
+use utils::telemetry::TriggerMetrics;
 use warpdrive_types::{
-    AtProtoAction, ByteArray, ChainKey, ServiceId, StellarTopicSegment, Trigger, TriggerConfig,
-    WorkflowId,
+    AtProtoAction, ByteArray, ChainKey, ServiceId, Trigger, TriggerConfig, WorkflowId,
 };
 
 use crate::{
@@ -18,6 +14,10 @@ use crate::{
     subsystems::trigger::{
         error::TriggerError,
         schedulers::{block_scheduler::BlockIntervalState, cron_scheduler::CronIntervalState},
+        streams::stellar_stream::{
+            controller::StellarStreamController,
+            filters::{StellarEventFilter, StellarRpcId},
+        },
     },
 };
 
@@ -37,9 +37,9 @@ pub struct LookupMaps {
     pub triggers_by_evm_contract_event: Arc<
         RwLock<HashMap<(ChainKey, alloy_primitives::Address, ByteArray<32>), HashSet<LookupId>>>,
     >,
-    /// lookup id by (chain id, contract id, topics)
-    pub triggers_by_stellar_contract_event:
-        Arc<RwLock<HashMap<(ChainKey, String, NormalizedStellarTopicKey), HashSet<LookupId>>>>,
+    /// To avoid the problem of matching on wildcards
+    /// We track a proprietary ID in the stream client and our lookup is based on that
+    pub triggers_by_stellar_contract_event: Arc<RwLock<HashMap<StellarRpcId, LookupId>>>,
     /// lookup id by (collection, optional repo_did, optional action) for exact matches
     pub triggers_by_atproto_event_exact:
         Arc<RwLock<HashMap<(String, Option<String>, Option<AtProtoAction>), HashSet<LookupId>>>>,
@@ -57,34 +57,6 @@ pub struct LookupMaps {
     pub lookup_id: Arc<AtomicUsize>,
     /// cron scheduler
     pub cron_scheduler: CronScheduler,
-}
-
-// Stellar topics can have up to 4 segments, and each segment can be a string or a wildcard
-// we'll normalize them into a fixed-size array for easier hashing and comparison
-// and fill all wildcards
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct NormalizedStellarTopicKey {
-    segments: [StellarTopicSegment; 4],
-}
-
-impl NormalizedStellarTopicKey {
-    pub fn new(topic: Vec<StellarTopicSegment>) -> Self {
-        let mut segments: [StellarTopicSegment; 4] = [
-            StellarTopicSegment::Wildcard,
-            StellarTopicSegment::Wildcard,
-            StellarTopicSegment::Wildcard,
-            StellarTopicSegment::Wildcard,
-        ];
-
-        for (i, segment) in topic.into_iter().take(4).enumerate() {
-            segments[i] = match segment {
-                StellarTopicSegment::Exact(s) => StellarTopicSegment::Exact(s),
-                _ => StellarTopicSegment::Wildcard,
-            }
-        }
-
-        Self { segments }
-    }
 }
 
 impl LookupMaps {
@@ -144,7 +116,11 @@ impl LookupMaps {
             .collect()
     }
 
-    pub fn add_service(&self, service: &warpdrive_types::Service) -> Result<(), TriggerError> {
+    pub fn add_service(
+        &self,
+        service: &warpdrive_types::Service,
+        stellar_controllers: &Arc<std::sync::RwLock<HashMap<ChainKey, StellarStreamController>>>,
+    ) -> Result<(), TriggerError> {
         let manager_address: layer_climb::prelude::Address = service.manager.address();
 
         self.service_manager
@@ -158,13 +134,17 @@ impl LookupMaps {
                 workflow_id: id.clone(),
                 trigger: workflow.trigger.clone(),
             };
-            self.add_trigger(trigger)?;
+            self.add_trigger(trigger, stellar_controllers)?;
         }
 
         Ok(())
     }
 
-    pub fn add_trigger(&self, config: TriggerConfig) -> Result<(), TriggerError> {
+    pub fn add_trigger(
+        &self,
+        config: TriggerConfig,
+        stellar_controllers: &Arc<std::sync::RwLock<HashMap<ChainKey, StellarStreamController>>>,
+    ) -> Result<(), TriggerError> {
         // get the next lookup id
         let lookup_id = self
             .lookup_id
@@ -200,19 +180,25 @@ impl LookupMaps {
             Trigger::StellarContractEvent {
                 chain,
                 contract_id,
-                topics,
+                topic_segments,
             } => {
-                let key = (
-                    chain.clone(),
-                    contract_id.clone(),
-                    NormalizedStellarTopicKey::new(topics),
-                );
+                let filter =
+                    StellarEventFilter::new(contract_id.to_string(), topic_segments.clone())?;
+
+                let controller = stellar_controllers.read().unwrap();
+                let client = &controller
+                    .get(&chain)
+                    .as_ref()
+                    .ok_or_else(|| TriggerError::StellarMissingClient(chain.clone()))?
+                    .client;
+
+                let rpc_id =
+                    client.update_event_filters(|filters| filters.add_filter(filter.clone()))?;
+
                 self.triggers_by_stellar_contract_event
                     .write()
                     .unwrap()
-                    .entry(key)
-                    .or_default()
-                    .insert(lookup_id);
+                    .insert(rpc_id, lookup_id);
             }
             Trigger::BlockInterval {
                 chain,
@@ -289,6 +275,7 @@ impl LookupMaps {
         &self,
         service_id: ServiceId,
         workflow_id: WorkflowId,
+        stellar_controllers: &Arc<std::sync::RwLock<HashMap<ChainKey, StellarStreamController>>>,
     ) -> Result<(), TriggerError> {
         let mut service_lock = self.triggers_by_service_workflow.write().unwrap();
 
@@ -343,17 +330,23 @@ impl LookupMaps {
                 Trigger::StellarContractEvent {
                     chain,
                     contract_id,
-                    topics,
+                    topic_segments,
                 } => {
                     let mut lock = self.triggers_by_stellar_contract_event.write().unwrap();
-                    let normalized_topics = NormalizedStellarTopicKey::new(topics);
-                    if let Some(set) =
-                        lock.get_mut(&(chain.clone(), contract_id.clone(), normalized_topics))
-                    {
-                        set.remove(&lookup_id);
-                        if set.is_empty() {
-                            lock.remove(&(chain, contract_id, normalized_topics));
-                        }
+                    let filter =
+                        StellarEventFilter::new(contract_id.to_string(), topic_segments.clone())?;
+
+                    let controller = stellar_controllers.read().unwrap();
+                    let client = &controller
+                        .get(&chain)
+                        .as_ref()
+                        .ok_or_else(|| TriggerError::StellarMissingClient(chain.clone()))?
+                        .client;
+
+                    let rpc_ids = client.get_rpc_ids_for_filter(&filter);
+
+                    for rpc_id in rpc_ids {
+                        lock.remove(&rpc_id);
                     }
                 }
                 Trigger::BlockInterval { chain, .. } => {
@@ -406,6 +399,7 @@ impl LookupMaps {
     pub fn remove_service(
         &self,
         service_id: warpdrive_types::ServiceId,
+        stellar_controllers: &Arc<std::sync::RwLock<HashMap<ChainKey, StellarStreamController>>>,
     ) -> Result<(), TriggerError> {
         let mut trigger_configs = self.trigger_configs.write().unwrap();
         let mut triggers_by_evm_contract_event =
@@ -478,22 +472,24 @@ impl LookupMaps {
                         Trigger::StellarContractEvent {
                             chain,
                             contract_id,
-                            topics,
+                            topic_segments,
                         } => {
-                            let normalized_topics = NormalizedStellarTopicKey::new(topics.clone());
-                            if let Some(set) = triggers_by_stellar_contract_event.get_mut(&(
-                                chain.clone(),
-                                contract_id.clone(),
-                                normalized_topics.clone(),
-                            )) {
-                                set.remove(lookup_id);
-                                if set.is_empty() {
-                                    triggers_by_stellar_contract_event.remove(&(
-                                        chain.clone(),
-                                        contract_id.clone(),
-                                        normalized_topics.clone(),
-                                    ));
-                                }
+                            let filter = StellarEventFilter::new(
+                                contract_id.to_string(),
+                                topic_segments.clone(),
+                            )?;
+
+                            let controller = stellar_controllers.read().unwrap();
+                            let client = &controller
+                                .get(&chain)
+                                .as_ref()
+                                .ok_or_else(|| TriggerError::StellarMissingClient(chain.clone()))?
+                                .client;
+
+                            let rpc_ids = client.get_rpc_ids_for_filter(&filter);
+
+                            for rpc_id in rpc_ids {
+                                triggers_by_stellar_contract_event.remove(&rpc_id);
                             }
                         }
                         Trigger::BlockInterval { chain, .. } => {

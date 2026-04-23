@@ -79,7 +79,7 @@ interface chain {
     operation-index: option<u32>,
     transaction-index: option<u32>,
     transaction-hash: stellar-tx-hash,
-    topic: list<string>,
+    topic-segments: list<string>,
     value: string,
   }
 }
@@ -289,7 +289,7 @@ interface service {
   record trigger-stellar-contract-event {
     contract-id: string,
     chain: chain-key,
-    topics: list<stellar-topic-segment>,
+    topic-segments: list<stellar-topic-segment>,
   }
 
   /// Trigger types

@@ -36,8 +36,8 @@ impl TryFrom<component_service::Trigger> for warpdrive_types::Trigger {
                 warpdrive_types::Trigger::StellarContractEvent {
                     contract_id: source.contract_id,
                     chain: source.chain.parse()?,
-                    topics: source
-                        .topics
+                    topic_segments: source
+                        .topic_segments
                         .into_iter()
                         .map(warpdrive_types::StellarTopicSegment::try_from)
                         .collect::<anyhow::Result<Vec<_>>>()?,

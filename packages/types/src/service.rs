@@ -305,7 +305,7 @@ pub enum Trigger {
         chain: ChainKey,
         contract_id: String,
         /// Maximum of 4 topic segments, can be exact values or wildcards
-        topics: Vec<StellarTopicSegment>,
+        topic_segments: Vec<StellarTopicSegment>,
     },
     BlockInterval {
         /// The chain to use for the block interval
@@ -415,7 +415,7 @@ pub enum TriggerData {
         operation_index: Option<u32>,
         transaction_index: Option<u32>,
         tx_hash: String,
-        topic: Vec<String>,
+        topic_segments: Vec<String>,
         value: String,
     },
     BlockInterval {

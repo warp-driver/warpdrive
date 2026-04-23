@@ -7,18 +7,15 @@ use crate::{
     config::Config,
     dispatcher::DispatcherCommand,
     services::Services,
-    subsystems::trigger::{
-        lookup::NormalizedStellarTopicKey,
-        streams::{
-            cosmos_stream::StreamTriggerCosmosContractEvent,
-            evm_stream::client::{EvmTriggerStreams, EvmTriggerStreamsController},
-            local_command_stream,
-            stellar_stream::{
-                channels::{StellarChannelReceivers, StellarChannelSenders, StellarChannels},
-                controller::StellarStreamController,
-                poller::{start_stellar_event_poller, start_stellar_ledger_poller},
-                start_stellar_ledger_stream,
-            },
+    subsystems::trigger::streams::{
+        cosmos_stream::StreamTriggerCosmosContractEvent,
+        evm_stream::client::{EvmTriggerStreams, EvmTriggerStreamsController},
+        local_command_stream,
+        stellar_stream::{
+            channels::{StellarChannelReceivers, StellarChannelSenders, StellarChannels},
+            controller::StellarStreamController,
+            poller::{start_stellar_event_poller, start_stellar_ledger_poller},
+            start_stellar_ledger_stream,
         },
     },
     tracing_service_info, AppContext,
@@ -35,14 +32,14 @@ use std::{
     num::NonZeroU64,
     sync::Arc,
 };
-use streams::stellar_stream::{client::StellarStreamClient, start_stellar_event_stream};
+use streams::stellar_stream::start_stellar_event_stream;
 use streams::{cosmos_stream, cron_stream, evm_stream, MultiplexedStream, StreamTriggers};
 use tracing::instrument;
 use utils::telemetry::TriggerMetrics;
 use warpdrive_types::{
     contracts::cosmwasm::service_manager::event::WavsServiceUriUpdatedEvent, AnyChainConfig,
-    ByteArray, ChainConfigs, ChainKey, IWarpDriveServiceManager, ServiceId, StellarTopicSegment,
-    Trigger, TriggerAction, TriggerConfig, TriggerData,
+    ByteArray, ChainConfigs, ChainKey, IWarpDriveServiceManager, ServiceId, Trigger, TriggerAction,
+    TriggerConfig, TriggerData,
 };
 
 #[derive(Debug)]
@@ -59,10 +56,6 @@ pub enum TriggerCommand {
         chain: ChainKey,
         addresses: Vec<alloy_primitives::Address>,
         event_hashes: Vec<alloy_primitives::B256>,
-    },
-    WatchStellarContractEvents {
-        chain: ChainKey,
-        contract_id_and_topics: Vec<(String, Vec<Vec<StellarTopicSegment>>)>,
     },
     WatchStellarBlocks {
         chain: ChainKey,
@@ -98,20 +91,15 @@ impl TriggerCommand {
             }
             Trigger::StellarContractEvent {
                 chain,
-                contract_id,
-                topics,
+                contract_id: _,
+                topic_segments: _,
             } => {
                 vec![
                     Self::StartListeningChain {
                         chain: chain.clone(),
                     },
-                    Self::WatchStellarContractEvents {
-                        chain: chain.clone(),
-                        contract_id_and_topics: vec![(
-                            contract_id.to_string(),
-                            vec![topics.clone()],
-                        )],
-                    },
+                    // There is no WatchStellarContractEvents
+                    // Because we needed the rpc_id earlier on
                 ]
             }
             Trigger::BlockInterval { chain, .. } => match chain_configs.get_chain(chain) {
@@ -217,7 +205,8 @@ impl TriggerManager {
         // It doesn't really matter what order the multiplexed streams are polled in, a trigger simply
         // will not be fired until the stream that kicks it off is polled (i.e. this definitively happens _after_ the stream is created).
 
-        self.lookup_maps.add_service(service)?;
+        self.lookup_maps
+            .add_service(service, &self.stellar_controllers)?;
 
         // Ensure the service manager's chain is being listened to for service change events
         // This is needed even if the service has no workflows, so service URI changes can be detected
@@ -251,7 +240,9 @@ impl TriggerManager {
                 trigger: workflow.trigger.clone(),
             };
 
-            for command in TriggerCommand::map(&config, &chain_configs) {
+            let commands = TriggerCommand::map(&config, &chain_configs);
+
+            for command in commands {
                 self.command_sender.send(command)?;
             }
         }
@@ -261,7 +252,8 @@ impl TriggerManager {
 
     #[instrument(skip(self), fields(subsys = "TriggerManager"))]
     pub fn remove_service(&self, service_id: ServiceId) -> Result<(), TriggerError> {
-        self.lookup_maps.remove_service(service_id.clone())?;
+        self.lookup_maps
+            .remove_service(service_id.clone(), &self.stellar_controllers)?;
 
         // TODO - consider sending commands to:
         // 1. stop listening to chains if no triggers remain for them
@@ -333,7 +325,7 @@ impl TriggerManager {
     #[instrument(skip(self), fields(subsys = "TriggerManager"))]
     async fn start_watcher(
         &self,
-        kill_receiver: tokio::sync::broadcast::Receiver<()>,
+        mut kill_receiver: tokio::sync::broadcast::Receiver<()>,
     ) -> Result<(), TriggerError> {
         let mut multiplexed_stream: MultiplexedStream = SelectAll::new();
 
@@ -629,14 +621,14 @@ impl TriggerManager {
                                         // to our internal StreamTriggers, and the pollers which we will create a bit further below
                                         // are what actually interact with the chain and send data to these streams
                                         let event_stream = start_stellar_event_stream(
-                                            chain,
+                                            chain.clone(),
                                             event_rx,
                                             self.metrics.clone(),
                                         )
                                         .await;
 
                                         let ledger_stream = start_stellar_ledger_stream(
-                                            chain,
+                                            chain.clone(),
                                             ledger_rx,
                                             self.metrics.clone(),
                                         )
@@ -730,26 +722,8 @@ impl TriggerManager {
                                 }
                             }
                         }
-                        TriggerCommand::WatchStellarContractEvents {
-                            chain,
-                            contract_id_and_topics,
-                        } => match self.stellar_controllers.read().unwrap().get(&chain) {
-                            Some(controller) => {
-                                controller.client.update_event_filters(move |filters| {
-                                    for (contract_id, topics) in contract_id_and_topics {
-                                        for topic in topics {
-                                            filters.add_filter(contract_id.clone(), topic);
-                                        }
-                                    }
-                                });
-                            }
-                            None => {
-                                tracing::error!(
-                                        "No Stellar controller found for chain {chain}, cannot watch contract event"
-                                    );
-                                continue;
-                            }
-                        },
+                        // There is no WatchStellarContractEvents command because we need the rpc_id to add filters,
+                        // so we already added the filters earlier
                         TriggerCommand::WatchStellarBlocks { chain } => {
                             match self.stellar_controllers.read().unwrap().get(&chain) {
                                 Some(controller) => {
@@ -921,8 +895,9 @@ impl TriggerManager {
                     operation_index,
                     transaction_index,
                     tx_hash,
-                    topic,
+                    topic_segments,
                     value,
+                    rpc_ids,
                 } => {
                     // TODO - see if it's a ServiceURIUpdated for service manager
 
@@ -934,26 +909,29 @@ impl TriggerManager {
                         .read()
                         .unwrap();
 
-                    let normalized_topic_key = NormalizedStellarTopicKey::new(topic);
+                    let trigger_data = TriggerData::StellarContractEvent {
+                        chain,
+                        contract_id,
+                        event_type,
+                        ledger,
+                        ledger_closed_at,
+                        event_id,
+                        operation_index,
+                        transaction_index,
+                        tx_hash,
+                        topic_segments,
+                        value,
+                    };
 
-                    if let Some(lookup_ids) = triggers_by_contract_event_lock.get(&(
-                        chain.clone(),
-                        contract_id.clone(),
-                        normalized_topic_key,
-                    )) {
-                        let trigger_data = TriggerData::StellarContractEvent {
-                            chain,
-                            contract_id,
-                            event_type,
-                            ledger,
-                            ledger_closed_at,
-                            event_id,
-                            operation_index,
-                            transaction_index,
-                            tx_hash,
-                            topic,
-                            value,
-                        };
+                    let lookup_ids = rpc_ids
+                        .into_iter()
+                        .filter_map(|rpc_id| triggers_by_contract_event_lock.get(&rpc_id));
+
+                    for trigger_config in self.lookup_maps.get_trigger_configs(lookup_ids) {
+                        dispatcher_commands.push(DispatcherCommand::Trigger(TriggerAction {
+                            data: trigger_data.clone(),
+                            config: trigger_config.clone(),
+                        }));
                     }
                 }
 

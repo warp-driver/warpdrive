@@ -51,12 +51,12 @@ impl TryFrom<warpdrive_types::Trigger> for component_service::Trigger {
             warpdrive_types::Trigger::StellarContractEvent {
                 contract_id,
                 chain,
-                topics,
+                topic_segments,
             } => component_service::Trigger::StellarContractEvent(
                 component_service::TriggerStellarContractEvent {
                     contract_id,
                     chain: chain.to_string(),
-                    topics: topics
+                    topic_segments: topic_segments
                         .into_iter()
                         .map(component_service::StellarTopicSegment::try_from)
                         .collect::<anyhow::Result<Vec<_>>>()?,
@@ -492,18 +492,18 @@ impl TryFrom<warpdrive_types::TriggerData> for component_input::TriggerData {
                 operation_index,
                 transaction_index,
                 tx_hash,
-                topic,
+                topic_segments,
                 value,
             } => {
                 let event = component_events::StellarEvent {
                     event_type,
                     ledger,
-                    ledger_closed_at: ledger_closed_at.into(),
+                    ledger_closed_at,
                     event_id,
                     operation_index,
                     transaction_index,
                     transaction_hash: tx_hash,
-                    topic,
+                    topic_segments,
                     value,
                 };
                 Ok(component_input::TriggerData::StellarContractEvent(
@@ -679,18 +679,18 @@ impl TryFrom<warpdrive_types::TriggerData> for aggregator_vectr_input::TriggerDa
                 operation_index,
                 transaction_index,
                 tx_hash,
-                topic,
+                topic_segments,
                 value,
             } => {
                 let event = aggregator_events::StellarEvent {
                     event_type,
                     ledger,
-                    ledger_closed_at: ledger_closed_at.into(),
+                    ledger_closed_at,
                     event_id,
                     operation_index,
                     transaction_index,
                     transaction_hash: tx_hash,
-                    topic,
+                    topic_segments,
                     value,
                 };
                 Ok(aggregator_vectr_input::TriggerData::StellarContractEvent(
@@ -985,12 +985,12 @@ impl TryFrom<warpdrive_types::Trigger> for aggregator_service::Trigger {
             warpdrive_types::Trigger::StellarContractEvent {
                 chain,
                 contract_id,
-                topics,
+                topic_segments,
             } => aggregator_service::Trigger::StellarContractEvent(
                 aggregator_service::TriggerStellarContractEvent {
                     chain: chain.to_string(),
                     contract_id,
-                    topics: topics
+                    topic_segments: topic_segments
                         .into_iter()
                         .map(aggregator_service::StellarTopicSegment::try_from)
                         .collect::<anyhow::Result<Vec<_>>>()?,

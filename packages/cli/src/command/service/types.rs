@@ -105,12 +105,12 @@ impl std::fmt::Display for WorkflowTriggerResult {
             Trigger::StellarContractEvent {
                 chain,
                 contract_id,
-                topics,
+                topic_segments,
             } => {
                 writeln!(f, "  Trigger Type: Stellar Contract Event")?;
                 writeln!(f, "    Chain:       {}", chain)?;
                 writeln!(f, "    Contract ID: {}", contract_id)?;
-                writeln!(f, "    Topics:      {:?}", topics)?;
+                writeln!(f, "    Topic segments:      {:?}", topic_segments)?;
             }
             Trigger::Manual => {
                 writeln!(f, "  Trigger Type: Manual")?;

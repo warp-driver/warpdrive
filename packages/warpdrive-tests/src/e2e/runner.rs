@@ -427,6 +427,13 @@ async fn run_test(
 
                 vec![TriggerId::new(trigger_id.u64())]
             }
+            Trigger::StellarContractEvent {
+                chain: _,
+                contract_id: _,
+                topic_segments: _,
+            } => {
+                todo!("Stellar triggers are not yet implemented in the test runner")
+            }
             Trigger::BlockInterval { .. } => vec![TriggerId::new(1337)],
             Trigger::Cron { .. } => vec![TriggerId::new(1338)],
             Trigger::AtProtoEvent { .. } => {

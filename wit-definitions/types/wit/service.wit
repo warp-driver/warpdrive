@@ -112,7 +112,7 @@ interface service {
     record trigger-stellar-contract-event {
         contract-id: string,
         chain: chain-key,
-        topics: list<stellar-topic-segment>
+        topic-segments: list<stellar-topic-segment>
     }
 
     record trigger-block-interval {

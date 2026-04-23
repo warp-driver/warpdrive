@@ -2,14 +2,16 @@ use stellar_rpc_client::Event;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
+use crate::subsystems::trigger::streams::stellar_stream::filters::StellarRpcId;
+
 pub struct StellarChannelReceivers {
     pub ledger_rx: UnboundedReceiverStream<u32>,
-    pub event_rx: UnboundedReceiverStream<Event>,
+    pub event_rx: UnboundedReceiverStream<(Event, Vec<StellarRpcId>)>,
 }
 
 pub struct StellarChannelSenders {
     pub ledger_tx: UnboundedSender<u32>,
-    pub event_tx: UnboundedSender<Event>,
+    pub event_tx: UnboundedSender<(Event, Vec<StellarRpcId>)>,
 }
 
 pub struct StellarChannels {

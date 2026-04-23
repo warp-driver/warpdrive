@@ -62,8 +62,9 @@ pub enum StreamTriggers {
         operation_index: Option<u32>,
         transaction_index: Option<u32>,
         tx_hash: String,
-        topic: Vec<String>,
+        topic_segments: Vec<String>,
         value: String,
+        rpc_ids: Vec<stellar_stream::filters::StellarRpcId>,
     },
     StellarLedgerSequence {
         chain: ChainKey,

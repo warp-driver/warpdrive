@@ -73,7 +73,7 @@ interface chain {
         operation-index: option<u32>,
         transaction-index: option<u32>,
         transaction-hash: stellar-tx-hash,
-        topic: list<string>,
+        topic-segments: list<string>,
         value: string
     }
 }

@@ -3,6 +3,10 @@ use std::sync::{
     Arc,
 };
 
+use crate::subsystems::trigger::streams::stellar_stream::filters::{
+    StellarEventFilter, StellarRpcId,
+};
+
 use super::filters::EventFilters;
 use stellar_rpc_client::{Event, EventStart, EventType};
 use utils::error::{StellarClientError, StellarClientResult};
@@ -41,12 +45,19 @@ impl StellarStreamClient {
         self.event_filters.read().unwrap().clone()
     }
 
-    pub fn update_event_filters(&self, f: impl FnOnce(&mut EventFilters)) {
+    pub fn update_event_filters<T>(&self, f: impl FnOnce(&mut EventFilters) -> T) -> T {
         let mut filters = self.event_filters.write().unwrap();
-        f(&mut filters);
+        f(&mut filters)
     }
 
-    pub async fn fetch_next_events(&self) -> StellarClientResult<Vec<Event>> {
+    pub fn get_rpc_ids_for_filter(&self, filter: &StellarEventFilter) -> Vec<StellarRpcId> {
+        let filters = self.event_filters.read().unwrap();
+        filters.get_rpc_ids_for_filter(filter)
+    }
+
+    pub async fn fetch_next_events(
+        &self,
+    ) -> StellarClientResult<Vec<(Vec<Event>, Vec<StellarRpcId>)>> {
         let curr_ledger = self.inner.get_latest_ledger().await?.sequence;
 
         if !self
@@ -79,24 +90,26 @@ impl StellarStreamClient {
 
             let mut all_events = Vec::new();
 
-            let rpc_list = {
-                let lock = self.event_filters.read().unwrap();
-                lock.rpc_list.clone()
+            let filter_with_ids = {
+                self.event_filters
+                    .read()
+                    .unwrap()
+                    .get_all_filters_with_ids()
             };
 
-            for filter in rpc_list {
+            for (filter, ids) in filter_with_ids {
                 let resp = self
                     .inner
                     .get_events(
                         range.clone(),
                         Some(event_type),
-                        &filter.contract_ids,
-                        &filter.topics_xdr_base64,
+                        &[filter.contract_id],
+                        &[filter.topic_segments_xdr_base64],
                         None,
                     )
                     .await?;
 
-                all_events.extend(resp.events);
+                all_events.push((resp.events, ids));
             }
 
             self.event_last_ledger

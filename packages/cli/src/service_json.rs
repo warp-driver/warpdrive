@@ -78,7 +78,7 @@ impl ServiceJsonExt for ServiceBuilder {
                     Trigger::StellarContractEvent {
                         chain: _,
                         contract_id,
-                        topics,
+                        topic_segments,
                     } => {
                         if contract_id.is_empty() {
                             errors.push(format!(
@@ -86,18 +86,18 @@ impl ServiceJsonExt for ServiceBuilder {
                                 workflow_id
                             ));
                         }
-                        if topics.is_empty() {
+                        if topic_segments.is_empty() {
                             errors.push(format!(
-                                "Workflow '{}' has empty topics in Stellar trigger",
+                                "Workflow '{}' has empty topic segments in Stellar trigger",
                                 workflow_id
                             ));
                         }
 
-                        if topics.len() > 4 {
+                        if topic_segments.len() > 4 {
                             errors.push(format!(
-                                "Workflow '{}' has too many topics in Stellar trigger: expected at most 4 but got {}",
+                                "Workflow '{}' has too many topic segments in Stellar trigger: expected at most 4 but got {}",
                                 workflow_id,
-                                topics.len()
+                                topic_segments.len()
                             ));
                         }
                     }

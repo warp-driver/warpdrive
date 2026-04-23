@@ -67,4 +67,6 @@ pub enum TriggerError {
     StellarMissingRpc(ChainKey),
     #[error("StellarClient: {0}")]
     StellarClient(#[from] StellarClientError),
+    #[error("Stellar client for chain {0} not found")]
+    StellarMissingClient(ChainKey),
 }

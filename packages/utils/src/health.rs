@@ -154,7 +154,7 @@ pub async fn check_evm_chain_endpoint_health_query(
 
 async fn check_stellar_chain_health_query(
     key: ChainKey,
-    config: StellarChainConfig,
+    _config: StellarChainConfig,
 ) -> Result<(), HealthCheckError> {
     Err(HealthCheckError::StellarClientError(
         key,
