@@ -8,7 +8,7 @@ use alloy_primitives::U256;
 use alloy_provider::ext::AnvilApi;
 use alloy_provider::Provider;
 use alloy_sol_types::SolType;
-use anyhow::{anyhow, bail, Context};
+use anyhow::{anyhow, bail, ensure, Context};
 use futures::{stream::FuturesUnordered, StreamExt};
 use ordermap::OrderMap;
 use std::collections::HashMap;
@@ -34,6 +34,7 @@ use crate::{
     },
     example_cosmos_client::SimpleCosmosTriggerClient,
     example_evm_client::{LogSpamClient, SimpleEvmTriggerClient, TriggerId},
+    example_stellar_client::SimpleStellarTriggerClient,
 };
 use serde_json::json;
 
@@ -428,11 +429,40 @@ async fn run_test(
                 vec![TriggerId::new(trigger_id.u64())]
             }
             Trigger::StellarContractEvent {
-                chain: _,
-                contract_id: _,
+                chain,
+                contract_id,
                 topic_segments: _,
             } => {
-                todo!("Stellar triggers are not yet implemented in the test runner")
+                // The Stellar poller treats its first fetch as a baseline ledger sync.
+                // Give it a moment to initialize before we emit the trigger event.
+                tokio::time::sleep(Duration::from_secs(3)).await;
+
+                let client = SimpleStellarTriggerClient::new(chain.clone());
+                let input = String::from_utf8(
+                    input_bytes
+                        .clone()
+                        .expect("Stellar triggers require a UTF-8 text input"),
+                )
+                .context("Stellar trigger input must be valid UTF-8")?;
+
+                let trigger_id = client
+                    .add_trigger(contract_id, &input)
+                    .await
+                    .context("failed to invoke stellar trigger contract")?;
+
+                let queried = client
+                    .get_trigger(contract_id, trigger_id.u64())
+                    .await
+                    .context("failed to query stellar trigger contract")?;
+
+                ensure!(
+                    queried == input,
+                    "stellar trigger query mismatch: expected {:?}, got {:?}",
+                    input,
+                    queried
+                );
+
+                vec![trigger_id]
             }
             Trigger::BlockInterval { .. } => vec![TriggerId::new(1337)],
             Trigger::Cron { .. } => vec![TriggerId::new(1338)],

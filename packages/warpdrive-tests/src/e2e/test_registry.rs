@@ -6,12 +6,13 @@ use example_types::{
 use serde_json::json;
 use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
+use std::time::Duration;
 use warpdrive_types::AtProtoAction;
 
 use super::clients::Clients;
 use super::components::{AggregatorComponent, ComponentName, VectorComponent};
 use super::config::CRON_INTERVAL_DATA;
-use super::matrix::{CosmosService, CrossChainService, EvmService, TestMatrix};
+use super::matrix::{CosmosService, CrossChainService, EvmService, StellarService, TestMatrix};
 use super::test_definition::{
     AggregatorDefinition, CosmosTriggerDefinition, EvmTriggerDefinition, ExpectedOutput, InputData,
     OutputStructure, SubmitDefinition, TestBuilder, TestDefinition, TriggerDefinition,
@@ -22,7 +23,7 @@ use crate::e2e::components::ComponentSources;
 use crate::e2e::helpers::create_trigger_from_config;
 use crate::e2e::test_definition::{
     ChangeServiceDefinition, ComponentDefinition, CosmosSubmitDefinition, ExpectedOutputCallback,
-    TestGroupId,
+    StellarTriggerDefinition, TestGroupId,
 };
 use warpdrive_types::{ChainConfigs, ChainKey, Trigger, WorkflowId};
 
@@ -227,6 +228,20 @@ impl TestRegistry {
             }
         }
 
+        for service in &matrix.stellar {
+            let stellar = chains.primary_stellar().unwrap();
+            let evm = chains.primary_evm().unwrap();
+
+            match service {
+                StellarService::EchoData => {
+                    registry.register_stellar_echo_data_test(stellar, evm);
+                }
+                StellarService::BlockInterval | StellarService::BlockIntervalStartStop => {
+                    tracing::warn!("Stellar interval tests are not yet registered in e2e");
+                }
+            }
+        }
+
         registry
     }
 
@@ -263,6 +278,37 @@ impl TestRegistry {
                         .build(),
                 )
                 .with_service_manager_chain(chain)
+                .build(),
+        )
+    }
+
+    fn register_stellar_echo_data_test(
+        &mut self,
+        trigger_chain: &ChainKey,
+        submit_chain: &ChainKey,
+    ) -> &mut Self {
+        self.register(
+            TestBuilder::new("stellar_echo_data")
+                .with_description("Tests the EchoData component on Stellar testnet")
+                .add_workflow(
+                    WorkflowId::new("stellar_echo_data").unwrap(),
+                    WorkflowBuilder::new()
+                        .with_operator_component(VectorComponent::EchoData)
+                        .with_aggregator_component(AggregatorComponent::SimpleAggregator)
+                        .with_trigger(TriggerDefinition::NewStellarContract(
+                            StellarTriggerDefinition::SimpleContractEvent {
+                                chain: trigger_chain.clone(),
+                            },
+                        ))
+                        .with_submit(SubmitDefinition::Aggregator(Self::simple_aggregator(
+                            submit_chain,
+                        )))
+                        .with_input_data(InputData::Text("The times".to_string()))
+                        .with_expected_output(ExpectedOutput::Text("The times".to_string()))
+                        .with_timeout(Duration::from_secs(90))
+                        .build(),
+                )
+                .with_service_manager_chain(submit_chain)
                 .build(),
         )
     }

@@ -164,6 +164,8 @@ pub enum TriggerDefinition {
     NewEvmContract(EvmTriggerDefinition),
     /// Deploy a new Cosmos contract trigger for this test
     NewCosmosContract(CosmosTriggerDefinition),
+    /// Deploy or reuse a Stellar contract trigger for this test
+    NewStellarContract(StellarTriggerDefinition),
     /// Special case for block interval tests that need runtime block height calculation.
     BlockInterval {
         chain: ChainKey,
@@ -187,6 +189,11 @@ pub enum CosmosSubmitDefinition {
 
 #[derive(Clone, Debug)]
 pub enum EvmTriggerDefinition {
+    SimpleContractEvent { chain: ChainKey },
+}
+
+#[derive(Clone, Debug)]
+pub enum StellarTriggerDefinition {
     SimpleContractEvent { chain: ChainKey },
 }
 

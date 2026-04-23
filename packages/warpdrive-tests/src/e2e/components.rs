@@ -107,6 +107,13 @@ impl ComponentSources {
                     .iter()
                     .map(|s| Vec::<ComponentName>::from(*s)),
             )
+            .chain(
+                configs
+                    .matrix
+                    .stellar
+                    .iter()
+                    .map(|s| Vec::<ComponentName>::from(*s)),
+            )
             .flatten()
             .collect();
 

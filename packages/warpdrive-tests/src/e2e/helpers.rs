@@ -38,10 +38,13 @@ use crate::{
         example_submit::ISimpleSubmit::SignedData, example_trigger::SimpleTrigger, LogSpamClient,
         SimpleEvmSubmitClient, TriggerId,
     },
+    example_stellar_client::SimpleStellarTriggerClient,
 };
 
 use super::{
-    test_definition::{CosmosTriggerDefinition, EvmTriggerDefinition, WorkflowDefinition},
+    test_definition::{
+        CosmosTriggerDefinition, EvmTriggerDefinition, StellarTriggerDefinition, WorkflowDefinition,
+    },
     test_registry::CosmosCodeMap,
 };
 
@@ -250,6 +253,26 @@ pub async fn create_trigger_from_config(
                         address: contract.contract_address.try_into().unwrap(),
                         event_type: cw_warpdrive_trigger_api::simple::PushMessageEvent::EVENT_TYPE
                             .to_string(),
+                    }
+                }
+            }
+        }
+        TriggerDefinition::NewStellarContract(stellar_trigger_definition) => {
+            match stellar_trigger_definition {
+                StellarTriggerDefinition::SimpleContractEvent { chain } => {
+                    tracing::info!("Deploying Stellar trigger contract on chain {}", chain);
+                    let client = SimpleStellarTriggerClient::new(chain.clone());
+                    let contract_id = client.deploy().await.unwrap();
+
+                    Trigger::StellarContractEvent {
+                        chain,
+                        contract_id,
+                        topic_segments: vec![
+                            warpdrive_types::StellarTopicSegment::Exact(
+                                stellar_xdr::curr::ScVal::Symbol("trigger".try_into().unwrap()),
+                            ),
+                            warpdrive_types::StellarTopicSegment::Wildcard,
+                        ],
                     }
                 }
             }

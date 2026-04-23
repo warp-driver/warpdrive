@@ -1,0 +1,18 @@
+[package]
+name = "warpdrive-stellar-trigger"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["lib", "cdylib"]
+doctest = false
+
+[dependencies]
+soroban-sdk = "25"
+
+[dev-dependencies]
+soroban-sdk = { version = "25", features = ["testutils"] }
+
+[profile.release]
+overflow-checks = true

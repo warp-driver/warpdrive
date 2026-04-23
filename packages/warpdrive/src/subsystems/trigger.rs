@@ -31,6 +31,7 @@ use std::{
     collections::{HashMap, HashSet},
     num::NonZeroU64,
     sync::Arc,
+    time::Duration,
 };
 use streams::stellar_stream::start_stellar_event_stream;
 use streams::{cosmos_stream, cron_stream, evm_stream, MultiplexedStream, StreamTriggers};
@@ -205,8 +206,29 @@ impl TriggerManager {
         // It doesn't really matter what order the multiplexed streams are polled in, a trigger simply
         // will not be fired until the stream that kicks it off is polled (i.e. this definitively happens _after_ the stream is created).
 
-        self.lookup_maps
-            .add_service(service, &self.stellar_controllers)?;
+        let chain_configs = self.chain_configs.read().unwrap().clone();
+        let mut workflow_commands = Vec::new();
+        let mut stellar_chains_to_wait_for = HashSet::new();
+
+        for (id, workflow) in &service.workflows {
+            let config = TriggerConfig {
+                service_id: service.id(),
+                workflow_id: id.clone(),
+                trigger: workflow.trigger.clone(),
+            };
+
+            for command in TriggerCommand::map(&config, &chain_configs) {
+                if let TriggerCommand::StartListeningChain { chain } = &command {
+                    if matches!(
+                        chain_configs.get_chain(chain),
+                        Some(AnyChainConfig::Stellar(_))
+                    ) {
+                        stellar_chains_to_wait_for.insert(chain.clone());
+                    }
+                }
+                workflow_commands.push(command);
+            }
+        }
 
         // Ensure the service manager's chain is being listened to for service change events
         // This is needed even if the service has no workflows, so service URI changes can be detected
@@ -214,6 +236,32 @@ impl TriggerManager {
             .send(TriggerCommand::StartListeningChain {
                 chain: service.manager.chain().clone(),
             })?;
+
+        for chain in &stellar_chains_to_wait_for {
+            self.command_sender
+                .send(TriggerCommand::StartListeningChain {
+                    chain: chain.clone(),
+                })?;
+        }
+
+        for chain in stellar_chains_to_wait_for {
+            let start = std::time::Instant::now();
+            while !self
+                .stellar_controllers
+                .read()
+                .unwrap()
+                .contains_key(&chain)
+            {
+                if start.elapsed() > Duration::from_secs(10) {
+                    return Err(TriggerError::StellarMissingClient(chain));
+                }
+
+                std::thread::sleep(Duration::from_millis(50));
+            }
+        }
+
+        self.lookup_maps
+            .add_service(service, &self.stellar_controllers)?;
 
         match service.manager.clone() {
             warpdrive_types::ServiceManager::Evm { chain, address } => {
@@ -231,20 +279,8 @@ impl TriggerManager {
             }
         }
 
-        let chain_configs = self.chain_configs.read().unwrap().clone();
-
-        for (id, workflow) in &service.workflows {
-            let config = TriggerConfig {
-                service_id: service.id(),
-                workflow_id: id.clone(),
-                trigger: workflow.trigger.clone(),
-            };
-
-            let commands = TriggerCommand::map(&config, &chain_configs);
-
-            for command in commands {
-                self.command_sender.send(command)?;
-            }
+        for command in workflow_commands {
+            self.command_sender.send(command)?;
         }
 
         Ok(())

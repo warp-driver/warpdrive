@@ -3,6 +3,7 @@ use crate::bindings::world::warpdrive::{
     types::{
         events::{
             TriggerDataAtprotoEvent, TriggerDataCosmosContractEvent, TriggerDataEvmContractEvent,
+            TriggerDataStellarContractEvent,
         },
         service::ServiceManager,
     },
@@ -11,10 +12,12 @@ use crate::bindings::world::warpdrive::{
 use alloy_provider::RootProvider;
 use alloy_sol_types::SolValue;
 use anyhow::Result;
+use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine as _};
 use cosmwasm_std::HexBinary;
 use cw_warpdrive_mock_api::message_with_id::MessageWithId;
 use example_submit::DataWithId;
 use example_trigger::{NewTrigger, SimpleTrigger, TriggerInfo};
+use serde_json::Value as JsonValue;
 use warpdrive_wasi_utils::decode_event_log_data;
 
 pub fn decode_trigger_event(trigger_data: component_input::TriggerData) -> Result<(u64, Vec<u8>)> {
@@ -48,8 +51,66 @@ pub fn decode_trigger_event(trigger_data: component_input::TriggerData) -> Resul
                 .as_bytes()
                 .to_vec(),
         )),
+        component_input::TriggerData::StellarContractEvent(TriggerDataStellarContractEvent {
+            event,
+            ..
+        }) => {
+            let trigger_id = event
+                .topic_segments
+                .get(1)
+                .ok_or_else(|| anyhow::anyhow!("missing stellar trigger id topic segment"))
+                .and_then(|value| parse_stellar_u64(value))?;
+            let data = parse_stellar_bytes_or_string(&event.value)?;
+
+            Ok((trigger_id, data))
+        }
         _ => Err(anyhow::anyhow!("Unsupported trigger data type")),
     }
+}
+
+fn parse_stellar_u64(raw: &str) -> Result<u64> {
+    if let Ok(value) = parse_stellar_scval_json(raw) {
+        return value
+            .get("u64")
+            .and_then(JsonValue::as_u64)
+            .ok_or_else(|| anyhow::anyhow!("stellar topic segment is not a u64: {raw}"));
+    }
+
+    let scval = parse_stellar_scval_xdr(raw)?;
+    match scval {
+        stellar_xdr::curr::ScVal::U64(value) => Ok(value),
+        _ => Err(anyhow::anyhow!("stellar topic segment is not a u64: {raw}")),
+    }
+}
+
+fn parse_stellar_bytes_or_string(raw: &str) -> Result<Vec<u8>> {
+    if let Ok(value) = parse_stellar_scval_json(raw) {
+        if let Some(string_value) = value.get("string").and_then(JsonValue::as_str) {
+            return Ok(string_value.as_bytes().to_vec());
+        }
+
+        if let Some(bytes_value) = value.get("bytes").and_then(JsonValue::as_str) {
+            return BASE64_STANDARD.decode(bytes_value).map_err(Into::into);
+        }
+    }
+
+    match parse_stellar_scval_xdr(raw)? {
+        stellar_xdr::curr::ScVal::String(value) => Ok(value.to_string().into_bytes()),
+        stellar_xdr::curr::ScVal::Bytes(bytes) => Ok(bytes.to_vec()),
+        _ => Err(anyhow::anyhow!(
+            "stellar event value is not a supported string/bytes ScVal: {raw}"
+        )),
+    }
+}
+
+fn parse_stellar_scval_json(raw: &str) -> Result<JsonValue> {
+    serde_json::from_str(raw).map_err(Into::into)
+}
+
+fn parse_stellar_scval_xdr(raw: &str) -> Result<stellar_xdr::curr::ScVal> {
+    use stellar_xdr::curr::{Limits, ReadXdr};
+
+    stellar_xdr::curr::ScVal::from_xdr_base64(raw, Limits::none()).map_err(Into::into)
 }
 
 pub fn encode_trigger_output(

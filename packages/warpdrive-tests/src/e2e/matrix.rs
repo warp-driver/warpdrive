@@ -124,6 +124,11 @@ impl TestMatrix {
             services.push(service.into());
         }
 
+        // Add enabled Stellar services
+        for service in self.stellar {
+            services.push(service.into());
+        }
+
         // Add enabled cross-chain services
         for service in self.cross_chain {
             services.push(service.into());
