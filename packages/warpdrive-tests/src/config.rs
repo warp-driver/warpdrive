@@ -141,7 +141,7 @@ impl From<TestMode> for TestMatrix {
                 // All Stellar tests only
                 let mut matrix = TestMatrix::default();
 
-                // Add all Cosmos services
+                // Add all Stellar services
                 for service in StellarService::all_values() {
                     matrix.stellar.insert(*service);
                 }
