@@ -961,9 +961,13 @@ impl TriggerManager {
                         value,
                     };
 
+                    // BiMap forward direction (rpc id -> lookup id). The reverse
+                    // direction is exercised in `LookupMaps::remove_workflow` /
+                    // `remove_service` so per-workflow cleanup can target a single
+                    // rpc id.
                     let lookup_ids = rpc_ids
                         .into_iter()
-                        .filter_map(|rpc_id| triggers_by_contract_event_lock.get(&rpc_id));
+                        .filter_map(|rpc_id| triggers_by_contract_event_lock.get_by_left(&rpc_id));
 
                     for trigger_config in self.lookup_maps.get_trigger_configs(lookup_ids) {
                         dispatcher_commands.push(DispatcherCommand::Trigger(TriggerAction {
