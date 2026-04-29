@@ -244,6 +244,13 @@ impl TriggerManager {
                 })?;
         }
 
+        // Block until each Stellar chain's controller has been registered by the
+        // watcher task. The healthy path resolves in a handful of poll ticks
+        // (~50ms each); the 10s ceiling is a worst-case deadline for when the
+        // chain runner has failed to come up at all. Any service that hits the
+        // ceiling will fail to register, but at that point the whole stack is
+        // already non-functional for that chain — so the long wait only delays
+        // an inevitable error rather than masking a recoverable one.
         for chain in stellar_chains_to_wait_for {
             let start = std::time::Instant::now();
             while !self
