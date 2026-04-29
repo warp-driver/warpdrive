@@ -55,15 +55,17 @@ pub async fn start_stellar_ledger_poller(
                     if let Err(err) = sender.send(ledger) {
                         tracing::error!("Failed to send ledger sequence: {err}");
                     }
-                } else {
-                    // No new ledger, skip sending
-                    tokio::time::sleep(interval).await;
-                    continue;
                 }
             }
             Err(err) => {
                 tracing::warn!("chain poll error: {err}");
             }
         }
+
+        // Sleep unconditionally so a flood of new ledgers or a stream of RPC
+        // errors (e.g. rate limit) can't turn this loop into a tight spam loop.
+        // The stellar_rpc_client has no built-in backoff, so this is the only
+        // throttle.
+        tokio::time::sleep(interval).await;
     }
 }
