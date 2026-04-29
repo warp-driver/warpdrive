@@ -660,7 +660,10 @@ mod tests {
             .unwrap();
 
         // Lookup map still has B and only B.
-        let lookup_lock = lookup_maps.triggers_by_stellar_contract_event.read().unwrap();
+        let lookup_lock = lookup_maps
+            .triggers_by_stellar_contract_event
+            .read()
+            .unwrap();
         assert_eq!(lookup_lock.len(), 1, "removing A must not touch B");
         let surviving_lookup_id = *lookup_lock.right_values().next().unwrap();
         let by_service = lookup_maps.triggers_by_service_workflow.read().unwrap();
@@ -669,7 +672,11 @@ mod tests {
             "A should be cleared from triggers_by_service_workflow"
         );
         assert_eq!(
-            by_service.get(&service_b).unwrap().get(&workflow_b).copied(),
+            by_service
+                .get(&service_b)
+                .unwrap()
+                .get(&workflow_b)
+                .copied(),
             Some(surviving_lookup_id),
         );
 
@@ -720,7 +727,10 @@ mod tests {
             .remove_service(service_a.clone(), &controllers)
             .unwrap();
 
-        let lookup_lock = lookup_maps.triggers_by_stellar_contract_event.read().unwrap();
+        let lookup_lock = lookup_maps
+            .triggers_by_stellar_contract_event
+            .read()
+            .unwrap();
         assert_eq!(lookup_lock.len(), 1, "removing service A must not touch B");
         let by_service = lookup_maps.triggers_by_service_workflow.read().unwrap();
         assert!(by_service.get(&service_a).is_none());
