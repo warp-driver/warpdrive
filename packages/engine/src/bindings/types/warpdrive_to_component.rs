@@ -1125,6 +1125,14 @@ impl From<warpdrive_types::SubmitAction> for aggregator_output::SubmitAction {
                     gas_price: action.gas_price.map(|x| x.into()),
                 })
             }
+            warpdrive_types::SubmitAction::Stellar(action) => {
+                aggregator_output::SubmitAction::Stellar(aggregator_output::StellarSubmitAction {
+                    chain: action.chain.to_string(),
+                    address: aggregator_chain::StellarAddress {
+                        raw_bytes: action.address.to_vec(),
+                    },
+                })
+            }
         }
     }
 }

@@ -352,6 +352,24 @@ impl TryFrom<aggregator_output::SubmitAction> for warpdrive_types::SubmitAction 
                     gas_price: action.gas_price.map(|x| x.into()),
                 })
             }
+            aggregator_output::SubmitAction::Stellar(action) => {
+                let bytes: [u8; 32] =
+                    action
+                        .address
+                        .raw_bytes
+                        .as_slice()
+                        .try_into()
+                        .map_err(|_| {
+                            anyhow::anyhow!(
+                                "Stellar contract id must be 32 bytes, got {}",
+                                action.address.raw_bytes.len()
+                            )
+                        })?;
+                warpdrive_types::SubmitAction::Stellar(warpdrive_types::StellarSubmitAction {
+                    chain: action.chain.parse()?,
+                    address: bytes,
+                })
+            }
         })
     }
 }
