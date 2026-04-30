@@ -82,14 +82,11 @@ pub struct Dispatcher<S: CAStorage> {
     evm_http_providers: Arc<RwLock<HashMap<ChainKey, DynProvider>>>,
     /// Cached Cosmos query clients per chain to avoid creating new connections for each query
     cosmos_query_clients: Arc<RwLock<HashMap<ChainKey, QueryClient>>>,
-    /// Pre-parsed Stellar aggregator signing key, derived once from
-    /// `config.aggregator_stellar_credential`. Reserved for the
-    /// aggregator/submission write path to Soroban contracts; reads use a
-    /// dummy key inline (Stellar simulation requires a source account but
-    /// the signature is never validated). `None` if no stellar credential
-    /// was configured.
-    #[allow(dead_code)] // wired up when stellar submission lands
-    stellar_signing_key: Option<ed25519_dalek::SigningKey>,
+    // NOTE: no `stellar_signing_key` field. Read paths use a dummy
+    // `[1u8; 32]` ed25519 key inline (Soroban simulation requires a source
+    // account but the signature is never validated). The aggregator's
+    // write path parses `config.aggregator_stellar_credential` directly
+    // when needed.
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -193,19 +190,6 @@ impl Dispatcher<FileStorage> {
             dispatcher_to_aggregator_tx,
             evm_http_providers: Arc::new(RwLock::new(HashMap::new())),
             cosmos_query_clients: Arc::new(RwLock::new(HashMap::new())),
-            stellar_signing_key: config
-                .aggregator_stellar_credential
-                .as_ref()
-                .map(|cred| {
-                    let secret = stellar_strkey::ed25519::PrivateKey::from_string(cred.as_str())
-                        .map_err(|e| {
-                            DispatcherError::Config(format!(
-                                "aggregator_stellar_credential is not a valid `S...` strkey: {e:?}"
-                            ))
-                        })?;
-                    Ok::<_, DispatcherError>(ed25519_dalek::SigningKey::from_bytes(&secret.0))
-                })
-                .transpose()?,
         })
     }
 }
@@ -928,14 +912,15 @@ async fn query_service_from_address(
         ..
     } = service_manager
     {
-        let stellar_config = chain_configs.get_chain(&chain).and_then(|c| match c {
-            AnyChainConfig::Stellar(cfg) => Some(cfg),
-            _ => None,
-        }).ok_or_else(|| {
-            DispatcherError::Config(format!(
-                "No stellar chain config for chain {chain}"
-            ))
-        })?;
+        let stellar_config = chain_configs
+            .get_chain(&chain)
+            .and_then(|c| match c {
+                AnyChainConfig::Stellar(cfg) => Some(cfg),
+                _ => None,
+            })
+            .ok_or_else(|| {
+                DispatcherError::Config(format!("No stellar chain config for chain {chain}"))
+            })?;
         let env = soroban_rs::Env::new(soroban_rs::EnvConfigs {
             rpc_url: stellar_config.rpc_url.clone(),
             network_passphrase: stellar_config.network_passphrase.clone(),
@@ -947,7 +932,7 @@ async fn query_service_from_address(
         let dummy_signing_key = ed25519_dalek::SigningKey::from_bytes(&[1u8; 32]);
         let account = soroban_rs::Account::single(soroban_rs::Signer::new(dummy_signing_key));
         let cfg = soroban_rs::ClientContractConfigs {
-            contract_id: project_root.clone(),
+            contract_id: *project_root,
             env,
             source_account: account,
         };
@@ -963,11 +948,12 @@ async fn query_service_from_address(
             .map_err(DispatcherError::FetchService);
     }
 
-    let address: layer_climb::prelude::Address = service_manager.address().try_into().map_err(|e| {
-        DispatcherError::Config(format!(
-            "ServiceManager for chain {chain} cannot be expressed as layer_climb::Address: {e}"
-        ))
-    })?;
+    let address: layer_climb::prelude::Address =
+        service_manager.address().try_into().map_err(|e| {
+            DispatcherError::Config(format!(
+                "ServiceManager for chain {chain} cannot be expressed as layer_climb::Address: {e}"
+            ))
+        })?;
 
     // Get the chain config
     let chain_config = chain_configs.get_chain(&chain).ok_or_else(|| {
