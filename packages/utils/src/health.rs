@@ -27,7 +27,7 @@ pub async fn health_check_single_chain(
         }
         AnyChainConfig::Stellar(config) => {
             check_stellar_chain_health_query(key.clone(), config.clone()).await?;
-            tracing::info!("Cosmos chain [{key}] is healthy");
+            tracing::info!("Stellar chain [{key}] is healthy");
         }
     }
     Ok(())
