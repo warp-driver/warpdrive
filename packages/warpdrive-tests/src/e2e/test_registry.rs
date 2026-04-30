@@ -230,11 +230,10 @@ impl TestRegistry {
 
         for service in &matrix.stellar {
             let stellar = chains.primary_stellar().unwrap();
-            let evm = chains.primary_evm().unwrap();
 
             match service {
                 StellarService::EchoData => {
-                    registry.register_stellar_echo_data_test(stellar, evm);
+                    registry.register_stellar_echo_data_test(stellar, stellar);
                 }
                 StellarService::BlockInterval | StellarService::BlockIntervalStartStop => {
                     tracing::warn!("Stellar interval tests are not yet registered in e2e");

@@ -138,9 +138,10 @@ impl TestMatrix {
     }
 
     pub fn evm_regular_chain_enabled(&self) -> bool {
-        // since we currently only submit to EVM, it's always enabled
-        // TODO - if we have `Submit::None` then this should be false if no other test is enabled
-        true
+        !self.evm.is_empty()
+            || self
+                .cross_chain
+                .contains(&CrossChainService::CosmosToEvmEchoData)
     }
 
     pub fn evm_secondary_chain_enabled(&self) -> bool {
