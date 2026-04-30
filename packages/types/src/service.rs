@@ -159,15 +159,18 @@ impl ServiceManager {
             ServiceManager::Stellar { chain, .. } => chain,
         }
     }
-    pub fn address(&self) -> layer_climb_address::Address {
+    /// The manager's contract address as a chain-agnostic `ChainAddress`.
+    /// Total / infallible across all variants. Use `TryInto` if you need to
+    /// fall back to `layer_climb_address::Address` (which can't represent
+    /// Stellar).
+    pub fn address(&self) -> crate::ChainAddress {
         match self {
-            ServiceManager::Evm { address, .. } => (*address).into(),
-            ServiceManager::Cosmos { address, .. } => address.clone().into(),
-            ServiceManager::Stellar { .. } => {
-                unimplemented!(
-                    "Stellar ServiceManager has no layer_climb_address::Address; \
-                     use the contract id directly via match on ServiceManager::Stellar"
-                )
+            ServiceManager::Evm { address, .. } => crate::ChainAddress::Evm(*address),
+            ServiceManager::Cosmos { address, .. } => {
+                crate::ChainAddress::Cosmos(address.clone())
+            }
+            ServiceManager::Stellar { address, .. } => {
+                crate::ChainAddress::Stellar(address.clone())
             }
         }
     }

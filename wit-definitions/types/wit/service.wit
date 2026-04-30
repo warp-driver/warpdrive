@@ -6,7 +6,7 @@ interface service {
     type semver-version = string;
 
     use core.{digest, timestamp};
-    use chain.{chain-key, evm-address, cosmos-address};
+    use chain.{chain-key, evm-address, cosmos-address, stellar-address};
 
     // Service types
     record service {
@@ -24,6 +24,7 @@ interface service {
     variant service-manager {
         evm(evm-manager),
         cosmos(cosmos-manager),
+        stellar(stellar-manager),
     }
 
     record evm-manager {
@@ -34,6 +35,14 @@ interface service {
     record cosmos-manager {
         chain: chain-key,
         address: cosmos-address,
+    }
+
+    record stellar-manager {
+        chain: chain-key,
+        // The deployed `project_root` Soroban contract; the rest of the
+        // warpdrive contract stack (security/verification/handlers) is
+        // reachable from it.
+        address: stellar-address,
     }
 
 

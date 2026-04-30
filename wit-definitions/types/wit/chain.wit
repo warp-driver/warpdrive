@@ -36,6 +36,11 @@ interface chain {
         raw-bytes: list<u8>
     }
 
+    record stellar-address {
+        // Soroban contract id, raw 32 bytes (the payload of a `C...` strkey).
+        raw-bytes: list<u8>
+    }
+
     // The overall idea is to map alloy_rpc_types_eth::Log<LogData>
     record evm-event-log {
         // These two fields are essentially alloy_primitives::Log<LogData>

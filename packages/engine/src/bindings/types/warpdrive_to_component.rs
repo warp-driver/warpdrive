@@ -179,6 +179,14 @@ impl From<layer_climb::prelude::CosmosAddr> for component_chain::CosmosAddress {
     }
 }
 
+impl From<stellar_strkey::Contract> for component_chain::StellarAddress {
+    fn from(contract: stellar_strkey::Contract) -> Self {
+        component_chain::StellarAddress {
+            raw_bytes: contract.0.to_vec(),
+        }
+    }
+}
+
 impl From<warpdrive_types::CosmosChainConfig>
     for crate::bindings::operator::world::host::CosmosChainConfig
 {
@@ -386,8 +394,11 @@ impl From<warpdrive_types::ServiceManager> for component_service::ServiceManager
                     address: address.into(),
                 })
             }
-            warpdrive_types::ServiceManager::Stellar { .. } => {
-                unimplemented!("Stellar ServiceManager is not yet exposed to WASI components")
+            warpdrive_types::ServiceManager::Stellar { chain, address } => {
+                component_service::ServiceManager::Stellar(component_service::StellarManager {
+                    chain: chain.to_string(),
+                    address: address.into(),
+                })
             }
         }
     }
@@ -814,8 +825,13 @@ impl From<warpdrive_types::ServiceManager> for aggregator_service::ServiceManage
                     },
                 })
             }
-            warpdrive_types::ServiceManager::Stellar { .. } => {
-                unimplemented!("Stellar ServiceManager is not yet exposed to aggregator components")
+            warpdrive_types::ServiceManager::Stellar { chain, address } => {
+                aggregator_service::ServiceManager::Stellar(aggregator_service::StellarManager {
+                    chain: chain.to_string(),
+                    address: aggregator_chain::StellarAddress {
+                        raw_bytes: address.0.to_vec(),
+                    },
+                })
             }
         }
     }
