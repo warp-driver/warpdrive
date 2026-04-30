@@ -69,4 +69,7 @@ pub enum AggregatorError {
 
     #[error("P2P: {0}")]
     P2p(String),
+
+    #[error("Stellar submit: {0}")]
+    Stellar(String),
 }
