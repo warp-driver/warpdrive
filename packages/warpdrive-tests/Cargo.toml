@@ -54,3 +54,4 @@ bip39 = { workspace = true }
 futures-lite = { workspace = true }
 async-std = "1"
 stellar-xdr = { workspace = true }
+warpdrive-client = { workspace = true }
