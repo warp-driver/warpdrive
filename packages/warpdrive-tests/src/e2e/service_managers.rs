@@ -46,6 +46,7 @@ pub enum AnyServiceManagerInstance {
     Stellar {
         chain: ChainKey,
         manager: StellarServiceManager,
+        middleware: StellarMiddleware,
     },
 }
 
@@ -99,7 +100,7 @@ impl ServiceManagers {
                 chain: chain.clone(),
                 address: manager.address.clone(),
             },
-            AnyServiceManagerInstance::Stellar { chain, manager } => ServiceManager::Stellar {
+            AnyServiceManagerInstance::Stellar { chain, manager, .. } => ServiceManager::Stellar {
                 chain: chain.clone(),
                 address: manager.project_root.clone(),
             },
@@ -173,7 +174,11 @@ impl ServiceManagers {
                             );
                             (
                                 test.name.clone(),
-                                AnyServiceManagerInstance::Stellar { manager, chain },
+                                AnyServiceManagerInstance::Stellar {
+                                    manager,
+                                    chain,
+                                    middleware,
+                                },
                             )
                         }
                         other => panic!("Unsupported chain namespace: {}", other),
@@ -222,6 +227,8 @@ impl ServiceManagers {
                 .unwrap();
 
             let service_manager_instance = self.lookup.get(&test.name).unwrap();
+            let http_clients = clients.http_clients.clone();
+            let service_for_dev_push = service.clone();
 
             futures.push(async move {
                 match service_manager_instance {
@@ -231,11 +238,28 @@ impl ServiceManagers {
                     AnyServiceManagerInstance::Cosmos { manager, .. } => {
                         manager.set_service_uri(&service_url).await.unwrap();
                     }
-                    AnyServiceManagerInstance::Stellar { .. } => {
-                        todo!(
-                            "set_initial_service_uris for Stellar: \
-                             call ProjectRootClient::update_project_spec_repo via warpdrive-client"
-                        )
+                    AnyServiceManagerInstance::Stellar {
+                        manager, middleware, ..
+                    } => {
+                        middleware
+                            .update_project_spec_repo(manager.project_root.clone(), service_url)
+                            .await
+                            .unwrap();
+                        // The WarpDrive node can't yet query project_root for the
+                        // service URI on its own, so push the placeholder service
+                        // directly via the dev endpoint. Subsequent updates flow
+                        // through the same dev path in `update_services`.
+                        for (idx, http_client) in http_clients.iter().enumerate() {
+                            tracing::info!(
+                                "Dev-adding stellar paused service to instance {} for {}",
+                                idx,
+                                service_for_dev_push.name
+                            );
+                            http_client
+                                .dev_add_service_direct(&service_for_dev_push)
+                                .await
+                                .unwrap();
+                        }
                     }
                 }
             });
@@ -259,6 +283,17 @@ impl ServiceManagers {
 
         for test in registry.list_all() {
             let service_manager = self.get_service_manager(&test.name);
+            // Stellar service URI lookup via the WarpDrive node isn't wired
+            // up yet, so `create_service` (which queries the chain) would
+            // fail. The real service is pushed via `dev_add_service_direct`
+            // in `update_services` later, which works for all chains.
+            if matches!(service_manager, ServiceManager::Stellar { .. }) {
+                tracing::info!(
+                    "Skipping initial create_service for stellar test {} (will be added via dev path in update_services)",
+                    test.name
+                );
+                continue;
+            }
             let http_clients = clients.http_clients.clone();
 
             futures.push(async move {
@@ -473,12 +508,13 @@ impl ServiceManagers {
                     AnyServiceManagerInstance::Cosmos { manager, .. } => {
                         manager.set_service_uri(&service_url).await.unwrap();
                     }
-                    AnyServiceManagerInstance::Stellar { .. } => {
-                        let _ = service_url;
-                        todo!(
-                            "update_services for Stellar: \
-                             call ProjectRootClient::update_project_spec_repo via warpdrive-client"
-                        )
+                    AnyServiceManagerInstance::Stellar {
+                        manager, middleware, ..
+                    } => {
+                        middleware
+                            .update_project_spec_repo(manager.project_root.clone(), service_url)
+                            .await
+                            .unwrap();
                     }
                 }
 

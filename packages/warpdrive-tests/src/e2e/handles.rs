@@ -59,9 +59,17 @@ impl AppHandles {
             };
 
             stellar_middleware = if let Some(stellar_chain_config) = chains.stellar_iter().next() {
+                let deployer_secret = configs
+                    .mnemonics
+                    .stellar_middleware
+                    .as_ref()
+                    .expect("stellar deployer secret missing despite stellar chain enabled");
                 Some(
                     ctx.rt
-                        .block_on(StellarMiddleware::new(stellar_chain_config))
+                        .block_on(StellarMiddleware::new(
+                            stellar_chain_config,
+                            deployer_secret.as_str(),
+                        ))
                         .unwrap(),
                 )
             } else {

@@ -125,12 +125,14 @@ fn main() {
     // Log aggregator credential status at startup
     let has_aggregator_cosmos = config.aggregator_cosmos_credential.is_some();
     let has_aggregator_evm = config.aggregator_evm_credential.is_some();
+    let has_aggregator_stellar = config.aggregator_stellar_credential.is_some();
 
-    if has_aggregator_cosmos || has_aggregator_evm {
+    if has_aggregator_cosmos || has_aggregator_evm || has_aggregator_stellar {
         tracing::info!(
-            "Aggregator credentials configured: Cosmos={}, EVM={}",
+            "Aggregator credentials configured: Cosmos={}, EVM={}, Stellar={}",
             has_aggregator_cosmos,
-            has_aggregator_evm
+            has_aggregator_evm,
+            has_aggregator_stellar
         );
     } else {
         tracing::info!("No aggregator credentials configured - will not submit to chains");

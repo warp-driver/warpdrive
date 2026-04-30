@@ -28,6 +28,7 @@ pub async fn handle_config(State(state): State<HttpState>) -> impl IntoResponse 
     redact(&mut config.signing_mnemonic);
     redact(&mut config.aggregator_cosmos_credential);
     redact(&mut config.aggregator_evm_credential);
+    redact(&mut config.aggregator_stellar_credential);
     redact(&mut config.bearer_token);
 
     Json(config).into_response()

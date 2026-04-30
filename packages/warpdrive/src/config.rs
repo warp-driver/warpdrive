@@ -79,6 +79,12 @@ pub struct Config {
     pub aggregator_cosmos_credential: Option<Credential>,
     /// Optional aggregator credential for submitting to evm chains
     pub aggregator_evm_credential: Option<Credential>,
+    /// Optional aggregator credential for submitting to stellar chains.
+    /// Must be a funded ed25519 secret in `S...` strkey form. This is the
+    /// account that pays for and authorizes Soroban transactions; it is NOT
+    /// the operator/vector signing key (which remains secp256k1 derived from
+    /// `signing_mnemonic`).
+    pub aggregator_stellar_credential: Option<Credential>,
 
     /// The maximum amount of fuel (compute metering) to allow for 1 component's execution
     pub max_wasm_fuel: u64,
@@ -163,6 +169,7 @@ impl Config {
         normalize(&mut self.signing_mnemonic);
         normalize(&mut self.aggregator_cosmos_credential);
         normalize(&mut self.aggregator_evm_credential);
+        normalize(&mut self.aggregator_stellar_credential);
         normalize(&mut self.bearer_token);
     }
 }
@@ -192,6 +199,7 @@ impl Default for Config {
             signing_mnemonic: None,
             aggregator_cosmos_credential: None,
             aggregator_evm_credential: None,
+            aggregator_stellar_credential: None,
             max_execution_seconds: Workflow::DEFAULT_TIME_LIMIT_SECONDS,
             max_wasm_fuel: Workflow::DEFAULT_FUEL_LIMIT,
             jaeger: None,

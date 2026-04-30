@@ -16,6 +16,8 @@ pub struct InfoResponse {
     pub has_aggregator_cosmos: bool,
     /// Whether an aggregator credential is configured for EVM chains
     pub has_aggregator_evm: bool,
+    /// Whether an aggregator credential is configured for Stellar chains
+    pub has_aggregator_stellar: bool,
     /// P2P networking configuration
     #[schema(value_type = String)]
     pub p2p_config: P2pConfig,
@@ -69,6 +71,7 @@ pub async fn inner_handle_info(state: HttpState) -> HttpResult<InfoResponse> {
     Ok(InfoResponse {
         has_aggregator_cosmos: state.config.aggregator_cosmos_credential.is_some(),
         has_aggregator_evm: state.config.aggregator_evm_credential.is_some(),
+        has_aggregator_stellar: state.config.aggregator_stellar_credential.is_some(),
         p2p_config: state.config.p2p.clone(),
         p2p_status,
         services_count,

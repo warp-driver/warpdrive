@@ -78,6 +78,14 @@ pub struct CliArgs {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub aggregator_evm_credential: Option<Credential>,
 
+    /// Optional aggregator credential for submitting to stellar chains.
+    /// Must be a funded ed25519 secret in `S...` strkey form (not a mnemonic).
+    /// Pays for and authorizes Soroban transactions; not the operator/vector
+    /// signing key.
+    #[arg(long)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub aggregator_stellar_credential: Option<Credential>,
+
     /// The maximum amount of fuel (compute metering) to allow for 1 component's execution
     #[arg(long)]
     #[serde(skip_serializing_if = "Option::is_none")]
