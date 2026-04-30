@@ -155,6 +155,7 @@ layer-climb-cli = "0.9.0"
 soroban-sdk = "25"
 stellar-rpc-client = "25.1.0"
 stellar-xdr = {version = "26.0.0", features = ["serde", "serde_json", "base64"]}
+stellar-strkey = { version = "0.0.16", features = ["serde"] }
 warpdrive-client = "0.2.0"
 
 

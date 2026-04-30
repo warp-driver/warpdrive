@@ -9339,6 +9339,8 @@ dependencies = [
  "crate-git-revision",
  "data-encoding",
  "heapless",
+ "serde",
+ "serde_with",
 ]
 
 [[package]]
@@ -11192,6 +11194,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
+ "stellar-strkey 0.0.16",
  "stellar-xdr 26.0.0",
  "thiserror 2.0.18",
  "tokio",
