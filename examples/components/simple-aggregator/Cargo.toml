@@ -13,6 +13,7 @@ serde = { workspace = true }
 warpdrive-wasi-utils = { workspace = true }
 wstd = { workspace = true }
 layer-climb-address = { workspace = true }
+stellar-strkey = { workspace = true }
 warpdrive-types = { workspace = true }
 wasip2 = { workspace = true }
 example-helpers = { workspace = true }
