@@ -3,24 +3,34 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{bail, Context, Result};
-use ed25519_dalek::SigningKey;
 use serde::Deserialize;
-use soroban_rs::{Account, ClientContractConfigs, Env, EnvConfigs, Signer};
 use tempfile::TempDir;
 use tokio::process::Command;
-use warpdrive_client::project_root::ProjectRootClient;
 use warpdrive_types::StellarChainConfig;
 
 use crate::test_utils::middleware::evm::validate_docker_container_id;
 
 /// Pinned image tag for the Warpdrive Stellar middleware.
 /// Bump in lockstep with the warpdrive-contracts repo.
-pub const STELLAR_MIDDLEWARE_IMAGE: &str =
-    "ghcr.io/warp-driver/warpdrive-stellar-middleware:8c0a535";
+pub const STELLAR_MIDDLEWARE_IMAGE: &str = "ghcr.io/warp-driver/warpdrive-stellar-middleware:0.2.2";
 
 /// Long-lived container that wraps the warpdrive-stellar-middleware image.
 /// One container per test run; each `deploy_service_manager` call shells in
 /// via `docker exec` and produces a fresh stack of 7 contracts.
+///
+/// **Test runtime note:** stellar e2e tests run against the public
+/// Soroban testnet (`https://soroban-testnet.stellar.org`) — every
+/// admin operation (deploy × 7 contracts, `add-signer`, `set-threshold`,
+/// `set-project-spec-repo`, mock_submit deploy, `verify_eth`) is a
+/// real network round-trip plus a ledger-close wait (~5s each). The
+/// upshot is the typical stellar test runs ~90–120s end-to-end
+/// dominated by network latency, not anything in our code. EVM/Cosmos
+/// hit local anvil/wasmd nodes so they're sub-second per op.
+///
+/// If we add many more stellar tests, batching deploys (one stack
+/// shared across tests, with per-test `mock_submit` + signer set) is
+/// the natural optimization — same shape `PoaMiddleware` uses on the
+/// EVM side.
 #[derive(Clone)]
 pub struct StellarMiddleware {
     inner: Arc<StellarMiddlewareInner>,
@@ -31,11 +41,6 @@ struct StellarMiddlewareInner {
     /// Host tmpdir mounted into the container at `/out`. Each deploy writes
     /// its manifest here so the host can read it back.
     out_dir: TempDir,
-    /// The deployer keypair (BYOK). Same key is used inside the container
-    /// to sign deploy/admin txs and in-process via `warpdrive-client` to
-    /// sign runtime calls like `update_project_spec_repo`.
-    deployer_signing_key: SigningKey,
-    chain_config: StellarChainConfig,
 }
 
 impl StellarMiddleware {
@@ -43,18 +48,19 @@ impl StellarMiddleware {
     const DEPLOY_TIMEOUT: Duration = Duration::from_secs(180);
     const RUNTIME_CALL_TIMEOUT: Duration = Duration::from_secs(60);
 
-    pub async fn new(
-        chain_config: StellarChainConfig,
-        deployer_secret: &str,
-    ) -> Result<Self> {
+    pub async fn new(chain_config: StellarChainConfig, deployer_secret: &str) -> Result<Self> {
         let out_dir = TempDir::new().context("creating stellar middleware out dir")?;
 
+        // We pass the deployer secret straight to the container as BYOK env
+        // vars; the container is the sole signer of admin txs (deploy,
+        // add-signer, set-threshold, set-project-spec-repo). The G... is
+        // derived inside the container, so we just need to compute it here
+        // so the env var is populated.
         let secret_key = stellar_strkey::ed25519::PrivateKey::from_string(deployer_secret)
             .map_err(|e| anyhow::anyhow!("invalid stellar deployer secret: {e:?}"))?;
-        let deployer_signing_key = SigningKey::from_bytes(&secret_key.0);
+        let signing_key = ed25519_dalek::SigningKey::from_bytes(&secret_key.0);
         let deployer_address =
-            stellar_strkey::ed25519::PublicKey(deployer_signing_key.verifying_key().to_bytes())
-                .to_string();
+            stellar_strkey::ed25519::PublicKey(signing_key.verifying_key().to_bytes()).to_string();
 
         let output = tokio::time::timeout(
             Self::STARTUP_TIMEOUT,
@@ -62,6 +68,7 @@ impl StellarMiddleware {
                 .args([
                     "run",
                     "-d",
+                    "--rm",
                     "-e",
                     &format!("RPC_URL={}", chain_config.rpc_url),
                     "-e",
@@ -97,47 +104,24 @@ impl StellarMiddleware {
             inner: Arc::new(StellarMiddlewareInner {
                 container_id,
                 out_dir,
-                deployer_signing_key,
-                chain_config,
             }),
         })
     }
 
-    /// Build a `ClientContractConfigs` pointing at `contract_id` on this
-    /// middleware's chain, signed by the deployer (admin) account.
-    fn client_configs(&self, contract_id: stellar_strkey::Contract) -> Result<ClientContractConfigs> {
-        let env = Env::new(EnvConfigs {
-            rpc_url: self.inner.chain_config.rpc_url.clone(),
-            network_passphrase: self.inner.chain_config.network_passphrase.clone(),
-        })
-        .map_err(|e| anyhow::anyhow!("building soroban env: {e:?}"))?;
-        let account = Account::single(Signer::new(self.inner.deployer_signing_key.clone()));
-        Ok(ClientContractConfigs {
-            contract_id,
-            env,
-            source_account: account,
-        })
-    }
-
     /// Set the service URI on a deployed `project_root`. The stellar analogue
-    /// of EVM's `setServiceURI` / Cosmos's `set_service_uri`. Internally
-    /// this maps to `ProjectRootClient::update_project_spec_repo`, which is
-    /// the contract field currently doubling as the service URI.
-    pub async fn set_service_uri(
-        &self,
-        project_root: stellar_strkey::Contract,
-        uri: String,
-    ) -> Result<()> {
-        let configs = self.client_configs(project_root)?;
-        let mut client = ProjectRootClient::new(configs);
-        tokio::time::timeout(
-            Self::RUNTIME_CALL_TIMEOUT,
-            client.update_project_spec_repo(uri),
-        )
+    /// of EVM's `setServiceURI` / Cosmos's `set_service_uri`. Shells into
+    /// the long-lived container's `cli.sh set-project-spec-repo`, which
+    /// signs the admin tx using the BYOK secret we passed at startup. The
+    /// admin secret never leaves the container.
+    pub async fn set_service_uri(&self, deploy_file_path: &str, uri: &str) -> Result<()> {
+        self.cli_exec(&[
+            "set-project-spec-repo",
+            "--repo",
+            uri,
+            "--deploy-file",
+            deploy_file_path,
+        ])
         .await
-        .context("timed out calling set_service_uri")?
-        .map_err(|e| anyhow::anyhow!("set_service_uri failed: {e:?}"))?;
-        Ok(())
     }
 
     /// Register (or update) a signer on the security contract that matches
@@ -244,8 +228,8 @@ impl StellarMiddleware {
         let manifest_text = tokio::fs::read_to_string(&host_path)
             .await
             .with_context(|| format!("reading stellar deploy manifest {host_path:?}"))?;
-        let manifest: StellarDeployManifest = serde_json::from_str(&manifest_text)
-            .context("parsing stellar deploy manifest")?;
+        let manifest: StellarDeployManifest =
+            serde_json::from_str(&manifest_text).context("parsing stellar deploy manifest")?;
 
         Ok(StellarServiceManager {
             project_root: manifest.contracts.project_root,
