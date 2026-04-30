@@ -9318,6 +9318,7 @@ checksum = "ee1832fb50c651ad10f734aaf5d31ca5acdfb197a6ecda64d93fcdb8885af913"
 dependencies = [
  "crate-git-revision",
  "data-encoding",
+ "serde_with",
 ]
 
 [[package]]
@@ -9339,8 +9340,6 @@ dependencies = [
  "crate-git-revision",
  "data-encoding",
  "heapless",
- "serde",
- "serde_with",
 ]
 
 [[package]]
@@ -10638,6 +10637,7 @@ dependencies = [
  "deadpool",
  "dirs 6.0.0",
  "dotenvy",
+ "ed25519-dalek",
  "figment",
  "futures",
  "iri-string",
@@ -10652,8 +10652,9 @@ dependencies = [
  "serde",
  "serde_json",
  "shellexpand",
+ "soroban-rs",
  "stellar-rpc-client 25.1.0",
- "stellar-strkey 0.0.16",
+ "stellar-strkey 0.0.13",
  "stellar-xdr 26.0.0",
  "subtle",
  "temp-env",
@@ -10670,6 +10671,7 @@ dependencies = [
  "utoipa",
  "uuid",
  "walkdir",
+ "warpdrive-client",
  "warpdrive-types",
  "wasm-pkg-client",
 ]
@@ -11140,6 +11142,7 @@ dependencies = [
  "dashmap",
  "deadpool",
  "derive-enum-all-values",
+ "ed25519-dalek",
  "example-types",
  "futures",
  "futures-lite 1.13.0",
@@ -11153,6 +11156,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "stellar-strkey 0.0.13",
  "stellar-xdr 26.0.0",
  "tempfile",
  "tokio",
@@ -11196,7 +11200,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
- "stellar-strkey 0.0.16",
+ "stellar-strkey 0.0.13",
  "stellar-xdr 26.0.0",
  "thiserror 2.0.18",
  "tokio",
