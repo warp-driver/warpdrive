@@ -56,4 +56,5 @@ async-std = "1"
 stellar-xdr = { workspace = true }
 stellar-strkey = { workspace = true }
 ed25519-dalek = { workspace = true }
+k256 = { workspace = true }
 warpdrive-client = { workspace = true }

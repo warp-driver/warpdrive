@@ -3,9 +3,12 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{bail, Context, Result};
+use ed25519_dalek::SigningKey;
 use serde::Deserialize;
+use soroban_rs::{Account, ClientContractConfigs, Env, EnvConfigs, Signer};
 use tempfile::TempDir;
 use tokio::process::Command;
+use warpdrive_client::project_root::ProjectRootClient;
 use warpdrive_types::StellarChainConfig;
 
 use crate::test_utils::middleware::evm::validate_docker_container_id;
@@ -28,14 +31,30 @@ struct StellarMiddlewareInner {
     /// Host tmpdir mounted into the container at `/out`. Each deploy writes
     /// its manifest here so the host can read it back.
     out_dir: TempDir,
+    /// The deployer keypair (BYOK). Same key is used inside the container
+    /// to sign deploy/admin txs and in-process via `warpdrive-client` to
+    /// sign runtime calls like `update_project_spec_repo`.
+    deployer_signing_key: SigningKey,
+    chain_config: StellarChainConfig,
 }
 
 impl StellarMiddleware {
     const STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
     const DEPLOY_TIMEOUT: Duration = Duration::from_secs(180);
+    const RUNTIME_CALL_TIMEOUT: Duration = Duration::from_secs(60);
 
-    pub async fn new(chain_config: StellarChainConfig) -> Result<Self> {
+    pub async fn new(
+        chain_config: StellarChainConfig,
+        deployer_secret: &str,
+    ) -> Result<Self> {
         let out_dir = TempDir::new().context("creating stellar middleware out dir")?;
+
+        let secret_key = stellar_strkey::ed25519::PrivateKey::from_string(deployer_secret)
+            .map_err(|e| anyhow::anyhow!("invalid stellar deployer secret: {e:?}"))?;
+        let deployer_signing_key = SigningKey::from_bytes(&secret_key.0);
+        let deployer_address =
+            stellar_strkey::ed25519::PublicKey(deployer_signing_key.verifying_key().to_bytes())
+                .to_string();
 
         let output = tokio::time::timeout(
             Self::STARTUP_TIMEOUT,
@@ -47,6 +66,10 @@ impl StellarMiddleware {
                     &format!("RPC_URL={}", chain_config.rpc_url),
                     "-e",
                     &format!("NETWORK_PASSPHRASE={}", chain_config.network_passphrase),
+                    "-e",
+                    &format!("DEPLOYER_SECRET={deployer_secret}"),
+                    "-e",
+                    &format!("DEPLOYER_ADDRESS={deployer_address}"),
                     "-v",
                     &format!("{}:/out", out_dir.path().display()),
                     STELLAR_MIDDLEWARE_IMAGE,
@@ -74,8 +97,118 @@ impl StellarMiddleware {
             inner: Arc::new(StellarMiddlewareInner {
                 container_id,
                 out_dir,
+                deployer_signing_key,
+                chain_config,
             }),
         })
+    }
+
+    /// Build a `ClientContractConfigs` pointing at `contract_id` on this
+    /// middleware's chain, signed by the deployer (admin) account.
+    fn client_configs(&self, contract_id: stellar_strkey::Contract) -> Result<ClientContractConfigs> {
+        let env = Env::new(EnvConfigs {
+            rpc_url: self.inner.chain_config.rpc_url.clone(),
+            network_passphrase: self.inner.chain_config.network_passphrase.clone(),
+        })
+        .map_err(|e| anyhow::anyhow!("building soroban env: {e:?}"))?;
+        let account = Account::single(Signer::new(self.inner.deployer_signing_key.clone()));
+        Ok(ClientContractConfigs {
+            contract_id,
+            env,
+            source_account: account,
+        })
+    }
+
+    /// Set the service URI on a deployed `project_root`. The stellar analogue
+    /// of EVM's `setServiceURI` / Cosmos's `set_service_uri`. Internally
+    /// this maps to `ProjectRootClient::update_project_spec_repo`, which is
+    /// the contract field currently doubling as the service URI.
+    pub async fn set_service_uri(
+        &self,
+        project_root: stellar_strkey::Contract,
+        uri: String,
+    ) -> Result<()> {
+        let configs = self.client_configs(project_root)?;
+        let mut client = ProjectRootClient::new(configs);
+        tokio::time::timeout(
+            Self::RUNTIME_CALL_TIMEOUT,
+            client.update_project_spec_repo(uri),
+        )
+        .await
+        .context("timed out calling set_service_uri")?
+        .map_err(|e| anyhow::anyhow!("set_service_uri failed: {e:?}"))?;
+        Ok(())
+    }
+
+    /// Register (or update) a signer on the security contract that matches
+    /// the given scheme. Mirrors `cli.sh add-signer`.
+    pub async fn add_signer(
+        &self,
+        deploy_file_path: &str,
+        scheme: SignerScheme,
+        key_hex: &str,
+        weight: u32,
+    ) -> Result<()> {
+        let weight = weight.to_string();
+        self.cli_exec(&[
+            "add-signer",
+            "--scheme",
+            scheme.as_str(),
+            "--key",
+            key_hex,
+            "--weight",
+            &weight,
+            "--deploy-file",
+            deploy_file_path,
+        ])
+        .await
+    }
+
+    /// Set the consensus threshold (numerator/denominator) on the security
+    /// contract that matches the given scheme. Mirrors `cli.sh set-threshold`.
+    pub async fn set_threshold(
+        &self,
+        deploy_file_path: &str,
+        scheme: SignerScheme,
+        numerator: u32,
+        denominator: u32,
+    ) -> Result<()> {
+        let numerator = numerator.to_string();
+        let denominator = denominator.to_string();
+        self.cli_exec(&[
+            "set-threshold",
+            "--scheme",
+            scheme.as_str(),
+            "--numerator",
+            &numerator,
+            "--denominator",
+            &denominator,
+            "--deploy-file",
+            deploy_file_path,
+        ])
+        .await
+    }
+
+    /// Run `/warpdrive/cli.sh <args>` inside the long-lived container.
+    async fn cli_exec(&self, args: &[&str]) -> Result<()> {
+        let mut docker_args: Vec<&str> =
+            vec!["exec", &self.inner.container_id, "/warpdrive/cli.sh"];
+        docker_args.extend_from_slice(args);
+        let res = tokio::time::timeout(
+            Self::RUNTIME_CALL_TIMEOUT,
+            Command::new("docker")
+                .args(&docker_args)
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
+                .spawn()?
+                .wait(),
+        )
+        .await
+        .with_context(|| format!("timed out running cli.sh {:?}", args))??;
+        if !res.success() {
+            bail!("cli.sh {:?} failed (exit {res})", args);
+        }
+        Ok(())
     }
 
     pub async fn deploy_service_manager(&self) -> Result<StellarServiceManager> {
@@ -137,6 +270,23 @@ impl Drop for StellarMiddlewareInner {
             .and_then(|mut cmd| cmd.wait())
         {
             tracing::warn!("Failed to remove stellar middleware container: {:?}", e);
+        }
+    }
+}
+
+/// Signature scheme of a deployed security/verification contract pair on
+/// the warpdrive Stellar stack. Maps 1:1 to `cli.sh add-signer --scheme`.
+#[derive(Clone, Copy, Debug)]
+pub enum SignerScheme {
+    Secp256k1,
+    Ed25519,
+}
+
+impl SignerScheme {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            SignerScheme::Secp256k1 => "secp256k1",
+            SignerScheme::Ed25519 => "ed25519",
         }
     }
 }

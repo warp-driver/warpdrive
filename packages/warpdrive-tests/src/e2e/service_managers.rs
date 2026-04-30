@@ -5,7 +5,7 @@ use utils::test_utils::{
     middleware::{
         cosmos::CosmosServiceManager,
         evm::{EvmMiddleware, MiddlewareServiceManagerConfig},
-        stellar::{StellarMiddleware, StellarServiceManager},
+        stellar::{SignerScheme, StellarMiddleware, StellarServiceManager},
         vector::AvsOperator,
     },
     mock_service_manager::MockEvmServiceManager,
@@ -227,8 +227,6 @@ impl ServiceManagers {
                 .unwrap();
 
             let service_manager_instance = self.lookup.get(&test.name).unwrap();
-            let http_clients = clients.http_clients.clone();
-            let service_for_dev_push = service.clone();
 
             futures.push(async move {
                 match service_manager_instance {
@@ -242,24 +240,9 @@ impl ServiceManagers {
                         manager, middleware, ..
                     } => {
                         middleware
-                            .update_project_spec_repo(manager.project_root.clone(), service_url)
+                            .set_service_uri(manager.project_root.clone(), service_url)
                             .await
                             .unwrap();
-                        // The WarpDrive node can't yet query project_root for the
-                        // service URI on its own, so push the placeholder service
-                        // directly via the dev endpoint. Subsequent updates flow
-                        // through the same dev path in `update_services`.
-                        for (idx, http_client) in http_clients.iter().enumerate() {
-                            tracing::info!(
-                                "Dev-adding stellar paused service to instance {} for {}",
-                                idx,
-                                service_for_dev_push.name
-                            );
-                            http_client
-                                .dev_add_service_direct(&service_for_dev_push)
-                                .await
-                                .unwrap();
-                        }
                     }
                 }
             });
@@ -283,17 +266,6 @@ impl ServiceManagers {
 
         for test in registry.list_all() {
             let service_manager = self.get_service_manager(&test.name);
-            // Stellar service URI lookup via the WarpDrive node isn't wired
-            // up yet, so `create_service` (which queries the chain) would
-            // fail. The real service is pushed via `dev_add_service_direct`
-            // in `update_services` later, which works for all chains.
-            if matches!(service_manager, ServiceManager::Stellar { .. }) {
-                tracing::info!(
-                    "Skipping initial create_service for stellar test {} (will be added via dev path in update_services)",
-                    test.name
-                );
-                continue;
-            }
             let http_clients = clients.http_clients.clone();
 
             futures.push(async move {
@@ -417,12 +389,69 @@ impl ServiceManagers {
                             manager.register_operator(vector.clone()).await.unwrap();
                         }
                     }
-                    AnyServiceManagerInstance::Stellar { .. } => {
-                        let _ = (avs_operators, required_to_pass);
-                        todo!(
-                            "register_operators for Stellar: \
-                             cli.sh add-signer per vector + cli.sh set-threshold for quorum"
-                        )
+                    AnyServiceManagerInstance::Stellar {
+                        manager, middleware, ..
+                    } => {
+                        // IMPORTANT: operators use the **same secp256k1
+                        // signing key** across EVM, Cosmos, and Stellar — what
+                        // differs is only how that key is materialized for
+                        // each chain's signer-set:
+                        //
+                        //   - EVM:     signer's 20-byte address = keccak256(uncompressed_pubkey)[12..]
+                        //   - Cosmos:  signer's bech32 address derived from the same secp256k1 pubkey
+                        //   - Stellar: signer is the **33-byte compressed
+                        //              secp256k1 public key**, registered as
+                        //              hex on `secp256k1_security`. We pass
+                        //              the same key bytes through soroban-sdk
+                        //              ed25519 verifier? No — secp256k1 has its
+                        //              own contract on stellar (the Warpdrive
+                        //              contracts repo deploys both
+                        //              `secp256k1_security` AND
+                        //              `ed25519_security`; we only register on
+                        //              the secp256k1 side because operators
+                        //              sign with secp256k1).
+                        //
+                        // Derivation: alloy stores the key as a 32-byte
+                        // private scalar; we reconstruct `k256::SigningKey`
+                        // from it and call `verifying_key().to_sec1_bytes()`
+                        // for the compressed (0x02 || x | 0x03 || x) form.
+                        // This matches the test-vectors helper in
+                        // `warpdrive-contracts/tools/test-vectors`.
+                        //
+                        // Threshold maps directly: `required_to_pass /
+                        // num_vectors` (e.g. 2/3 for multi-vector).
+                        let denominator = std::cmp::max(num_vectors, 1) as u32;
+                        for operator in &avs_operators {
+                            let private_hex = operator
+                                .signer_private_key
+                                .as_ref()
+                                .expect("AvsOperator missing signer_private_key");
+                            let private_bytes = const_hex::decode(private_hex)
+                                .expect("operator signer_private_key not valid hex");
+                            let secp_key = k256::ecdsa::SigningKey::from_slice(&private_bytes)
+                                .expect("operator signer_private_key not a valid secp256k1 key");
+                            let compressed_pubkey =
+                                secp_key.verifying_key().to_sec1_bytes();
+                            let pubkey_hex = const_hex::encode(&compressed_pubkey);
+                            middleware
+                                .add_signer(
+                                    &manager.deploy_file_path,
+                                    SignerScheme::Secp256k1,
+                                    &pubkey_hex,
+                                    operator.weight as u32,
+                                )
+                                .await
+                                .unwrap();
+                        }
+                        middleware
+                            .set_threshold(
+                                &manager.deploy_file_path,
+                                SignerScheme::Secp256k1,
+                                required_to_pass as u32,
+                                denominator,
+                            )
+                            .await
+                            .unwrap();
                     }
                 }
             });
@@ -512,7 +541,7 @@ impl ServiceManagers {
                         manager, middleware, ..
                     } => {
                         middleware
-                            .update_project_spec_repo(manager.project_root.clone(), service_url)
+                            .set_service_uri(manager.project_root.clone(), service_url)
                             .await
                             .unwrap();
                     }

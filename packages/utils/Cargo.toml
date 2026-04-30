@@ -60,6 +60,7 @@ stellar-xdr = { workspace = true }
 stellar-strkey = { workspace = true }
 soroban-rs = { workspace = true }
 ed25519-dalek = { workspace = true }
+k256 = { workspace = true }
 warpdrive-client = { workspace = true }
 uuid = { workspace = true }
 rand = { workspace = true, optional = true }
