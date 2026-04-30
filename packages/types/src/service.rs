@@ -166,12 +166,8 @@ impl ServiceManager {
     pub fn address(&self) -> crate::ChainAddress {
         match self {
             ServiceManager::Evm { address, .. } => crate::ChainAddress::Evm(*address),
-            ServiceManager::Cosmos { address, .. } => {
-                crate::ChainAddress::Cosmos(address.clone())
-            }
-            ServiceManager::Stellar { address, .. } => {
-                crate::ChainAddress::Stellar(address.clone())
-            }
+            ServiceManager::Cosmos { address, .. } => crate::ChainAddress::Cosmos(address.clone()),
+            ServiceManager::Stellar { address, .. } => crate::ChainAddress::Stellar(*address),
         }
     }
 }

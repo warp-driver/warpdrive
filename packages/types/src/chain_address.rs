@@ -67,7 +67,7 @@ impl From<layer_climb_address::Address> for ChainAddress {
     fn from(addr: layer_climb_address::Address) -> Self {
         match addr {
             layer_climb_address::Address::Evm(evm) => {
-                let bytes: [u8; 20] = evm.as_bytes().try_into().expect("EvmAddr is 20 bytes");
+                let bytes: [u8; 20] = evm.as_bytes();
                 ChainAddress::Evm(alloy_primitives::Address::from(bytes))
             }
             layer_climb_address::Address::Cosmos(cosmos) => ChainAddress::Cosmos(cosmos),
