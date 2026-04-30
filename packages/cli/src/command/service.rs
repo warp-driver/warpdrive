@@ -1020,6 +1020,12 @@ pub async fn validate_service(
                                 ));
                             }
                         }
+                        Some(AnyChainConfig::Stellar(_)) => {
+                            errors.push(format!(
+                                "Workflow '{}' uses chain '{}' in BlockInterval, but we haven't implemented block interval validation for Stellar chains yet",
+                                workflow_id, chain
+                            ));
+                        }
                     },
                     _ => {}
                 }

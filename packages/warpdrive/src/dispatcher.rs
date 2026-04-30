@@ -501,7 +501,7 @@ impl<S: CAStorage + 'static> Dispatcher<S> {
                         &self.submission_manager,
                         &self.dispatcher_to_aggregator_tx,
                         Some(entry.hd_index),
-                    )?;
+                    ).await?;
 
                     tracing::info!(
                         "Restored service {} [{:?}] with HD index {}",
@@ -696,7 +696,8 @@ impl<S: CAStorage + 'static> Dispatcher<S> {
             &self.submission_manager,
             &self.dispatcher_to_aggregator_tx,
             hd_index,
-        )?;
+        )
+        .await?;
 
         Ok(())
     }
@@ -847,7 +848,8 @@ impl<S: CAStorage + 'static> Dispatcher<S> {
             &self.submission_manager,
             &self.dispatcher_to_aggregator_tx,
             Some(hd_index),
-        )?;
+        )
+        .await?;
 
         Ok(())
     }
@@ -980,6 +982,12 @@ async fn query_service_from_address(
 
             service_uri
         }
+
+        AnyChainConfig::Stellar(_) => {
+            return Err(DispatcherError::Config(
+                "Stellar chain type is not supported yet".to_string(),
+            ));
+        }
     };
 
     let service_uri = UriString::try_from(service_uri)?;
@@ -993,7 +1001,7 @@ async fn query_service_from_address(
 }
 
 // called at init and when a new service is added
-fn add_service_to_managers(
+async fn add_service_to_managers(
     service: &Service,
     triggers: &TriggerManager,
     submissions: &SubmissionManager,
@@ -1006,7 +1014,7 @@ fn add_service_to_managers(
         return Err(err.into());
     }
 
-    if let Err(err) = triggers.add_service(service) {
+    if let Err(err) = triggers.add_service(service).await {
         tracing::error!("Error adding service to trigger manager: {:?}", err);
         return Err(err.into());
     }

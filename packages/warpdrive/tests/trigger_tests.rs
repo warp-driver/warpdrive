@@ -1,8 +1,12 @@
 #![cfg(feature = "dev")]
-use std::num::NonZero;
+use std::{collections::HashMap, num::NonZero, sync::Arc};
 
 use warpdrive::{
-    config::Config, dispatcher::DispatcherCommand, subsystems::trigger::TriggerManager,
+    config::Config,
+    dispatcher::DispatcherCommand,
+    subsystems::trigger::{
+        streams::stellar_stream::controller::StellarStreamController, TriggerManager,
+    },
 };
 use warpdrive_types::{
     ChainKey, Component, ComponentDigest, ComponentSource, Service, ServiceId, ServiceManager,
@@ -71,10 +75,25 @@ fn core_trigger_lookups() {
         rand_event_evm(),
     );
 
-    manager.get_lookup_maps().add_trigger(trigger_1_1).unwrap();
-    manager.get_lookup_maps().add_trigger(trigger_1_2).unwrap();
-    manager.get_lookup_maps().add_trigger(trigger_2_1).unwrap();
-    manager.get_lookup_maps().add_trigger(trigger_2_2).unwrap();
+    let stellar_controllers: Arc<std::sync::RwLock<HashMap<ChainKey, StellarStreamController>>> =
+        Arc::new(std::sync::RwLock::new(HashMap::new()));
+
+    manager
+        .get_lookup_maps()
+        .add_trigger(trigger_1_1, &stellar_controllers)
+        .unwrap();
+    manager
+        .get_lookup_maps()
+        .add_trigger(trigger_1_2, &stellar_controllers)
+        .unwrap();
+    manager
+        .get_lookup_maps()
+        .add_trigger(trigger_2_1, &stellar_controllers)
+        .unwrap();
+    manager
+        .get_lookup_maps()
+        .add_trigger(trigger_2_2, &stellar_controllers)
+        .unwrap();
 
     let triggers_service_1 = manager
         .get_lookup_maps()
@@ -114,9 +133,12 @@ fn core_trigger_lookups() {
         task_queue_addr_2_2.into()
     );
 
+    let stellar_controllers: Arc<std::sync::RwLock<HashMap<ChainKey, StellarStreamController>>> =
+        Arc::new(std::sync::RwLock::new(HashMap::new()));
+
     manager
         .get_lookup_maps()
-        .remove_workflow(service_id_1.clone(), workflow_id_1)
+        .remove_workflow(service_id_1.clone(), workflow_id_1, &stellar_controllers)
         .unwrap();
     let triggers_service_1 = manager
         .get_lookup_maps()
@@ -206,9 +228,12 @@ async fn block_interval_trigger_is_removed_when_config_is_gone() {
         n_blocks,
     );
 
+    let stellar_controllers: Arc<std::sync::RwLock<HashMap<ChainKey, StellarStreamController>>> =
+        Arc::new(std::sync::RwLock::new(HashMap::new()));
+
     manager
         .get_lookup_maps()
-        .add_trigger(trigger.clone())
+        .add_trigger(trigger.clone(), &stellar_controllers)
         .unwrap();
 
     let service_2 = Service {
@@ -227,7 +252,7 @@ async fn block_interval_trigger_is_removed_when_config_is_gone() {
     );
     manager
         .get_lookup_maps()
-        .add_trigger(trigger.clone())
+        .add_trigger(trigger.clone(), &stellar_controllers)
         .unwrap();
 
     services.save(&service_2).unwrap();
@@ -246,7 +271,7 @@ async fn block_interval_trigger_is_removed_when_config_is_gone() {
     // Remove one trigger and verify we have one left
     manager
         .get_lookup_maps()
-        .remove_workflow(service.id(), workflow_id.clone())
+        .remove_workflow(service.id(), workflow_id.clone(), &stellar_controllers)
         .unwrap();
 
     let trigger_actions = manager.process_blocks(chain.clone(), 10);
@@ -266,7 +291,7 @@ async fn block_interval_trigger_is_removed_when_config_is_gone() {
     // remove the last trigger config
     manager
         .get_lookup_maps()
-        .remove_workflow(service_2.id(), workflow_id.clone())
+        .remove_workflow(service_2.id(), workflow_id.clone(), &stellar_controllers)
         .unwrap();
 
     let trigger_actions = manager.process_blocks(chain.clone(), 20);
@@ -313,7 +338,14 @@ async fn cron_trigger_is_removed_when_config_is_gone() {
             end_time: None,
         },
     };
-    manager.get_lookup_maps().add_trigger(trigger1).unwrap();
+
+    let stellar_controllers: Arc<std::sync::RwLock<HashMap<ChainKey, StellarStreamController>>> =
+        Arc::new(std::sync::RwLock::new(HashMap::new()));
+
+    manager
+        .get_lookup_maps()
+        .add_trigger(trigger1, &stellar_controllers)
+        .unwrap();
 
     // Set up the second trigger
     let service_id2 = ServiceId::hash("service-2");
@@ -326,7 +358,10 @@ async fn cron_trigger_is_removed_when_config_is_gone() {
             end_time: None,
         },
     };
-    manager.get_lookup_maps().add_trigger(trigger2).unwrap();
+    manager
+        .get_lookup_maps()
+        .add_trigger(trigger2, &stellar_controllers)
+        .unwrap();
 
     // first tick is now
     let lookup_ids = manager
@@ -357,7 +392,11 @@ async fn cron_trigger_is_removed_when_config_is_gone() {
     // Remove the first trigger
     manager
         .get_lookup_maps()
-        .remove_workflow(service_id.clone(), workflow_id.clone())
+        .remove_workflow(
+            service_id.clone(),
+            workflow_id.clone(),
+            &stellar_controllers,
+        )
         .unwrap();
 
     // Process triggers again
@@ -380,7 +419,11 @@ async fn cron_trigger_is_removed_when_config_is_gone() {
     // Remove the second trigger
     manager
         .get_lookup_maps()
-        .remove_workflow(service_id2.clone(), workflow_id.clone())
+        .remove_workflow(
+            service_id2.clone(),
+            workflow_id.clone(),
+            &stellar_controllers,
+        )
         .unwrap();
 
     // Process triggers one more time

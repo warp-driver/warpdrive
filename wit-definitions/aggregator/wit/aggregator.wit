@@ -1,11 +1,11 @@
-package warpdrive:aggregator@2.10.0;
+package warpdrive:aggregator@2.11.0;
 
-use warpdrive:types/core@2.10.0 as core-types;
-use warpdrive:types/service@2.10.0 as service-types;
-use warpdrive:types/chain@2.10.0 as chain-types;
-use warpdrive:types/events@2.10.0 as event-types;
-use warpdrive:vectr/input@2.10.0 as operator-input;
-use warpdrive:vectr/output@2.10.0 as operator-output;
+use warpdrive:types/core@2.11.0 as core-types;
+use warpdrive:types/service@2.11.0 as service-types;
+use warpdrive:types/chain@2.11.0 as chain-types;
+use warpdrive:types/events@2.11.0 as event-types;
+use warpdrive:vectr/input@2.11.0 as operator-input;
+use warpdrive:vectr/output@2.11.0 as operator-output;
 
 interface input {
     use operator-input.{trigger-action};

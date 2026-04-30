@@ -6,6 +6,7 @@ use warpdrive_types::{ChainConfigs, ChainKey, ChainKeyNamespace};
 pub struct ChainKeys {
     pub evm: Vec<ChainKey>,
     pub cosmos: Vec<ChainKey>,
+    pub stellar: Vec<ChainKey>,
 }
 
 impl ChainKeys {
@@ -14,6 +15,7 @@ impl ChainKeys {
         Self {
             evm: chain_configs.chain_keys(ChainKeyNamespace::EVM.parse().unwrap()),
             cosmos: chain_configs.chain_keys(ChainKeyNamespace::COSMOS.parse().unwrap()),
+            stellar: chain_configs.chain_keys(ChainKeyNamespace::STELLAR.parse().unwrap()),
         }
     }
 
@@ -36,5 +38,11 @@ impl ChainKeys {
         self.cosmos
             .first()
             .context("Cosmos chain required but not found")
+    }
+
+    pub fn primary_stellar(&self) -> Result<&ChainKey> {
+        self.stellar
+            .first()
+            .context("Stellar chain required but not found")
     }
 }

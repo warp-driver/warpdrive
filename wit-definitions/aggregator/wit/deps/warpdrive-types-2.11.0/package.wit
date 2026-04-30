@@ -1,4 +1,4 @@
-package warpdrive:types@2.10.0;
+package warpdrive:types@2.11.0;
 
 interface chain {
   /// A string mostly following the caip-2 format of namespace:reference, e.g. "eip155:1" for Ethereum mainnet or "cosmos:cosmoshub-4" for Cosmos Hub
@@ -9,11 +9,6 @@ interface chain {
 
   /// 32 bytes, a keccak hash of an RLP encoded signed transaction
   type cosmos-tx-hash = string;
-
-  variant any-tx-hash {
-    evm(evm-tx-hash),
-    cosmos(cosmos-tx-hash),
-  }
 
   record cosmos-address {
     bech32-addr: string,
@@ -66,6 +61,27 @@ interface chain {
     ws-endpoints: list<string>,
     http-endpoint: option<string>,
   }
+
+  type stellar-tx-hash = string;
+
+  variant any-tx-hash {
+    evm(evm-tx-hash),
+    cosmos(cosmos-tx-hash),
+    stellar(stellar-tx-hash),
+  }
+
+  /// This matches the data from the `stellar-rpc-client` crate
+  record stellar-event {
+    event-type: string,
+    ledger: u32,
+    ledger-closed-at: string,
+    event-id: string,
+    operation-index: option<u32>,
+    transaction-index: option<u32>,
+    transaction-hash: stellar-tx-hash,
+    topic-segments: list<string>,
+    value: string,
+  }
 }
 
 interface core {
@@ -98,7 +114,7 @@ interface core {
 }
 
 interface events {
-  use chain.{chain-key, evm-address, evm-event-log, cosmos-address, cosmos-event};
+  use chain.{chain-key, evm-address, evm-event-log, cosmos-address, cosmos-event, stellar-event};
   use core.{timestamp};
 
   type event-id = list<u8>;
@@ -114,6 +130,12 @@ interface events {
     event: cosmos-event,
     event-index: u64,
     block-height: u64,
+  }
+
+  record trigger-data-stellar-contract-event {
+    contract-id: string,
+    chain: chain-key,
+    event: stellar-event,
   }
 
   record trigger-data-block-interval {
@@ -142,6 +164,7 @@ interface events {
   variant trigger-data {
     evm-contract-event(trigger-data-evm-contract-event),
     cosmos-contract-event(trigger-data-cosmos-contract-event),
+    stellar-contract-event(trigger-data-stellar-contract-event),
     block-interval(trigger-data-block-interval),
     cron(trigger-data-cron),
     atproto-event(trigger-data-atproto-event),
@@ -255,10 +278,25 @@ interface service {
     action: option<string>,
   }
 
+  variant stellar-topic-segment {
+    /// the string representation here is `serde_json` encoded ScVal types
+    /// and so they can be decoded into actual ScVal types to be used in event matching
+    exact(string),
+    wildcard,
+    rest-wildcard,
+  }
+
+  record trigger-stellar-contract-event {
+    contract-id: string,
+    chain: chain-key,
+    topic-segments: list<stellar-topic-segment>,
+  }
+
   /// Trigger types
   variant trigger {
     evm-contract-event(trigger-evm-contract-event),
     cosmos-contract-event(trigger-cosmos-contract-event),
+    stellar-contract-event(trigger-stellar-contract-event),
     block-interval(trigger-block-interval),
     cron(trigger-cron),
     atproto-event(trigger-atproto-event),

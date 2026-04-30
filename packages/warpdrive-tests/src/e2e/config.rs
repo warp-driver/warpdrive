@@ -12,7 +12,10 @@ use utils::{
     test_utils::middleware::evm::EvmMiddlewareType,
 };
 use warpdrive::subsystems::aggregator::p2p::P2pConfig;
-use warpdrive_types::{ChainConfigs, CosmosChainConfigBuilder, Credential, EvmChainConfigBuilder};
+use warpdrive_types::{
+    ChainConfigs, CosmosChainConfigBuilder, Credential, EvmChainConfigBuilder,
+    StellarChainConfigBuilder,
+};
 
 use crate::config::{TestConfig, TestP2pMode};
 
@@ -225,6 +228,17 @@ impl From<TestConfig> for Configs {
 
         if matrix.cosmos_regular_chain_enabled() {
             push_cosmos_chain();
+        }
+
+        if !matrix.stellar.is_empty() {
+            chain_configs.write().unwrap().stellar.insert(
+                "testnet".parse().unwrap(),
+                StellarChainConfigBuilder {
+                    chain_poll_interval_ms: 1_000,
+                    rpc_url: "https://soroban-testnet.stellar.org".to_string(),
+                    friendbot_url: Some("https://friendbot-testnet.stellar.org/".to_string()),
+                },
+            );
         }
 
         // Create WarpDrive configs for each vector

@@ -25,6 +25,7 @@ members = [
     "examples/contracts/cosmwasm/mock/api",
     "examples/contracts/cosmwasm/mock/service-handler",
 ]
+exclude = ["examples/contracts/stellar/trigger"]
 resolver = "2"
 
 [profile.dev]
@@ -141,6 +142,7 @@ alloy-eip2930 = "=0.2.1"
 alloy-eip7702 = "=0.6.1"
 alloy-json-rpc = "=1.6.3"
 
+# Cosmos and a bit of general cross-chain
 layer-climb = "0.9.0"
 layer-climb-address = { version = "0.9.0", features = [
     "cw-storage",
@@ -148,6 +150,12 @@ layer-climb-address = { version = "0.9.0", features = [
 ] }
 layer-climb-config = "0.9.0"
 layer-climb-cli = "0.9.0"
+
+# Stellar
+soroban-sdk = "25"
+stellar-rpc-client = "25.1.0"
+stellar-xdr = {version = "26.0.0", features = ["serde", "serde_json", "base64"]}
+
 
 # Cosmos-specific dependencies
 cosmwasm-schema = "3.0.2"

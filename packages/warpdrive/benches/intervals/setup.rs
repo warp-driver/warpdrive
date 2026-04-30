@@ -1,4 +1,4 @@
-use std::{num::NonZero, sync::Arc};
+use std::{collections::HashMap, num::NonZero, sync::Arc};
 
 use opentelemetry::global::meter;
 use tempfile::TempDir;
@@ -76,6 +76,8 @@ impl Setup {
 
         let mut chains = Vec::with_capacity(setup_config.n_chains as usize);
 
+        let stellar_controllers = Arc::new(std::sync::RwLock::new(HashMap::new()));
+
         let mut trigger_id = 1;
         for chain in 1..=setup_config.n_chains {
             let chain = ChainKey::new(format!("evm:wavs-benchmark-{chain}")).unwrap();
@@ -83,21 +85,24 @@ impl Setup {
                 for _ in 0..setup_config.triggers_per_block {
                     trigger_manager
                         .get_lookup_maps()
-                        .add_trigger(TriggerConfig {
-                            service_id: warpdrive_types::ServiceId::hash(format!(
-                                "wavs-benchmark-{trigger_id}"
-                            )),
-                            workflow_id: warpdrive_types::WorkflowId::new(format!(
-                                "wavs-benchmark-{trigger_id}"
-                            ))
-                            .unwrap(),
-                            trigger: Trigger::BlockInterval {
-                                chain: chain.clone(),
-                                n_blocks: NonZero::new(setup_config.n_blocks as u32).unwrap(),
-                                start_block: Some(NonZero::new(block).unwrap()),
-                                end_block: None,
+                        .add_trigger(
+                            TriggerConfig {
+                                service_id: warpdrive_types::ServiceId::hash(format!(
+                                    "wavs-benchmark-{trigger_id}"
+                                )),
+                                workflow_id: warpdrive_types::WorkflowId::new(format!(
+                                    "wavs-benchmark-{trigger_id}"
+                                ))
+                                .unwrap(),
+                                trigger: Trigger::BlockInterval {
+                                    chain: chain.clone(),
+                                    n_blocks: NonZero::new(setup_config.n_blocks as u32).unwrap(),
+                                    start_block: Some(NonZero::new(block).unwrap()),
+                                    end_block: None,
+                                },
                             },
-                        })
+                            &stellar_controllers,
+                        )
                         .unwrap();
 
                     trigger_id += 1;

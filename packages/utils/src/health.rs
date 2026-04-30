@@ -5,10 +5,12 @@ use thiserror::Error;
 
 use crate::{
     config::EvmChainConfigExt,
-    error::EvmClientError,
+    error::{EvmClientError, StellarClientError},
     evm_client::{EvmEndpoint, EvmQueryClient},
 };
-use warpdrive_types::{AnyChainConfig, ChainKey, CosmosChainConfig, EvmChainConfig};
+use warpdrive_types::{
+    AnyChainConfig, ChainKey, CosmosChainConfig, EvmChainConfig, StellarChainConfig,
+};
 
 pub async fn health_check_single_chain(
     key: &ChainKey,
@@ -22,6 +24,10 @@ pub async fn health_check_single_chain(
         AnyChainConfig::Cosmos(config) => {
             check_cosmos_chain_health_query(key.clone(), config.clone()).await?;
             tracing::info!("Cosmos chain [{key}] is healthy");
+        }
+        AnyChainConfig::Stellar(config) => {
+            check_stellar_chain_health_query(key.clone(), config.clone()).await?;
+            tracing::info!("Stellar chain [{key}] is healthy");
         }
     }
     Ok(())
@@ -146,6 +152,16 @@ pub async fn check_evm_chain_endpoint_health_query(
     Ok(())
 }
 
+async fn check_stellar_chain_health_query(
+    key: ChainKey,
+    _config: StellarChainConfig,
+) -> Result<(), HealthCheckError> {
+    Err(HealthCheckError::StellarClientError(
+        key,
+        StellarClientError::NotImplemented,
+    ))
+}
+
 #[derive(Error, Debug)]
 pub enum HealthCheckError {
     #[error("[{0}] {1:?}")]
@@ -174,4 +190,7 @@ pub enum HealthCheckError {
 
     #[error("[{0}] node info: {1:?}")]
     CosmosNodeInfo(ChainKey, anyhow::Error),
+
+    #[error("[{0}] {1:?}")]
+    StellarClientError(ChainKey, StellarClientError),
 }

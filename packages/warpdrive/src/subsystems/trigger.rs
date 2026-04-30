@@ -11,6 +11,12 @@ use crate::{
         cosmos_stream::StreamTriggerCosmosContractEvent,
         evm_stream::client::{EvmTriggerStreams, EvmTriggerStreamsController},
         local_command_stream,
+        stellar_stream::{
+            channels::{StellarChannelReceivers, StellarChannelSenders, StellarChannels},
+            controller::StellarStreamController,
+            poller::{start_stellar_event_poller, start_stellar_ledger_poller},
+            start_stellar_ledger_stream,
+        },
     },
     tracing_service_info, AppContext,
 };
@@ -25,7 +31,9 @@ use std::{
     collections::{HashMap, HashSet},
     num::NonZeroU64,
     sync::Arc,
+    time::Duration,
 };
+use streams::stellar_stream::start_stellar_event_stream;
 use streams::{cosmos_stream, cron_stream, evm_stream, MultiplexedStream, StreamTriggers};
 use tracing::instrument;
 use utils::telemetry::TriggerMetrics;
@@ -49,6 +57,9 @@ pub enum TriggerCommand {
         chain: ChainKey,
         addresses: Vec<alloy_primitives::Address>,
         event_hashes: Vec<alloy_primitives::B256>,
+    },
+    WatchStellarBlocks {
+        chain: ChainKey,
     },
     StartListeningAtProto,
     ManualTrigger(Box<TriggerAction>),
@@ -79,6 +90,19 @@ impl TriggerCommand {
                     chain: chain.clone(),
                 }]
             }
+            Trigger::StellarContractEvent {
+                chain,
+                contract_id: _,
+                topic_segments: _,
+            } => {
+                vec![
+                    Self::StartListeningChain {
+                        chain: chain.clone(),
+                    },
+                    // There is no WatchStellarContractEvents
+                    // Because we needed the rpc_id earlier on
+                ]
+            }
             Trigger::BlockInterval { chain, .. } => match chain_configs.get_chain(chain) {
                 Some(chain_config) => match chain_config {
                     AnyChainConfig::Evm(_) => {
@@ -95,6 +119,16 @@ impl TriggerCommand {
                         vec![Self::StartListeningChain {
                             chain: chain.clone(),
                         }]
+                    }
+                    AnyChainConfig::Stellar(_) => {
+                        vec![
+                            Self::StartListeningChain {
+                                chain: chain.clone(),
+                            },
+                            Self::WatchStellarBlocks {
+                                chain: chain.clone(),
+                            },
+                        ]
                     }
                 },
                 None => {
@@ -130,6 +164,7 @@ pub struct TriggerManager {
     pub disable_networking: bool,
     pub services: Services,
     pub evm_controllers: Arc<std::sync::RwLock<HashMap<ChainKey, EvmTriggerStreamsController>>>,
+    pub stellar_controllers: Arc<std::sync::RwLock<HashMap<ChainKey, StellarStreamController>>>,
     pub config: Config,
 }
 
@@ -155,12 +190,16 @@ impl TriggerManager {
             disable_networking: config.disable_trigger_networking,
             services,
             evm_controllers: Arc::new(std::sync::RwLock::new(HashMap::new())),
+            stellar_controllers: Arc::new(std::sync::RwLock::new(HashMap::new())),
             config: config.clone(),
         })
     }
 
     #[instrument(skip(self, service), fields(subsys = "TriggerManager"))]
-    pub fn add_service(&self, service: &warpdrive_types::Service) -> Result<(), TriggerError> {
+    pub async fn add_service(
+        &self,
+        service: &warpdrive_types::Service,
+    ) -> Result<(), TriggerError> {
         // The mechanics of adding a trigger are that we:
 
         // 1. Setup all the records needed to track the trigger in various "lookup" maps.
@@ -170,7 +209,29 @@ impl TriggerManager {
         // It doesn't really matter what order the multiplexed streams are polled in, a trigger simply
         // will not be fired until the stream that kicks it off is polled (i.e. this definitively happens _after_ the stream is created).
 
-        self.lookup_maps.add_service(service)?;
+        let chain_configs = self.chain_configs.read().unwrap().clone();
+        let mut workflow_commands = Vec::new();
+        let mut stellar_chains_to_wait_for = HashSet::new();
+
+        for (id, workflow) in &service.workflows {
+            let config = TriggerConfig {
+                service_id: service.id(),
+                workflow_id: id.clone(),
+                trigger: workflow.trigger.clone(),
+            };
+
+            for command in TriggerCommand::map(&config, &chain_configs) {
+                if let TriggerCommand::StartListeningChain { chain } = &command {
+                    if matches!(
+                        chain_configs.get_chain(chain),
+                        Some(AnyChainConfig::Stellar(_))
+                    ) {
+                        stellar_chains_to_wait_for.insert(chain.clone());
+                    }
+                }
+                workflow_commands.push(command);
+            }
+        }
 
         // Ensure the service manager's chain is being listened to for service change events
         // This is needed even if the service has no workflows, so service URI changes can be detected
@@ -178,6 +239,39 @@ impl TriggerManager {
             .send(TriggerCommand::StartListeningChain {
                 chain: service.manager.chain().clone(),
             })?;
+
+        for chain in &stellar_chains_to_wait_for {
+            self.command_sender
+                .send(TriggerCommand::StartListeningChain {
+                    chain: chain.clone(),
+                })?;
+        }
+
+        // Block until each Stellar chain's controller has been registered by the
+        // watcher task. The healthy path resolves in a handful of poll ticks
+        // (~50ms each); the 10s ceiling is a worst-case deadline for when the
+        // chain runner has failed to come up at all. Any service that hits the
+        // ceiling will fail to register, but at that point the whole stack is
+        // already non-functional for that chain — so the long wait only delays
+        // an inevitable error rather than masking a recoverable one.
+        for chain in stellar_chains_to_wait_for {
+            let start = std::time::Instant::now();
+            while !self
+                .stellar_controllers
+                .read()
+                .unwrap()
+                .contains_key(&chain)
+            {
+                if start.elapsed() > Duration::from_secs(10) {
+                    return Err(TriggerError::StellarMissingClient(chain));
+                }
+
+                tokio::time::sleep(Duration::from_millis(50)).await;
+            }
+        }
+
+        self.lookup_maps
+            .add_service(service, &self.stellar_controllers)?;
 
         match service.manager.clone() {
             warpdrive_types::ServiceManager::Evm { chain, address } => {
@@ -195,18 +289,8 @@ impl TriggerManager {
             }
         }
 
-        let chain_configs = self.chain_configs.read().unwrap().clone();
-
-        for (id, workflow) in &service.workflows {
-            let config = TriggerConfig {
-                service_id: service.id(),
-                workflow_id: id.clone(),
-                trigger: workflow.trigger.clone(),
-            };
-
-            for command in TriggerCommand::map(&config, &chain_configs) {
-                self.command_sender.send(command)?;
-            }
+        for command in workflow_commands {
+            self.command_sender.send(command)?;
         }
 
         Ok(())
@@ -214,7 +298,8 @@ impl TriggerManager {
 
     #[instrument(skip(self), fields(subsys = "TriggerManager"))]
     pub fn remove_service(&self, service_id: ServiceId) -> Result<(), TriggerError> {
-        self.lookup_maps.remove_service(service_id.clone())?;
+        self.lookup_maps
+            .remove_service(service_id.clone(), &self.stellar_controllers)?;
 
         // TODO - consider sending commands to:
         // 1. stop listening to chains if no triggers remain for them
@@ -252,7 +337,7 @@ impl TriggerManager {
                     );
 
                     self.metrics
-                        .record_trigger_fired(action.data.chain(), action.data.trigger_type());
+                        .record_trigger_fired(action.data.chain(), action.data.trigger_type_str());
                 }
                 DispatcherCommand::ChangeServiceUri { service_id, uri } => {
                     tracing_service_info!(
@@ -546,6 +631,113 @@ impl TriggerManager {
                                         *chain_state = StreamStartState::Connected;
                                     }
                                 }
+
+                                AnyChainConfig::Stellar(chain_config) => {
+                                    if chain_config.rpc_url.is_empty() {
+                                        return Err(TriggerError::StellarMissingRpc(chain.clone()));
+                                    }
+
+                                    let chain_key: ChainKey = (&chain_config).into();
+
+                                    if self
+                                        .stellar_controllers
+                                        .read()
+                                        .unwrap()
+                                        .get(&chain_key)
+                                        .is_none()
+                                    {
+                                        let controller =
+                                            StellarStreamController::new(chain_config.clone())?;
+
+                                        let channels = StellarChannels::new();
+
+                                        let StellarChannelReceivers {
+                                            event_rx,
+                                            ledger_rx,
+                                        } = channels.receivers;
+
+                                        let StellarChannelSenders {
+                                            ledger_tx,
+                                            event_tx,
+                                        } = channels.senders;
+
+                                        // Start the event stream from the perspective of what the trigger needs
+                                        // this does not directly interact with the chain - we send to it from a channel later
+                                        // in other words, these streams are more like a mapping from native Stellar events/ledgers
+                                        // to our internal StreamTriggers, and the pollers which we will create a bit further below
+                                        // are what actually interact with the chain and send data to these streams
+                                        let event_stream = start_stellar_event_stream(
+                                            chain.clone(),
+                                            event_rx,
+                                            self.metrics.clone(),
+                                        )
+                                        .await;
+
+                                        let ledger_stream = start_stellar_ledger_stream(
+                                            chain.clone(),
+                                            ledger_rx,
+                                            self.metrics.clone(),
+                                        )
+                                        .await;
+
+                                        let (event_stream, ledger_stream) =
+                                            match (event_stream, ledger_stream) {
+                                                (Ok(event_stream), Ok(ledger_stream)) => {
+                                                    (event_stream, ledger_stream)
+                                                }
+                                                (Err(err), _) | (_, Err(err)) => {
+                                                    tracing::error!(
+                                                    "Failed to start Stellar event stream: {:?}",
+                                                    err
+                                                );
+                                                    if let Some(chain_state) =
+                                                        listening_chain_states.get_mut(&chain)
+                                                    {
+                                                        *chain_state = StreamStartState::Waiting;
+                                                    }
+                                                    continue;
+                                                }
+                                            };
+
+                                        // Now create the pollers. For right now, they just run forever once kicked off
+                                        // However, the event poller's filters can be adjusted on the fly via the shared client
+                                        tokio::spawn({
+                                            let controller = controller.clone();
+                                            async move {
+                                                start_stellar_event_poller(controller, event_tx)
+                                                    .await
+                                            }
+                                        });
+
+                                        tokio::spawn({
+                                            let controller = controller.clone();
+                                            async move {
+                                                start_stellar_ledger_poller(controller, ledger_tx)
+                                                    .await
+                                            }
+                                        });
+
+                                        // Now that we'll be sending into the streams, we can multiplex them in
+                                        multiplexed_stream.push(event_stream);
+                                        multiplexed_stream.push(ledger_stream);
+
+                                        // and stash our controller so we can adjust filters and polling on the fly based on trigger configs
+                                        self.stellar_controllers
+                                            .write()
+                                            .unwrap()
+                                            .insert(chain_key, controller);
+
+                                        if let Some(chain_state) =
+                                            listening_chain_states.get_mut(&chain)
+                                        {
+                                            *chain_state = StreamStartState::Connected;
+                                        }
+                                    } else {
+                                        tracing::warn!(
+                                            "Stellar stream for chain {chain} is already running"
+                                        );
+                                    }
+                                }
                             }
                         }
                         TriggerCommand::WatchEvmContractEvents {
@@ -573,6 +765,21 @@ impl TriggerManager {
                                 None => {
                                     tracing::error!(
                                         "No EVM controller found for chain {chain}, cannot watch blocks"
+                                    );
+                                    continue;
+                                }
+                            }
+                        }
+                        // There is no WatchStellarContractEvents command because we need the rpc_id to add filters,
+                        // so we already added the filters earlier
+                        TriggerCommand::WatchStellarBlocks { chain } => {
+                            match self.stellar_controllers.read().unwrap().get(&chain) {
+                                Some(controller) => {
+                                    controller.enable_ledger_polling();
+                                }
+                                None => {
+                                    tracing::error!(
+                                        "No Stellar controller found for chain {chain}, cannot watch blocks"
                                     );
                                     continue;
                                 }
@@ -725,6 +932,61 @@ impl TriggerManager {
                         }
                     }
                 }
+
+                StreamTriggers::StellarEvent {
+                    chain,
+                    contract_id,
+                    event_type,
+                    ledger,
+                    ledger_closed_at,
+                    event_id,
+                    operation_index,
+                    transaction_index,
+                    tx_hash,
+                    topic_segments,
+                    value,
+                    rpc_ids,
+                } => {
+                    // TODO - see if it's a ServiceURIUpdated for service manager
+
+                    // Handle regular events
+
+                    let triggers_by_contract_event_lock = self
+                        .lookup_maps
+                        .triggers_by_stellar_contract_event
+                        .read()
+                        .unwrap();
+
+                    let trigger_data = TriggerData::StellarContractEvent {
+                        chain,
+                        contract_id,
+                        event_type,
+                        ledger,
+                        ledger_closed_at,
+                        event_id,
+                        operation_index,
+                        transaction_index,
+                        tx_hash,
+                        topic_segments,
+                        value,
+                    };
+
+                    // BiMap forward direction (rpc id -> lookup id). The reverse
+                    // direction is exercised in `LookupMaps::remove_workflow` /
+                    // `remove_service` so per-workflow cleanup can target a single
+                    // rpc id.
+                    let lookup_ids = rpc_ids
+                        .into_iter()
+                        .filter_map(|rpc_id| triggers_by_contract_event_lock.get_by_left(&rpc_id));
+
+                    for trigger_config in self.lookup_maps.get_trigger_configs(lookup_ids) {
+                        dispatcher_commands.push(DispatcherCommand::Trigger(TriggerAction {
+                            data: trigger_data.clone(),
+                            config: trigger_config.clone(),
+                        }));
+                    }
+                }
+
                 StreamTriggers::Cosmos {
                     contract_events,
                     chain,
@@ -815,6 +1077,9 @@ impl TriggerManager {
                     block_height,
                 } => {
                     dispatcher_commands.extend(self.process_blocks(chain, block_height));
+                }
+                StreamTriggers::StellarLedgerSequence { chain, ledger } => {
+                    dispatcher_commands.extend(self.process_blocks(chain, ledger as u64));
                 }
                 StreamTriggers::Cron { hits } => {
                     // Process each cron hit (group of triggers at the same scheduled time)

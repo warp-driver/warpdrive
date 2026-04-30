@@ -3,7 +3,9 @@ use std::path::PathBuf;
 use tracing_subscriber::EnvFilter;
 use utils::{config::ConfigExt, test_utils::middleware::evm::EvmMiddlewareType};
 
-use crate::e2e::{AnyService, CosmosService, CrossChainService, EvmService, TestMatrix};
+use crate::e2e::{
+    AnyService, CosmosService, CrossChainService, EvmService, StellarService, TestMatrix,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
@@ -80,6 +82,7 @@ pub enum TestMode {
     All,
     AllEth,
     AllCosmos,
+    AllStellar,
     Isolated(Vec<AnyService>),
 }
 
@@ -98,6 +101,11 @@ impl From<TestMode> for TestMatrix {
                 // Add all Cosmos services
                 for service in CosmosService::all_values() {
                     matrix.cosmos.insert(*service);
+                }
+
+                // Add all Stellar services
+                for service in StellarService::all_values() {
+                    matrix.stellar.insert(*service);
                 }
 
                 // Add all cross-chain services
@@ -129,6 +137,17 @@ impl From<TestMode> for TestMatrix {
 
                 matrix
             }
+            TestMode::AllStellar => {
+                // All Stellar tests only
+                let mut matrix = TestMatrix::default();
+
+                // Add all Stellar services
+                for service in StellarService::all_values() {
+                    matrix.stellar.insert(*service);
+                }
+
+                matrix
+            }
             TestMode::Isolated(services) => {
                 // Only specific services
                 let mut matrix = TestMatrix::default();
@@ -140,6 +159,9 @@ impl From<TestMode> for TestMatrix {
                         }
                         AnyService::Cosmos(cosmos_service) => {
                             matrix.cosmos.insert(cosmos_service);
+                        }
+                        AnyService::Stellar(stellar_service) => {
+                            matrix.stellar.insert(stellar_service);
                         }
                         AnyService::CrossChain(cross_chain_service) => {
                             matrix.cross_chain.insert(cross_chain_service);

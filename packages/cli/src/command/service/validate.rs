@@ -166,6 +166,17 @@ pub async fn validate_contracts_exist(
                     ));
                 }
             }
+            Trigger::StellarContractEvent {
+                chain,
+                contract_id,
+                topic_segments,
+            } => {
+                // TODO
+                errors.push(format!(
+                    "TODO: check Stellar contract for workflow {} on chain {} with contract ID {} and topic segments {:?}",
+                    workflow_id, chain, contract_id, topic_segments
+                ));
+            }
             // Other trigger types don't need contract validation
             Trigger::Cron { .. }
             | Trigger::Manual

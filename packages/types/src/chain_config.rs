@@ -13,6 +13,8 @@ pub enum ChainConfigError {
     ExpectedEvmChain,
     #[error("Expected Cosmos chain")]
     ExpectedCosmosChain,
+    #[error("Expected Stellar chain")]
+    ExpectedStellarChain,
     #[error("Invalid chain: {0}")]
     InvalidChainKey(#[from] ChainKeyError),
     #[error("Chain already exists: {0}")]
@@ -21,6 +23,8 @@ pub enum ChainConfigError {
     InvalidNamespaceForCosmos(ChainKeyNamespace),
     #[error("Namespace for cosmos chain must be {evm} or {dev}, got {0}", evm=ChainKeyNamespace::EVM, dev=ChainKeyNamespace::DEV)]
     InvalidNamespaceForEvm(ChainKeyNamespace),
+    #[error("Namespace for stellar chain must be {stellar} or {dev}, got {0}", stellar=ChainKeyNamespace::STELLAR, dev=ChainKeyNamespace::DEV)]
+    InvalidNamespaceForStellar(ChainKeyNamespace),
     #[error("Namespace must be one of {cosmos}, {evm}, or {dev}, got {0}", cosmos=ChainKeyNamespace::COSMOS, evm=ChainKeyNamespace::EVM, dev=ChainKeyNamespace::DEV)]
     InvalidNamespace(ChainKeyNamespace),
     #[error("Chain ID mismatch: expected {expected}, got {actual}")]
@@ -56,6 +60,7 @@ impl From<CosmosChainConfig> for ChainKey {
     }
 }
 
+/// EVM chain config
 #[derive(Debug, Deserialize, Serialize, Clone, ToSchema)]
 pub struct EvmChainConfig {
     pub chain_id: ChainKeyId,
@@ -80,11 +85,36 @@ impl From<EvmChainConfig> for ChainKey {
     }
 }
 
+// Stellar chain config
+#[derive(Debug, Deserialize, Serialize, Clone, ToSchema)]
+pub struct StellarChainConfig {
+    pub chain_id: ChainKeyId,
+    pub chain_poll_interval_ms: u64,
+    pub rpc_url: String,
+    pub friendbot_url: Option<String>,
+}
+
+impl From<&StellarChainConfig> for ChainKey {
+    fn from(config: &StellarChainConfig) -> Self {
+        ChainKey {
+            id: config.chain_id.clone(),
+            namespace: ChainKeyNamespace::STELLAR.parse().unwrap(),
+        }
+    }
+}
+
+impl From<StellarChainConfig> for ChainKey {
+    fn from(config: StellarChainConfig) -> Self {
+        (&config).into()
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone, ToSchema)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum AnyChainConfig {
     Cosmos(CosmosChainConfig),
     Evm(EvmChainConfig),
+    Stellar(StellarChainConfig),
 }
 
 impl From<&AnyChainConfig> for ChainKey {
@@ -92,6 +122,7 @@ impl From<&AnyChainConfig> for ChainKey {
         match config {
             AnyChainConfig::Cosmos(config) => config.into(),
             AnyChainConfig::Evm(config) => config.into(),
+            AnyChainConfig::Stellar(config) => config.into(),
         }
     }
 }
@@ -107,6 +138,7 @@ impl AnyChainConfig {
         match self {
             AnyChainConfig::Cosmos(config) => &config.chain_id,
             AnyChainConfig::Evm(config) => &config.chain_id,
+            AnyChainConfig::Stellar(config) => &config.chain_id,
         }
     }
 }
@@ -123,6 +155,12 @@ impl From<EvmChainConfig> for AnyChainConfig {
     }
 }
 
+impl From<StellarChainConfig> for AnyChainConfig {
+    fn from(config: StellarChainConfig) -> Self {
+        AnyChainConfig::Stellar(config)
+    }
+}
+
 impl TryFrom<AnyChainConfig> for CosmosChainConfig {
     type Error = ChainConfigError;
 
@@ -130,6 +168,7 @@ impl TryFrom<AnyChainConfig> for CosmosChainConfig {
         match config {
             AnyChainConfig::Cosmos(config) => Ok(config),
             AnyChainConfig::Evm(_) => Err(ChainConfigError::ExpectedCosmosChain),
+            AnyChainConfig::Stellar(_) => Err(ChainConfigError::ExpectedCosmosChain),
         }
     }
 }
@@ -141,6 +180,19 @@ impl TryFrom<AnyChainConfig> for EvmChainConfig {
         match config {
             AnyChainConfig::Evm(config) => Ok(config),
             AnyChainConfig::Cosmos(_) => Err(ChainConfigError::ExpectedEvmChain),
+            AnyChainConfig::Stellar(_) => Err(ChainConfigError::ExpectedEvmChain),
+        }
+    }
+}
+
+impl TryFrom<AnyChainConfig> for StellarChainConfig {
+    type Error = ChainConfigError;
+
+    fn try_from(config: AnyChainConfig) -> Result<Self, Self::Error> {
+        match config {
+            AnyChainConfig::Stellar(config) => Ok(config),
+            AnyChainConfig::Cosmos(_) => Err(ChainConfigError::ExpectedStellarChain),
+            AnyChainConfig::Evm(_) => Err(ChainConfigError::ExpectedStellarChain),
         }
     }
 }
@@ -211,6 +263,7 @@ impl AnyChainConfig {
         match self {
             AnyChainConfig::Cosmos(config) => Ok(config.clone()),
             AnyChainConfig::Evm(_) => Err(ChainConfigError::ExpectedCosmosChain),
+            AnyChainConfig::Stellar(_) => Err(ChainConfigError::ExpectedCosmosChain),
         }
     }
 
@@ -218,6 +271,15 @@ impl AnyChainConfig {
         match self {
             AnyChainConfig::Evm(config) => Ok(config.clone()),
             AnyChainConfig::Cosmos(_) => Err(ChainConfigError::ExpectedEvmChain),
+            AnyChainConfig::Stellar(_) => Err(ChainConfigError::ExpectedEvmChain),
+        }
+    }
+
+    pub fn to_stellar_config(&self) -> Result<StellarChainConfig, ChainConfigError> {
+        match self {
+            AnyChainConfig::Stellar(config) => Ok(config.clone()),
+            AnyChainConfig::Cosmos(_) => Err(ChainConfigError::ExpectedStellarChain),
+            AnyChainConfig::Evm(_) => Err(ChainConfigError::ExpectedStellarChain),
         }
     }
 
@@ -243,6 +305,9 @@ pub struct ChainConfigs {
     /// EVM-style chains
     #[serde(default)]
     pub evm: BTreeMap<ChainKeyId, EvmChainConfigBuilder>,
+    /// Stellar-style chains
+    #[serde(default)]
+    pub stellar: BTreeMap<ChainKeyId, StellarChainConfigBuilder>,
     /// DEV-only chains
     /// The key here can be different than the chain_id inside the config
     #[serde(default)]
@@ -260,6 +325,10 @@ impl ChainConfigs {
                 .evm
                 .get(&key.id)
                 .map(|c| AnyChainConfig::Evm(c.clone().build(key.id.clone()))),
+            ChainKeyNamespace::STELLAR => self
+                .stellar
+                .get(&key.id)
+                .map(|c| AnyChainConfig::Stellar(c.clone().build(key.id.clone()))),
             ChainKeyNamespace::DEV => self.dev.get(&key.id).cloned(),
             _ => None,
         }
@@ -273,6 +342,12 @@ impl ChainConfigs {
 
     pub fn evm_iter(&self) -> impl Iterator<Item = EvmChainConfig> + '_ {
         self.evm
+            .iter()
+            .map(|(id, config)| config.clone().build(id.clone()))
+    }
+
+    pub fn stellar_iter(&self) -> impl Iterator<Item = StellarChainConfig> + '_ {
+        self.stellar
             .iter()
             .map(|(id, config)| config.clone().build(id.clone()))
     }
@@ -296,6 +371,14 @@ impl ChainConfigs {
                 id: id.clone(),
             });
         }
+
+        for id in self.stellar.keys() {
+            keys.push(ChainKey {
+                namespace: ChainKeyNamespace::STELLAR.parse()?,
+                id: id.clone(),
+            });
+        }
+
         for id in self.dev.keys() {
             keys.push(ChainKey {
                 namespace: ChainKeyNamespace::DEV.parse()?,
@@ -318,6 +401,14 @@ impl ChainConfigs {
                 .collect(),
             ChainKeyNamespace::EVM => self
                 .evm
+                .keys()
+                .map(|id| ChainKey {
+                    namespace: namespace.clone(),
+                    id: id.clone(),
+                })
+                .collect(),
+            ChainKeyNamespace::STELLAR => self
+                .stellar
                 .keys()
                 .map(|id| ChainKey {
                     namespace: namespace.clone(),
@@ -387,6 +478,23 @@ impl ChainConfigs {
                 }
                 _ => return Err(ChainConfigError::InvalidNamespaceForCosmos(key.namespace)),
             },
+            ChainKeyNamespace::STELLAR => match config {
+                AnyChainConfig::Stellar(stellar_config) => {
+                    if stellar_config.chain_id != key.id {
+                        return Err(ChainConfigError::IdMismatch {
+                            expected: key.id,
+                            actual: stellar_config.chain_id,
+                        });
+                    }
+                    let stellar_config = StellarChainConfigBuilder {
+                        chain_poll_interval_ms: stellar_config.chain_poll_interval_ms,
+                        rpc_url: stellar_config.rpc_url,
+                        friendbot_url: stellar_config.friendbot_url,
+                    };
+                    self.stellar.insert(key.id, stellar_config);
+                }
+                _ => return Err(ChainConfigError::InvalidNamespaceForStellar(key.namespace)),
+            },
             _ => return Err(ChainConfigError::InvalidNamespace(key.namespace)),
         }
 
@@ -434,6 +542,24 @@ impl EvmChainConfigBuilder {
             http_endpoint: self.http_endpoint,
             faucet_endpoint: self.faucet_endpoint,
             ws_priority_endpoint_index: self.ws_priority_endpoint_index,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, ToSchema)]
+pub struct StellarChainConfigBuilder {
+    pub chain_poll_interval_ms: u64,
+    pub rpc_url: String,
+    pub friendbot_url: Option<String>,
+}
+
+impl StellarChainConfigBuilder {
+    pub fn build(self, id: ChainKeyId) -> StellarChainConfig {
+        StellarChainConfig {
+            chain_id: id,
+            chain_poll_interval_ms: self.chain_poll_interval_ms,
+            rpc_url: self.rpc_url,
+            friendbot_url: self.friendbot_url,
         }
     }
 }

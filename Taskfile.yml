@@ -222,6 +222,19 @@ tasks:
           CONTRACT_PATH: examples/contracts/cosmwasm/mock/service-handler
       - cp ./artifacts/*.wasm {{.COSMWASM_OUT_DIR}}
 
+  stellar-build:
+    desc: Compile Stellar example contracts
+    cmds:
+      - task: _stellar-build-inner
+        vars:
+          CONTRACT_PATH: examples/contracts/stellar/trigger
+
+  _stellar-build-inner:
+    internal: true
+    vars:
+      CONTRACT_PATH: '{{.CONTRACT_PATH}}'
+    cmd: cd {{.REPO_ROOT}}/{{.CONTRACT_PATH}} && stellar contract build --optimize
+
   _cosmwasm-build-inner:
     internal: true
     vars:
@@ -367,6 +380,7 @@ tasks:
 
   test-warpdrive-e2e:
     desc: Run on-chain integration tests
+    deps: [wasi-build]
     cmd: ulimit -n 65536 && RUST_LOG=info,alloy_rpc=off,alloy_provider=off,wasmtime=off,cranelift=off,hyper_util=off cargo test -p warpdrive-tests
 
   cli-exec:

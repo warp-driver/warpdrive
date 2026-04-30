@@ -29,3 +29,6 @@ packages/wavs-mcp/skill/
 
 # Product docs (keep out of VCS)
 docs/proposal.pdf
+
+# Stellar e2e test state (auto-generated)
+.stellar-e2e/

@@ -11,6 +11,7 @@ pub mod deployment;
 pub mod e2e;
 pub mod example_cosmos_client;
 pub mod example_evm_client;
+pub mod example_stellar_client;
 
 use crate::args::TestArgs;
 use utils::context::AppContext;

@@ -58,6 +58,12 @@ pub async fn handle_get_service(
                     address,
                 }
             }
+            AnyChainConfig::Stellar(_) => {
+                return AnyError::from(anyhow!(
+                    "Stellar chain does not support service managers yet"
+                ))
+                .into_response();
+            }
         },
         None => {
             return AnyError::from(anyhow!("missing chain config for {chain_key}")).into_response();

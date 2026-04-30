@@ -9,6 +9,7 @@ use super::components::{AggregatorComponent, ComponentName, VectorComponent};
 pub struct TestMatrix {
     pub evm: HashSet<EvmService>,
     pub cosmos: HashSet<CosmosService>,
+    pub stellar: HashSet<StellarService>,
     pub cross_chain: HashSet<CrossChainService>,
 }
 
@@ -65,11 +66,22 @@ pub enum CrossChainService {
     CosmosToEvmEchoData,
 }
 
+#[derive(
+    Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, AllValues,
+)]
+#[serde(rename_all = "snake_case")]
+pub enum StellarService {
+    EchoData,
+    BlockInterval,
+    BlockIntervalStartStop,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[serde(rename_all = "snake_case")]
 pub enum AnyService {
     Evm(EvmService),
     Cosmos(CosmosService),
+    Stellar(StellarService),
     CrossChain(CrossChainService),
 }
 
@@ -82,6 +94,12 @@ impl From<EvmService> for AnyService {
 impl From<CosmosService> for AnyService {
     fn from(service: CosmosService) -> Self {
         AnyService::Cosmos(service)
+    }
+}
+
+impl From<StellarService> for AnyService {
+    fn from(service: StellarService) -> Self {
+        AnyService::Stellar(service)
     }
 }
 
@@ -103,6 +121,11 @@ impl TestMatrix {
 
         // Add enabled Cosmos services
         for service in self.cosmos {
+            services.push(service.into());
+        }
+
+        // Add enabled Stellar services
+        for service in self.stellar {
             services.push(service.into());
         }
 
@@ -235,6 +258,20 @@ impl From<CosmosService> for Vec<ComponentName> {
     }
 }
 
+impl From<StellarService> for Vec<ComponentName> {
+    fn from(service: StellarService) -> Self {
+        match service {
+            StellarService::EchoData => vec![ComponentName::Vector(VectorComponent::EchoData)],
+            StellarService::BlockInterval => {
+                vec![ComponentName::Vector(VectorComponent::EchoBlockInterval)]
+            }
+            StellarService::BlockIntervalStartStop => {
+                vec![ComponentName::Vector(VectorComponent::EchoBlockInterval)]
+            }
+        }
+    }
+}
+
 impl From<CrossChainService> for Vec<ComponentName> {
     fn from(service: CrossChainService) -> Self {
         match service {
@@ -250,6 +287,7 @@ impl From<AnyService> for Vec<ComponentName> {
         match service {
             AnyService::Evm(service) => service.into(),
             AnyService::Cosmos(service) => service.into(),
+            AnyService::Stellar(service) => service.into(),
             AnyService::CrossChain(service) => service.into(),
         }
     }
