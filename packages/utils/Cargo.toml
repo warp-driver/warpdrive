@@ -57,6 +57,8 @@ axum-extra = { workspace = true }
 tempfile = { workspace = true }
 stellar-rpc-client = { workspace = true }
 stellar-xdr = { workspace = true }
+stellar-strkey = { workspace = true }
+uuid = { workspace = true }
 rand = { workspace = true, optional = true }
 bip39 = { workspace = true, optional = true }
 subtle = { workspace = true }

@@ -58,8 +58,12 @@ impl AppHandles {
                 None
             };
 
-            stellar_middleware = if chains.stellar_iter().next().is_some() {
-                Some(StellarMiddleware::new().unwrap())
+            stellar_middleware = if let Some(stellar_chain_config) = chains.stellar_iter().next() {
+                Some(
+                    ctx.rt
+                        .block_on(StellarMiddleware::new(stellar_chain_config))
+                        .unwrap(),
+                )
             } else {
                 None
             };

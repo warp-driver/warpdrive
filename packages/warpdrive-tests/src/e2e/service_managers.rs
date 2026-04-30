@@ -5,6 +5,7 @@ use utils::test_utils::{
     middleware::{
         cosmos::CosmosServiceManager,
         evm::{EvmMiddleware, MiddlewareServiceManagerConfig},
+        stellar::{StellarMiddleware, StellarServiceManager},
         vector::AvsOperator,
     },
     mock_service_manager::MockEvmServiceManager,
@@ -42,6 +43,10 @@ pub enum AnyServiceManagerInstance {
         chain: ChainKey,
         manager: CosmosServiceManager,
     },
+    Stellar {
+        chain: ChainKey,
+        manager: StellarServiceManager,
+    },
 }
 
 impl ServiceManagers {
@@ -60,6 +65,7 @@ impl ServiceManagers {
         clients: &Clients,
         evm_middleware: Option<EvmMiddleware>,
         cosmos_middlewares: CosmosMiddlewares,
+        stellar_middleware: Option<StellarMiddleware>,
     ) {
         tracing::warn!("WarpDrive Concurrency: {}", self.configs.wavs_concurrency);
         tracing::warn!(
@@ -67,8 +73,14 @@ impl ServiceManagers {
             self.configs.middleware_concurrency
         );
         tracing::warn!("Bootstrapping service managers...");
-        self.deploy_service_managers(registry, clients, evm_middleware, cosmos_middlewares)
-            .await;
+        self.deploy_service_managers(
+            registry,
+            clients,
+            evm_middleware,
+            cosmos_middlewares,
+            stellar_middleware,
+        )
+        .await;
         tracing::warn!("Bootstrapping initial service uris...");
         self.set_initial_service_uris(registry, clients).await;
         tracing::warn!("Bootstrapping initial services...");
@@ -87,6 +99,10 @@ impl ServiceManagers {
                 chain: chain.clone(),
                 address: manager.address.clone(),
             },
+            AnyServiceManagerInstance::Stellar { chain, manager } => ServiceManager::Stellar {
+                chain: chain.clone(),
+                address: manager.project_root.clone(),
+            },
         }
     }
 
@@ -96,6 +112,7 @@ impl ServiceManagers {
         clients: &Clients,
         evm_middleware: Option<EvmMiddleware>,
         cosmos_middlewares: CosmosMiddlewares,
+        stellar_middleware: Option<StellarMiddleware>,
     ) {
         let mut lookup = HashMap::new();
 
@@ -109,6 +126,7 @@ impl ServiceManagers {
             futures.push({
                 let evm_middleware = evm_middleware.clone();
                 let cosmos_middlewares = cosmos_middlewares.clone();
+                let stellar_middleware = stellar_middleware.clone();
                 async move {
                     match chain.namespace.as_str() {
                         ChainKeyNamespace::EVM => {
@@ -137,6 +155,25 @@ impl ServiceManagers {
                             (
                                 test.name.clone(),
                                 AnyServiceManagerInstance::Cosmos { manager, chain },
+                            )
+                        }
+                        ChainKeyNamespace::STELLAR => {
+                            let middleware = stellar_middleware
+                                .clone()
+                                .expect("stellar middleware not initialized");
+                            tracing::info!(
+                                "Deploying stellar service manager for test {}",
+                                test.name
+                            );
+                            let manager = middleware.deploy_service_manager().await.unwrap();
+                            tracing::info!(
+                                "Stellar Service manager for test {} project_root is {}",
+                                test.name,
+                                manager.project_root
+                            );
+                            (
+                                test.name.clone(),
+                                AnyServiceManagerInstance::Stellar { manager, chain },
                             )
                         }
                         other => panic!("Unsupported chain namespace: {}", other),
@@ -193,6 +230,12 @@ impl ServiceManagers {
                     }
                     AnyServiceManagerInstance::Cosmos { manager, .. } => {
                         manager.set_service_uri(&service_url).await.unwrap();
+                    }
+                    AnyServiceManagerInstance::Stellar { .. } => {
+                        todo!(
+                            "set_initial_service_uris for Stellar: \
+                             call ProjectRootClient::update_project_spec_repo via warpdrive-client"
+                        )
                     }
                 }
             });
@@ -339,6 +382,13 @@ impl ServiceManagers {
                             manager.register_operator(vector.clone()).await.unwrap();
                         }
                     }
+                    AnyServiceManagerInstance::Stellar { .. } => {
+                        let _ = (avs_operators, required_to_pass);
+                        todo!(
+                            "register_operators for Stellar: \
+                             cli.sh add-signer per vector + cli.sh set-threshold for quorum"
+                        )
+                    }
                 }
             });
         }
@@ -422,6 +472,13 @@ impl ServiceManagers {
                     }
                     AnyServiceManagerInstance::Cosmos { manager, .. } => {
                         manager.set_service_uri(&service_url).await.unwrap();
+                    }
+                    AnyServiceManagerInstance::Stellar { .. } => {
+                        let _ = service_url;
+                        todo!(
+                            "update_services for Stellar: \
+                             call ProjectRootClient::update_project_spec_repo via warpdrive-client"
+                        )
                     }
                 }
 
