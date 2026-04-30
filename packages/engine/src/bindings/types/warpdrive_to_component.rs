@@ -386,6 +386,9 @@ impl From<warpdrive_types::ServiceManager> for component_service::ServiceManager
                     address: address.into(),
                 })
             }
+            warpdrive_types::ServiceManager::Stellar { .. } => {
+                unimplemented!("Stellar ServiceManager is not yet exposed to WASI components")
+            }
         }
     }
 }
@@ -810,6 +813,9 @@ impl From<warpdrive_types::ServiceManager> for aggregator_service::ServiceManage
                         prefix_len: address.prefix().len() as u32,
                     },
                 })
+            }
+            warpdrive_types::ServiceManager::Stellar { .. } => {
+                unimplemented!("Stellar ServiceManager is not yet exposed to aggregator components")
             }
         }
     }

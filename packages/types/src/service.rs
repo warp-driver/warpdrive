@@ -113,6 +113,12 @@ pub enum ServiceManager {
         #[cfg_attr(feature = "ts-bindings", ts(type = "string"))]
         address: layer_climb_address::CosmosAddr,
     },
+    Stellar {
+        chain: ChainKey,
+        #[schema(value_type = String)]
+        #[cfg_attr(feature = "ts-bindings", ts(type = "string"))]
+        address: stellar_strkey::Contract,
+    },
 }
 
 impl From<&ServiceManager> for ServiceId {
@@ -132,6 +138,13 @@ impl From<&ServiceManager> for ServiceId {
                 bytes.extend_from_slice(&address.to_vec());
                 ServiceId::hash(bytes)
             }
+            ServiceManager::Stellar { chain, address } => {
+                let mut bytes = Vec::new();
+                bytes.extend_from_slice(b"stellar");
+                bytes.extend_from_slice(chain.to_string().as_bytes());
+                bytes.extend_from_slice(&address.0);
+                ServiceId::hash(bytes)
+            }
         }
     }
 }
@@ -141,12 +154,19 @@ impl ServiceManager {
         match self {
             ServiceManager::Evm { chain, .. } => chain,
             ServiceManager::Cosmos { chain, .. } => chain,
+            ServiceManager::Stellar { chain, .. } => chain,
         }
     }
     pub fn address(&self) -> layer_climb_address::Address {
         match self {
             ServiceManager::Evm { address, .. } => (*address).into(),
             ServiceManager::Cosmos { address, .. } => address.clone().into(),
+            ServiceManager::Stellar { .. } => {
+                unimplemented!(
+                    "Stellar ServiceManager has no layer_climb_address::Address; \
+                     use the contract id directly via match on ServiceManager::Stellar"
+                )
+            }
         }
     }
 }

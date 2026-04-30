@@ -598,6 +598,7 @@ mod tests {
             chain_id: chain.id.clone(),
             chain_poll_interval_ms: 1000,
             rpc_url: "http://localhost:0".to_string(),
+            network_passphrase: "Standalone Network ; February 2017".to_string(),
             friendbot_url: None,
         };
         let controller = StellarStreamController::new(config).unwrap();

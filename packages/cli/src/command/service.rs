@@ -1047,6 +1047,9 @@ pub async fn validate_service(
                     ServiceManager::Cosmos { chain, .. } => {
                         chains_to_validate.insert((chain.clone(), ChainType::Cosmos));
                     }
+                    ServiceManager::Stellar { chain, .. } => {
+                        chains_to_validate.insert((chain.clone(), ChainType::Stellar));
+                    }
                 }
 
                 Some(service_manager)
@@ -1070,6 +1073,9 @@ pub async fn validate_service(
                     if let Ok(client) = ctx.new_evm_client_read_only(chain.id.clone()).await {
                         evm_providers.insert(chain.clone(), client.provider.root().clone());
                     }
+                }
+                ChainType::Stellar => {
+                    // TODO: Stellar contract validation client wiring
                 }
             }
         }

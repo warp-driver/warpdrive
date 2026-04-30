@@ -236,6 +236,7 @@ impl From<TestConfig> for Configs {
                 StellarChainConfigBuilder {
                     chain_poll_interval_ms: 1_000,
                     rpc_url: "https://soroban-testnet.stellar.org".to_string(),
+                    network_passphrase: "Test SDF Network ; September 2015".to_string(),
                     friendbot_url: Some("https://friendbot-testnet.stellar.org/".to_string()),
                 },
             );

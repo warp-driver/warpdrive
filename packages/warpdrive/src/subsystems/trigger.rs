@@ -287,6 +287,9 @@ impl TriggerManager {
             warpdrive_types::ServiceManager::Cosmos { .. } => {
                 /* Nothing to do, Cosmos consumes all events, service URI changes will be handled */
             }
+            warpdrive_types::ServiceManager::Stellar { .. } => {
+                // TODO: subscribe to Stellar service URI updates
+            }
         }
 
         for command in workflow_commands {

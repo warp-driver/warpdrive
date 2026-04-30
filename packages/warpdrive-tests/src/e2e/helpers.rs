@@ -404,6 +404,9 @@ pub async fn deploy_submit_contract(
 
             Ok(address.into())
         }
+        ServiceManager::Stellar { .. } => {
+            unimplemented!("Stellar submit contract deployment not yet wired up")
+        }
     }
 }
 
@@ -678,6 +681,9 @@ pub async fn wait_for_evm_trigger_streams_to_finalize(
                             }
                         }
                         ServiceManager::Cosmos { .. } => {
+                            unreachable!("This is only meant for EVM");
+                        }
+                        ServiceManager::Stellar { .. } => {
                             unreachable!("This is only meant for EVM");
                         }
                     }

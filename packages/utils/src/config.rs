@@ -1175,6 +1175,7 @@ mod test {
                 StellarChainConfigBuilder {
                     chain_poll_interval_ms: 1000,
                     rpc_url: "http://localhost:8000".to_string(),
+                    network_passphrase: "Standalone Network ; February 2017".to_string(),
                     friendbot_url: None,
                 },
             )]

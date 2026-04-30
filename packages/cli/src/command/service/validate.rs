@@ -213,6 +213,9 @@ pub async fn validate_contracts_exist(
                     ));
                 }
             }
+            ServiceManager::Stellar { chain: _, address: _ } => {
+                // TODO: Stellar service manager contract existence check is not yet implemented
+            }
             ServiceManager::Cosmos { chain, address } => match cosmos_clients.get(chain) {
                 Some(client) => {
                     let key = (address.to_string(), chain.to_string());
