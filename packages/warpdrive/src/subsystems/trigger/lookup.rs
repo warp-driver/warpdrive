@@ -424,7 +424,11 @@ impl LookupMaps {
         let mut triggers_by_service_workflow_lock =
             self.triggers_by_service_workflow.write().unwrap();
 
-        // Remove the service manager
+        // Remove the service manager. Cleanup of the Stellar
+        // `UpdatedSpecRepo` filter (when this service is Stellar-managed)
+        // is handled one level up in `TriggerManager::remove_service`,
+        // which sends an `UnwatchStellarServiceUri` command using the
+        // rpc_id it tracked at registration time.
         self.service_manager
             .write()
             .unwrap()
