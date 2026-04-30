@@ -196,7 +196,10 @@ impl TriggerManager {
     }
 
     #[instrument(skip(self, service), fields(subsys = "TriggerManager"))]
-    pub fn add_service(&self, service: &warpdrive_types::Service) -> Result<(), TriggerError> {
+    pub async fn add_service(
+        &self,
+        service: &warpdrive_types::Service,
+    ) -> Result<(), TriggerError> {
         // The mechanics of adding a trigger are that we:
 
         // 1. Setup all the records needed to track the trigger in various "lookup" maps.
@@ -263,7 +266,7 @@ impl TriggerManager {
                     return Err(TriggerError::StellarMissingClient(chain));
                 }
 
-                std::thread::sleep(Duration::from_millis(50));
+                tokio::time::sleep(Duration::from_millis(50)).await;
             }
         }
 
