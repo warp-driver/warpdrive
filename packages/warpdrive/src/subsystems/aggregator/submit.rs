@@ -13,7 +13,8 @@ use warpdrive_types::{
     CosmosSubmitAction, EvmSubmitAction,
     IWarpDriveServiceHandler::IWarpDriveServiceHandlerInstance,
     IWarpDriveServiceManager::IWarpDriveServiceManagerInstance,
-    ServiceManagerError, Submission, WavsSignature, WavsSigner,
+    Service, ServiceManager, ServiceManagerError, StellarSubmitAction, Submission, WavsSignable,
+    WavsSignature, WavsSigner,
 };
 
 use crate::subsystems::aggregator::{error::AggregatorError, Aggregator};
@@ -24,6 +25,8 @@ pub enum AnyTransactionReceipt {
     Evm(Box<TransactionReceipt>),
     // tx hash
     Cosmos(String),
+    // Soroban tx hash (hex)
+    Stellar(String),
 }
 
 impl AnyTransactionReceipt {
@@ -31,6 +34,7 @@ impl AnyTransactionReceipt {
         match self {
             AnyTransactionReceipt::Evm(receipt) => format!("{}", receipt.transaction_hash),
             AnyTransactionReceipt::Cosmos(tx_hash) => tx_hash.clone(),
+            AnyTransactionReceipt::Stellar(tx_hash) => tx_hash.clone(),
         }
     }
 }
@@ -247,5 +251,265 @@ impl Aggregator {
             service_manager_address,
             provider,
         ))
+    }
+
+    /// Submit a queue of signed envelopes to a Stellar mock_submit (or any
+    /// `EthereumHandler`-shaped) contract via warpdrive-client.
+    ///
+    /// Walks the queue, recovers the compressed secp256k1 public key from
+    /// each WavsSignature (operators sign with the same secp256k1 key
+    /// they use everywhere — the chain just consumes a different
+    /// representation), sorts by pubkey ascending (the verification
+    /// contract requires sorted input), runs the same per-signature
+    /// `check_one` + `required_weight` pre-flight as the EVM path does
+    /// against `IWavsServiceManager.validate`, then calls `verify_eth`
+    /// on the destination handler contract.
+    ///
+    /// Pre-flight failures are translated into typed `AggregatorError`
+    /// variants so the dispatch loop's queue-save-and-retry machinery
+    /// kicks in:
+    /// - **Insufficient summed weight** → `InsufficientQuorum` (queue is
+    ///   saved, retried when the next vector signs).
+    /// - **Any signer not registered yet** → error stringified as
+    ///   `SignerNotRegistered` so the substring detection in
+    ///   `aggregator.rs::handle_submit_action` recognizes it as
+    ///   transient (common during multi-vector registration races).
+    pub async fn handle_action_submit_stellar(
+        &self,
+        signing_key: ed25519_dalek::SigningKey,
+        service: &Service,
+        queue: &[Submission],
+        action: StellarSubmitAction,
+    ) -> Result<AnyTransactionReceipt, AggregatorError> {
+        use k256::ecdsa::{RecoveryId, Signature as K256Sig, VerifyingKey};
+        use warpdrive_client::project_root::{ProjectRootClient, VerificationType};
+        use warpdrive_client::secp256k1_verification::Secp256k1VerificationClient;
+
+        // ── Resolve chain config + project_root from the service manager.
+        let chain_configs = self.config.chains.read().unwrap().clone();
+        let stellar_chain_config = chain_configs
+            .get_chain(&action.chain)
+            .and_then(|c| match c {
+                warpdrive_types::AnyChainConfig::Stellar(cfg) => Some(cfg),
+                _ => None,
+            })
+            .ok_or_else(|| {
+                AggregatorError::Stellar(format!("no Stellar chain config for {}", action.chain))
+            })?;
+
+        let project_root = match &service.manager {
+            ServiceManager::Stellar { address, .. } => *address,
+            other => {
+                return Err(AggregatorError::Stellar(format!(
+                    "stellar submit on non-stellar service manager: {other:?}"
+                )));
+            }
+        };
+
+        // ── Build envelope bytes + the EIP-191 prehash that operators signed.
+        let envelope = queue
+            .first()
+            .ok_or_else(|| {
+                AggregatorError::Stellar("empty submission queue for stellar submit".to_string())
+            })?
+            .envelope
+            .clone();
+        let envelope_bytes = envelope.encode_data().map_err(|e| {
+            AggregatorError::Stellar(format!("failed to abi-encode stellar envelope: {e:?}"))
+        })?;
+        let prefixed_hash: alloy_primitives::FixedBytes<32> =
+            envelope.prefix_eip191_hash().map_err(|e| {
+                AggregatorError::Stellar(format!(
+                    "failed to compute eip-191 hash for stellar envelope: {e:?}"
+                ))
+            })?;
+
+        // ── Recover (compressed_pubkey, signature) per queue entry.
+        let mut signers_and_sigs: Vec<([u8; 33], [u8; 65])> = Vec::with_capacity(queue.len());
+        for queued in queue {
+            let sig_bytes: &[u8] = &queued.envelope_signature.data;
+            if sig_bytes.len() != 65 {
+                return Err(AggregatorError::Stellar(format!(
+                    "stellar submit: expected 65-byte secp256k1 signature, got {}",
+                    sig_bytes.len()
+                )));
+            }
+            let r_s: [u8; 64] = sig_bytes[..64]
+                .try_into()
+                .expect("65-byte slice gives 64-byte head");
+            let v = sig_bytes[64];
+            let k_sig = K256Sig::from_slice(&r_s).map_err(|e| {
+                AggregatorError::Stellar(format!("invalid secp256k1 signature: {e:?}"))
+            })?;
+            // Operator signatures use Ethereum-style v (27/28); reduce to
+            // the 0/1 recovery id k256 expects.
+            let recid_byte = if v >= 27 { v - 27 } else { v };
+            let recid = RecoveryId::try_from(recid_byte).map_err(|e| {
+                AggregatorError::Stellar(format!("invalid recovery id {recid_byte}: {e:?}"))
+            })?;
+            let vk = VerifyingKey::recover_from_prehash(prefixed_hash.as_slice(), &k_sig, recid)
+                .map_err(|e| {
+                    AggregatorError::Stellar(format!(
+                        "secp256k1 recovery failed for stellar submit: {e:?}"
+                    ))
+                })?;
+            let pubkey_bytes = vk.to_sec1_bytes();
+            let compressed: [u8; 33] = pubkey_bytes.as_ref().try_into().map_err(|_| {
+                AggregatorError::Stellar(format!(
+                    "expected 33-byte compressed pubkey, got {}",
+                    pubkey_bytes.len()
+                ))
+            })?;
+            let mut sig_arr = [0u8; 65];
+            sig_arr.copy_from_slice(sig_bytes);
+            signers_and_sigs.push((compressed, sig_arr));
+        }
+
+        // Verification contract expects signers in ascending pubkey order.
+        signers_and_sigs.sort_by(|a, b| a.0.cmp(&b.0));
+        let (signers, signatures): (Vec<[u8; 33]>, Vec<[u8; 65]>) =
+            signers_and_sigs.into_iter().unzip();
+
+        // ── Reference block = current ledger sequence at submit time.
+        let rpc = stellar_rpc_client::Client::new(&stellar_chain_config.rpc_url).map_err(|e| {
+            AggregatorError::Stellar(format!("failed to build stellar rpc client: {e:?}"))
+        })?;
+        let reference_block: u32 = rpc
+            .get_latest_ledger()
+            .await
+            .map_err(|e| AggregatorError::BlockNumber(anyhow::anyhow!("{e:?}")))?
+            .sequence;
+
+        // ── Build a soroban env once; the verification + handler clients
+        // share it. The signing key here only matters for write txs; for
+        // the verification queries below it just supplies a source account
+        // (the simulation never validates the signature).
+        let env = soroban_rs::Env::new(soroban_rs::EnvConfigs {
+            rpc_url: stellar_chain_config.rpc_url.clone(),
+            network_passphrase: stellar_chain_config.network_passphrase.clone(),
+        })
+        .map_err(|e| AggregatorError::Stellar(format!("soroban env: {e:?}")))?;
+        let account = soroban_rs::Account::single(soroban_rs::Signer::new(signing_key.clone()));
+
+        // ── Pre-flight validation: walk to verification_contract via
+        // project_root (matching the design spec), then check_one each
+        // signature and tally weights against required_weight.
+        let project_root_cfg = soroban_rs::ClientContractConfigs {
+            contract_id: project_root,
+            env: env.clone(),
+            source_account: account.clone(),
+        };
+        let project_root_client = ProjectRootClient::new(project_root_cfg);
+        match project_root_client.verification_type().await.map_err(|e| {
+            AggregatorError::Stellar(format!(
+                "ProjectRoot::verification_type query failed: {e:?}"
+            ))
+        })? {
+            VerificationType::Ethereum => {}
+            VerificationType::Stellar => {
+                return Err(AggregatorError::Stellar(
+                    "VerificationType::Stellar (ed25519/SEP-0053) is not supported yet — \
+                     operators sign with secp256k1 today."
+                        .to_string(),
+                ));
+            }
+        }
+        let verification_contract =
+            project_root_client
+                .verification_contract()
+                .await
+                .map_err(|e| {
+                    AggregatorError::Stellar(format!(
+                        "ProjectRoot::verification_contract query failed: {e:?}"
+                    ))
+                })?;
+
+        let verification_cfg = soroban_rs::ClientContractConfigs {
+            contract_id: verification_contract,
+            env: env.clone(),
+            source_account: account.clone(),
+        };
+        let verification_client = Secp256k1VerificationClient::new(verification_cfg);
+
+        let required_weight = verification_client.required_weight().await.map_err(|e| {
+            AggregatorError::Stellar(format!(
+                "Secp256k1VerificationClient::required_weight query failed: {e:?}"
+            ))
+        })?;
+
+        let mut total_weight: u64 = 0;
+        for (signer_pubkey, sig) in signers.iter().zip(signatures.iter()) {
+            match verification_client
+                .check_one(
+                    envelope_bytes.clone(),
+                    *sig,
+                    *signer_pubkey,
+                    Some(reference_block),
+                )
+                .await
+            {
+                Ok(weight) => {
+                    total_weight = total_weight.saturating_add(weight);
+                }
+                Err(err) => {
+                    let err_str = format!("{err:?}");
+                    // Translate the verification-contract error name into
+                    // the substring `aggregator.rs::handle_submit_action`
+                    // matches on for transient-retry behavior. A signer
+                    // that hasn't registered yet is the canonical
+                    // multi-vector-startup race.
+                    if err_str.contains("SignerNotRegistered") {
+                        return Err(AggregatorError::Stellar(format!(
+                            "SignerNotRegistered (transient): {err_str}"
+                        )));
+                    }
+                    return Err(AggregatorError::Stellar(format!(
+                        "check_one for signer 0x{} failed: {err_str}",
+                        const_hex::encode(signer_pubkey)
+                    )));
+                }
+            }
+        }
+
+        if total_weight < required_weight {
+            return Err(AggregatorError::InsufficientQuorum {
+                signer_weight: total_weight.to_string(),
+                threshold_weight: required_weight.to_string(),
+                total_weight: total_weight.to_string(),
+            });
+        }
+
+        // ── Pre-flight passed: send the actual handler call.
+        let contract_id = stellar_strkey::Contract(action.address);
+        let handler_cfg = soroban_rs::ClientContractConfigs {
+            contract_id,
+            env,
+            source_account: account,
+        };
+        let mut handler =
+            warpdrive_client::ethereum_handler::EthereumHandlerClient::new(handler_cfg);
+        let sig_data = warpdrive_client::ethereum_handler::SignatureData {
+            signers,
+            signatures,
+            reference_block,
+        };
+
+        tracing::info!(
+            chain = %action.chain,
+            handler = %contract_id,
+            project_root = %project_root,
+            num_signers = sig_data.signers.len(),
+            total_weight,
+            required_weight,
+            reference_block,
+            "Stellar pre-flight passed; submitting via EthereumHandlerClient::verify_eth"
+        );
+
+        let resp = handler
+            .verify_eth(envelope_bytes, sig_data)
+            .await
+            .map_err(|e| AggregatorError::Stellar(format!("verify_eth failed: {e:?}")))?;
+
+        Ok(AnyTransactionReceipt::Stellar(format!("{resp:?}")))
     }
 }
