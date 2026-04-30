@@ -121,10 +121,9 @@ impl TestMnemonics {
                 let Some(friendbot_url) = chain_config.friendbot_url.as_ref() else {
                     continue;
                 };
-                let secret = stellar_strkey::ed25519::PrivateKey::from_string(
-                    deployer_secret.as_str(),
-                )
-                .expect("stellar deployer secret is not a valid S... strkey");
+                let secret =
+                    stellar_strkey::ed25519::PrivateKey::from_string(deployer_secret.as_str())
+                        .expect("stellar deployer secret is not a valid S... strkey");
                 let signing = ed25519_dalek::SigningKey::from_bytes(&secret.0);
                 let public = stellar_strkey::ed25519::PublicKey(signing.verifying_key().to_bytes())
                     .to_string();

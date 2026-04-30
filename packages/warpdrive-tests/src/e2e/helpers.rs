@@ -55,6 +55,7 @@ pub async fn create_service_for_test(
     component_sources: &ComponentSources,
     service_manager: ServiceManager,
     cosmos_code_map: CosmosCodeMap,
+    stellar_service_manager: Option<utils::test_utils::middleware::stellar::StellarServiceManager>,
 ) -> ServiceDeployment {
     tracing::info!("Deploying service for test: {}", test.name);
     tracing::info!("Service manager: {:?}", service_manager);
@@ -82,6 +83,7 @@ pub async fn create_service_for_test(
             clients,
             component_sources,
             cosmos_code_map.clone(),
+            stellar_service_manager.as_ref(),
         )
         .await;
 
@@ -139,6 +141,7 @@ async fn deploy_workflow(
     clients: &Clients,
     component_sources: &ComponentSources,
     cosmos_code_map: CosmosCodeMap,
+    stellar_service_manager: Option<&utils::test_utils::middleware::stellar::StellarServiceManager>,
 ) -> WorkflowDeployment {
     let component = deploy_component(
         component_sources,
@@ -149,10 +152,14 @@ async fn deploy_workflow(
 
     tracing::info!("[{}] Creating submit from config", test_name);
 
-    let submission_contract =
-        deploy_submit_contract(clients, cosmos_code_map.clone(), service_manager)
-            .await
-            .unwrap();
+    let submission_contract = deploy_submit_contract(
+        clients,
+        cosmos_code_map.clone(),
+        service_manager,
+        stellar_service_manager,
+    )
+    .await
+    .unwrap();
 
     let submit = create_submit_from_config(
         &workflow_definition.submit,
@@ -312,7 +319,7 @@ pub async fn create_trigger_from_config(
 /// Create a submit based on test configuration
 pub async fn create_submit_from_config(
     submit_config: &SubmitDefinition,
-    submission_contract: &layer_climb::prelude::Address,
+    submission_contract: &warpdrive_types::ChainAddress,
     component_sources: Option<&ComponentSources>,
 ) -> Result<Submit> {
     match submit_config {
@@ -337,10 +344,17 @@ pub async fn create_submit_from_config(
                 }
 
                 if component_def.configs_to_add.service_handler {
-                    config_vars.insert(
-                        "service_handler".to_string(),
-                        submission_contract.to_string(),
-                    );
+                    // For EVM/Cosmos this is a layer-climb-shaped string; for
+                    // Stellar it's the strkey "C..." form. The component just
+                    // sees it as a string and uses it verbatim when wrapping
+                    // its output in an envelope/encoding for the matching
+                    // chain.
+                    let handler_str = match submission_contract {
+                        warpdrive_types::ChainAddress::Evm(addr) => addr.to_string(),
+                        warpdrive_types::ChainAddress::Cosmos(addr) => addr.to_string(),
+                        warpdrive_types::ChainAddress::Stellar(c) => format!("{c}"),
+                    };
+                    config_vars.insert("service_handler".to_string(), handler_str);
                 }
 
                 let component = deploy_component(sources, component_def, config_vars, env_vars);
@@ -354,12 +368,16 @@ pub async fn create_submit_from_config(
     }
 }
 
-/// Deploy submit contract and return its address
+/// Deploy a per-test "mock submit" contract and return its address as a
+/// chain-agnostic `ChainAddress`. The address gets stuffed into the
+/// aggregator component's `service_handler` config so the component can
+/// target it.
 pub async fn deploy_submit_contract(
     clients: &Clients,
     cosmos_code_map: CosmosCodeMap,
     service_manager: ServiceManager,
-) -> Result<layer_climb::prelude::Address> {
+    stellar_service_manager: Option<&utils::test_utils::middleware::stellar::StellarServiceManager>,
+) -> Result<warpdrive_types::ChainAddress> {
     match service_manager {
         ServiceManager::Cosmos { chain, address } => {
             let code_id = get_cosmos_code_id(
@@ -381,7 +399,9 @@ pub async fn deploy_submit_contract(
                 )
                 .await?;
 
-            Ok(contract_client.contract_address)
+            Ok(warpdrive_types::ChainAddress::from(
+                contract_client.contract_address,
+            ))
         }
         ServiceManager::Evm { chain, address } => {
             let evm_client = clients.get_evm_client(&chain);
@@ -402,10 +422,30 @@ pub async fn deploy_submit_contract(
             let address = *result.address();
             tracing::info!("Submit contract deployed at address: {}", address);
 
-            Ok(address.into())
+            Ok(warpdrive_types::ChainAddress::from(address))
         }
-        ServiceManager::Stellar { .. } => {
-            unimplemented!("Stellar submit contract deployment not yet wired up")
+        ServiceManager::Stellar { chain, address: _ } => {
+            // The mock submit IS a service handler — it implements
+            // `verify_eth(envelope, sig_data)` directly and delegates
+            // signature validation to the test stack's
+            // `secp256k1_verification` contract. Per-test isolation: each
+            // test gets its own handler bound to its own verification
+            // contract.
+            let stellar_sm = stellar_service_manager.ok_or_else(|| {
+                anyhow!("StellarServiceManager required to deploy stellar submit contract")
+            })?;
+            let verification_contract = format!("{}", stellar_sm.contracts.secp256k1_verification);
+            tracing::info!(
+                "Deploying Stellar mock submit handler on chain {} bound to verification {}",
+                chain,
+                verification_contract
+            );
+            let client = crate::example_stellar_client::SimpleStellarSubmitClient::new(chain);
+            let contract_id = client.deploy(&verification_contract).await?;
+            tracing::info!("Stellar mock submit handler deployed at {}", contract_id);
+            let parsed = stellar_strkey::Contract::from_string(&contract_id)
+                .map_err(|e| anyhow!("invalid stellar contract id from deploy: {e:?}"))?;
+            Ok(warpdrive_types::ChainAddress::Stellar(parsed))
         }
     }
 }
@@ -576,6 +616,39 @@ pub async fn evm_wait_for_task_to_land(
     .map_err(|_| anyhow::anyhow!("Timeout when waiting for task to land"))?
 }
 
+pub async fn stellar_wait_for_task_to_land(
+    chain: warpdrive_types::ChainKey,
+    contract_id: stellar_strkey::Contract,
+    trigger_id: TriggerId,
+    timeout: Duration,
+) -> Result<Vec<u8>> {
+    let submit_client = crate::example_stellar_client::SimpleStellarSubmitClient::new(chain);
+    let contract_id_str = format!("{contract_id}");
+
+    tokio::time::timeout(timeout, async move {
+        loop {
+            if submit_client
+                .is_valid_trigger_id(&contract_id_str, trigger_id)
+                .await
+                .unwrap_or(false)
+            {
+                return submit_client
+                    .get_data(&contract_id_str, trigger_id)
+                    .await
+                    .map_err(|e| anyhow!("Failed to get stellar submit data: {e}"));
+            }
+
+            tracing::debug!(
+                "Waiting for stellar task response on trigger {}",
+                trigger_id
+            );
+            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+        }
+    })
+    .await
+    .map_err(|_| anyhow::anyhow!("Timeout when waiting for stellar task to land"))?
+}
+
 pub async fn cosmos_wait_for_task_to_land(
     cosmos_submit_client: Object<SigningClientPoolManager>,
     address: CosmosAddr,
@@ -613,6 +686,7 @@ pub async fn change_service_for_test(
     clients: &Clients,
     component_sources: &ComponentSources,
     cosmos_code_map: CosmosCodeMap,
+    stellar_service_manager: Option<&utils::test_utils::middleware::stellar::StellarServiceManager>,
 ) {
     match change_service {
         ChangeServiceDefinition::Component {
@@ -643,6 +717,7 @@ pub async fn change_service_for_test(
                 clients,
                 component_sources,
                 cosmos_code_map,
+                stellar_service_manager,
             )
             .await;
 

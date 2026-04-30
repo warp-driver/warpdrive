@@ -102,7 +102,7 @@ impl ServiceManagers {
             },
             AnyServiceManagerInstance::Stellar { chain, manager, .. } => ServiceManager::Stellar {
                 chain: chain.clone(),
-                address: manager.project_root.clone(),
+                address: manager.project_root,
             },
         }
     }
@@ -237,10 +237,12 @@ impl ServiceManagers {
                         manager.set_service_uri(&service_url).await.unwrap();
                     }
                     AnyServiceManagerInstance::Stellar {
-                        manager, middleware, ..
+                        manager,
+                        middleware,
+                        ..
                     } => {
                         middleware
-                            .set_service_uri(manager.project_root.clone(), service_url)
+                            .set_service_uri(&manager.deploy_file_path, &service_url)
                             .await
                             .unwrap();
                     }
@@ -390,7 +392,9 @@ impl ServiceManagers {
                         }
                     }
                     AnyServiceManagerInstance::Stellar {
-                        manager, middleware, ..
+                        manager,
+                        middleware,
+                        ..
                     } => {
                         // IMPORTANT: operators use the **same secp256k1
                         // signing key** across EVM, Cosmos, and Stellar — what
@@ -430,8 +434,7 @@ impl ServiceManagers {
                                 .expect("operator signer_private_key not valid hex");
                             let secp_key = k256::ecdsa::SigningKey::from_slice(&private_bytes)
                                 .expect("operator signer_private_key not a valid secp256k1 key");
-                            let compressed_pubkey =
-                                secp_key.verifying_key().to_sec1_bytes();
+                            let compressed_pubkey = secp_key.verifying_key().to_sec1_bytes();
                             let pubkey_hex = const_hex::encode(&compressed_pubkey);
                             middleware
                                 .add_signer(
@@ -478,6 +481,13 @@ impl ServiceManagers {
 
         for test in registry.list_all() {
             let service_manager = self.get_service_manager(&test.name);
+            // Pull the StellarServiceManager out of the lookup if this test
+            // has one — the deploy_submit_contract Stellar arm needs the
+            // verification_contract address from its manifest.
+            let stellar_service_manager = self.lookup.get(&test.name).and_then(|inst| match inst {
+                AnyServiceManagerInstance::Stellar { manager, .. } => Some(manager.clone()),
+                _ => None,
+            });
 
             futures.push(create_service_for_test(
                 test,
@@ -485,6 +495,7 @@ impl ServiceManagers {
                 component_sources,
                 service_manager,
                 cosmos_code_map.clone(),
+                stellar_service_manager,
             ));
         }
 
@@ -538,51 +549,35 @@ impl ServiceManagers {
                         manager.set_service_uri(&service_url).await.unwrap();
                     }
                     AnyServiceManagerInstance::Stellar {
-                        manager, middleware, ..
+                        manager,
+                        middleware,
+                        ..
                     } => {
                         middleware
-                            .set_service_uri(manager.project_root.clone(), service_url)
+                            .set_service_uri(&manager.deploy_file_path, &service_url)
                             .await
                             .unwrap();
                     }
                 }
 
-                // Directly add the service to ALL instances using the dev endpoint
-                // This bypasses on-chain event detection which may not work reliably
-                // across multiple WarpDrive instances in the test environment
-                for (idx, http_client) in http_clients.iter().enumerate() {
-                    tracing::info!(
-                        "Directly adding service to instance {} for service {}",
-                        idx,
-                        service.name
-                    );
-                    // Ignore "already registered" errors - the instance may have
-                    // already received the service via on-chain event detection
-                    match http_client.dev_add_service_direct(&service).await {
-                        Ok(_) => {
-                            tracing::info!(
-                                "Service directly added to instance {} for service {}",
-                                idx,
-                                service.name
-                            );
-                        }
-                        Err(e) if e.to_string().contains("already registered") => {
-                            tracing::info!(
-                                "Service already registered on instance {} for service {} (via on-chain detection)",
-                                idx,
-                                service.name
-                            );
-                        }
-                        Err(e) => {
-                            panic!(
-                                "Failed to add service to instance {} for service {}: {}",
-                                idx, service.name, e
-                            );
-                        }
-                    }
-                }
+                // No more `dev_add_service_direct` shortcut: we just set
+                // the URI on chain (above) and rely on each WarpDrive
+                // instance picking up the change via its native detection
+                // path — EVM `ServiceURIUpdated` log, Cosmos wasm event,
+                // Stellar service-URI poller. The wait below is what
+                // actually blocks until propagation completes.
 
-                // Wait for service update on all WarpDrive instances (should be instant now)
+                // Wait for service update on all WarpDrive instances.
+                // Stellar manager? Allow extra propagation time — testnet
+                // ledger close + RPC indexing delay can comfortably push
+                // past 30s, especially under load. EVM/Cosmos use anvil /
+                // local cosmwasm so the default suffices.
+                let wait_timeout = match &service.manager {
+                    warpdrive_types::ServiceManager::Stellar { .. } => {
+                        Some(std::time::Duration::from_secs(120))
+                    }
+                    _ => None,
+                };
                 for (idx, http_client) in http_clients.iter().enumerate() {
                     tracing::info!(
                         "Waiting for service update on instance {} for service {}",
@@ -590,7 +585,7 @@ impl ServiceManagers {
                         service.name
                     );
                     http_client
-                        .wait_for_service_update(&service, None)
+                        .wait_for_service_update(&service, wait_timeout)
                         .await
                         .unwrap();
                     tracing::info!(

@@ -38,12 +38,12 @@ pub type CosmosMiddlewares = Arc<HashMap<ChainKey, CosmosMiddleware>>;
 impl AppHandles {
     pub fn start(ctx: &AppContext, configs: &mut Configs, metrics: Metrics) -> Self {
         let mut evm_chains = Vec::new();
-        let mut evm_middleware = None;
+        let evm_middleware;
 
         let mut cosmos_chains = Vec::new();
         let mut cosmos_middlewares = HashMap::new();
 
-        let mut stellar_middleware = None;
+        let stellar_middleware;
 
         {
             let chains = configs.chains.read().unwrap();

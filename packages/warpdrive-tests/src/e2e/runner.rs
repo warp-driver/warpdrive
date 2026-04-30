@@ -20,7 +20,9 @@ use warpdrive_types::{
     Workflow, WorkflowId,
 };
 
-use crate::e2e::helpers::{change_service_for_test, cosmos_wait_for_task_to_land};
+use crate::e2e::helpers::{
+    change_service_for_test, cosmos_wait_for_task_to_land, stellar_wait_for_task_to_land,
+};
 use crate::e2e::report::TestReport;
 use crate::e2e::service_managers::ServiceManagers;
 use crate::e2e::test_definition::{
@@ -52,20 +54,35 @@ pub struct Runner {
     report: TestReport,
 }
 
-/// Extract service handler address from an aggregator submit configuration
-fn extract_aggregator_service_handler(submit: &Submit) -> Option<layer_climb::prelude::Address> {
+/// Extract service handler address from an aggregator submit configuration.
+/// Tries the chain-namespaced ChainAddress parser first ("evm:0x...",
+/// "stellar:C...", "cosmos:wasm..."); falls back to bare strings (EVM
+/// 0x-prefixed or Cosmos bech32) for backwards compatibility with
+/// `create_submit_from_config` which currently writes the bare form.
+fn extract_aggregator_service_handler(submit: &Submit) -> Option<warpdrive_types::ChainAddress> {
     match submit {
         Submit::Aggregator { component, .. } => {
             component
                 .config
                 .get("service_handler")
                 .and_then(|addr_str| {
-                    match layer_climb::prelude::CosmosAddr::new_str(addr_str, None) {
-                        Ok(cosmos_addr) => Some(layer_climb::prelude::Address::Cosmos(cosmos_addr)),
-                        Err(_) => layer_climb::prelude::EvmAddr::new_str(addr_str)
-                            .ok()
-                            .map(layer_climb::prelude::Address::from),
+                    use std::str::FromStr;
+                    if let Ok(parsed) = warpdrive_types::ChainAddress::from_str(addr_str) {
+                        return Some(parsed);
                     }
+                    // Bare-string fallback (no `<chain>:` prefix).
+                    if let Ok(c) = stellar_strkey::Contract::from_string(addr_str) {
+                        return Some(warpdrive_types::ChainAddress::Stellar(c));
+                    }
+                    if let Ok(cosmos_addr) =
+                        layer_climb::prelude::CosmosAddr::new_str(addr_str, None)
+                    {
+                        return Some(warpdrive_types::ChainAddress::Cosmos(cosmos_addr));
+                    }
+                    if let Ok(evm_addr) = alloy_primitives::Address::from_str(addr_str) {
+                        return Some(warpdrive_types::ChainAddress::Evm(evm_addr));
+                    }
+                    None
                 })
         }
         _ => None,
@@ -126,6 +143,9 @@ impl Runner {
                             &self.clients,
                             &self.component_sources,
                             self.cosmos_code_map.clone(),
+                            // No stellar change_service tests today; thread
+                            // a real one through if/when one is added.
+                            None,
                         )
                         .await;
                         (service, change_service)
@@ -549,10 +569,16 @@ async fn run_test(
                                             workflow_id
                                         )
                                     })?;
+                                let cosmos_addr = match submission_contract {
+                                    warpdrive_types::ChainAddress::Cosmos(addr) => addr.clone(),
+                                    other => unreachable!(
+                                        "expected Cosmos submission handler, got {other:?}"
+                                    ),
+                                };
 
                                 let data = cosmos_wait_for_task_to_land(
                                     client,
-                                    submission_contract.clone().try_into().unwrap(),
+                                    cosmos_addr,
                                     trigger_id,
                                     *timeout,
                                 )
@@ -583,6 +609,12 @@ async fn run_test(
                                             workflow_id
                                         )
                                     })?;
+                                let evm_addr = match submission_contract {
+                                    warpdrive_types::ChainAddress::Evm(addr) => *addr,
+                                    other => unreachable!(
+                                        "expected EVM submission handler, got {other:?}"
+                                    ),
+                                };
                                 tracing::info!(
                                     "Submission contract for workflow {}: {}",
                                     workflow_id,
@@ -608,7 +640,7 @@ async fn run_test(
                                     );
                                     let result = evm_wait_for_task_to_land(
                                         client,
-                                        submission_contract.clone().try_into().unwrap(),
+                                        evm_addr,
                                         trigger_id,
                                         submit_start_block,
                                         *timeout,
@@ -628,7 +660,7 @@ async fn run_test(
                                     );
                                     let result = evm_wait_for_task_to_land(
                                         client,
-                                        submission_contract.clone().try_into().unwrap(),
+                                        evm_addr,
                                         trigger_id,
                                         submit_start_block,
                                         *timeout,
@@ -637,6 +669,30 @@ async fn run_test(
                                     tracing::info!("Task result (no re-org): {:?}", result.data);
                                     result.data.to_vec()
                                 }
+                            }
+                            ChainKeyNamespace::STELLAR => {
+                                let submission_contract = service_deployment
+                                    .submission_handlers
+                                    .get(workflow_id)
+                                    .ok_or_else(|| {
+                                        anyhow!(
+                                            "No submission contract found for workflow {}",
+                                            workflow_id
+                                        )
+                                    })?;
+                                let stellar_contract = match submission_contract {
+                                    warpdrive_types::ChainAddress::Stellar(c) => c,
+                                    other => unreachable!(
+                                        "expected Stellar submission handler, got {other:?}"
+                                    ),
+                                };
+                                stellar_wait_for_task_to_land(
+                                    chain.clone(),
+                                    *stellar_contract,
+                                    trigger_id,
+                                    *timeout,
+                                )
+                                .await?
                             }
                             _ => unimplemented!("Unsupported chain namespace for aggregator"),
                         }
