@@ -113,6 +113,8 @@ pub enum ServiceManager {
         #[cfg_attr(feature = "ts-bindings", ts(type = "string"))]
         address: layer_climb_address::CosmosAddr,
     },
+    /// Stellar service manager. The address is the `ProjectRoot` contract id;
+    /// `Security` and `Verification` contracts are reachable from it.
     Stellar {
         chain: ChainKey,
         #[schema(value_type = String)]
