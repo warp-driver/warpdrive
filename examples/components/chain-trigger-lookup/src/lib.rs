@@ -20,11 +20,18 @@ use example_helpers::{
 };
 use warpdrive_wasi_utils::evm::new_evm_provider;
 
+fn runtime() -> tokio::runtime::Runtime {
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+}
+
 struct Component;
 
 impl Guest for Component {
     fn run(trigger_action: TriggerAction) -> std::result::Result<Vec<WasmResponse>, String> {
-        wstd::runtime::block_on(async move {
+        runtime().block_on(async move {
             let (trigger_id, _) = decode_trigger_event(trigger_action.data.clone())?;
 
             let resp = match trigger_action.data {

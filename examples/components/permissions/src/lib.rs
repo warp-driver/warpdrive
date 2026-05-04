@@ -16,18 +16,24 @@ use std::{fs, io::Write, path::Path};
 use warpdrive_wasi_utils::http::{
     fetch_json, fetch_string, http_request_get, http_request_post_json,
 };
-use wstd::runtime::block_on;
 
 use anyhow::Result;
 use serde::Deserialize;
 
 use example_types::{PermissionsRequest, PermissionsResponse};
 
+fn runtime() -> tokio::runtime::Runtime {
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+}
+
 struct Component;
 
 impl Guest for Component {
     fn run(trigger_action: TriggerAction) -> std::result::Result<Vec<WasmResponse>, String> {
-        block_on(async move {
+        runtime().block_on(async move {
             let (trigger_id, req) =
                 decode_trigger_event(trigger_action.data).map_err(|e| e.to_string())?;
 

@@ -7,7 +7,7 @@ rust-version.workspace = true
 repository.workspace = true
 
 [dependencies]
-wstd = { workspace = true }
+tokio = { workspace = true, features = ["sync", "io-util", "rt", "time"] }
 wit-bindgen = { workspace = true }
 alloy-primitives = { workspace = true }
 warpdrive-wasi-utils = { workspace = true }

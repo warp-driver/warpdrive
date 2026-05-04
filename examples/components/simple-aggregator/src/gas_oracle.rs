@@ -1,7 +1,13 @@
 use crate::world::{host, warpdrive::types::core::LogLevel};
 use serde::Deserialize;
 use warpdrive_wasi_utils::http::{fetch_json, http_request_get};
-use wstd::runtime::block_on;
+
+fn runtime() -> tokio::runtime::Runtime {
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+}
 
 pub const ETHERSCAN_API_KEY_ENV: &str = "WARPDRIVE_ENV_ETHERSCAN_API_KEY";
 
@@ -36,7 +42,7 @@ pub fn get_gas_price() -> Result<Option<u128>, String> {
     let url =
         format!("https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey={api_key}");
 
-    let response: EtherscanGasOracleResponse = block_on(async move {
+    let response: EtherscanGasOracleResponse = runtime().block_on(async move {
         fetch_json(http_request_get(&url).map_err(|e| format!("Failed to create request: {e}"))?)
             .await
             .map_err(|e| format!("Failed to fetch gas price from Etherscan: {e}"))

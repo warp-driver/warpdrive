@@ -10,7 +10,7 @@ repository.workspace = true
 layer-climb = { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }
-wstd = { workspace = true }
+tokio = { workspace = true, features = ["sync", "io-util", "rt", "time"] }
 example-helpers = { workspace = true }
 example-types = { workspace = true }
 

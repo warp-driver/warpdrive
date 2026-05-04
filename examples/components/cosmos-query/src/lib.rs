@@ -4,15 +4,20 @@ use example_helpers::{
     export_layer_trigger_world,
     trigger::{decode_trigger_event, encode_trigger_output},
 };
-use wstd::runtime::block_on;
-
 use example_types::{CosmosQueryRequest, CosmosQueryResponse};
+
+fn runtime() -> tokio::runtime::Runtime {
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+}
 
 struct Component;
 
 impl Guest for Component {
     fn run(trigger_action: TriggerAction) -> std::result::Result<Vec<WasmResponse>, String> {
-        block_on(async move {
+        runtime().block_on(async move {
             let (trigger_id, req) = decode_trigger_event(trigger_action.data)?;
 
             let req: CosmosQueryRequest =

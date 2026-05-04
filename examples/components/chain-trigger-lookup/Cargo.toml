@@ -8,7 +8,7 @@ repository.workspace = true
 
 [dependencies]
 warpdrive-wasi-utils = { workspace = true }
-wstd = { workspace = true }
+tokio = { workspace = true, features = ["sync", "io-util", "rt", "time"] }
 example-helpers = { workspace = true }
 anyhow = { workspace = true }
 layer-climb = { workspace = true }
