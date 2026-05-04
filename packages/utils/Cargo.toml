@@ -21,7 +21,7 @@ tracing = { workspace = true }
 thiserror = { workspace = true }
 futures = { workspace = true }
 tracing-subscriber = { workspace = true }
-tokio = { workspace = true }
+tokio = { workspace = true, features = ["full"]}
 dashmap = { workspace = true }
 serde_json = { workspace = true }
 walkdir = { workspace = true }
@@ -71,7 +71,7 @@ cw-warpdrive-mock-api = { workspace = true, optional = true }
 
 [dev-dependencies]
 toml = { workspace = true}
-tokio = { workspace = true }
+tokio = { workspace = true, features = ["full"]}
 serde_json = { workspace = true }
 tempfile = { workspace = true }
 temp-env = { workspace = true }

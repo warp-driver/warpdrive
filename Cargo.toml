@@ -91,7 +91,7 @@ dirs = "6.0.0"
 shellexpand = "3.1.1"
 
 # async runtime
-tokio = { version = "1.47.1", features = ["full"] }
+tokio = { version = "1.52" }
 tokio-stream = { version = "0.1" }
 futures = "0.3.31"
 futures-lite = "1.11.3"

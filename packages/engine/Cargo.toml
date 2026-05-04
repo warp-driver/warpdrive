@@ -20,7 +20,7 @@ thiserror = { workspace = true }
 anyhow = { workspace = true }
 layer-climb = { workspace = true }
 alloy-primitives = { workspace = true }
-tokio = { workspace = true }
+tokio = { workspace = true, features = ["full"]}
 tracing = { workspace = true }
 dashmap = { workspace = true }
 lru = { workspace = true }

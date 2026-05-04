@@ -57,7 +57,7 @@ stellar-strkey = { workspace = true }
 ts-rs = { version = "11.1", features = ["serde-compat"], optional = true }
 
 [dev-dependencies]
-tokio = { workspace = true }
+tokio = { workspace = true, features = ["full"]}
 alloy-primitives = { workspace = true }
 alloy-provider = { workspace = true }
 alloy-signer-local = { workspace = true }

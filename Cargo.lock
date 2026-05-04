@@ -3555,7 +3555,7 @@ name = "echo-data"
 version = "2.10.0"
 dependencies = [
  "example-helpers",
- "wstd",
+ "tokio",
 ]
 
 [[package]]
