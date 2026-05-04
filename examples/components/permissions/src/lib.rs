@@ -22,38 +22,29 @@ use serde::Deserialize;
 
 use example_types::{PermissionsRequest, PermissionsResponse};
 
-fn runtime() -> tokio::runtime::Runtime {
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-}
-
 struct Component;
 
 impl Guest for Component {
-    fn run(trigger_action: TriggerAction) -> std::result::Result<Vec<WasmResponse>, String> {
-        runtime().block_on(async move {
-            let (trigger_id, req) =
-                decode_trigger_event(trigger_action.data).map_err(|e| e.to_string())?;
+    #[tokio::main(flavor = "current_thread")]
+    async fn run(trigger_action: TriggerAction) -> std::result::Result<Vec<WasmResponse>, String> {
+        let (trigger_id, req) =
+            decode_trigger_event(trigger_action.data).map_err(|e| e.to_string())?;
 
-            println!("(permissions println!) trigger id: {trigger_id}");
-            eprintln!("(permissions eprintln!) trigger id: {trigger_id}");
-            host::log(
-                LogLevel::Info,
-                &format!("(permissions host log) trigger id: {trigger_id}"),
-            );
+        println!("(permissions println!) trigger id: {trigger_id}");
+        eprintln!("(permissions eprintln!) trigger id: {trigger_id}");
+        host::log(
+            LogLevel::Info,
+            &format!("(permissions host log) trigger id: {trigger_id}"),
+        );
 
-            let req: PermissionsRequest =
-                serde_json::from_slice(&req).map_err(|e| e.to_string())?;
-            let resp = inner_run_task(req).await.map_err(|e| e.to_string())?;
-            let resp = serde_json::to_vec(&resp).map_err(|e| e.to_string())?;
-            Ok(vec![encode_trigger_output(
-                trigger_id,
-                resp,
-                host::get_service().service.manager,
-            )])
-        })
+        let req: PermissionsRequest = serde_json::from_slice(&req).map_err(|e| e.to_string())?;
+        let resp = inner_run_task(req).await.map_err(|e| e.to_string())?;
+        let resp = serde_json::to_vec(&resp).map_err(|e| e.to_string())?;
+        Ok(vec![encode_trigger_output(
+            trigger_id,
+            resp,
+            host::get_service().service.manager,
+        )])
     }
 }
 

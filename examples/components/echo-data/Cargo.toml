@@ -7,7 +7,7 @@ rust-version.workspace = true
 repository.workspace = true
 
 [dependencies]
-tokio = { workspace = true, features = ["sync", "io-util", "rt", "time"] }
+tokio = { workspace = true, features = ["sync", "io-util", "macros", "rt", "time"] }
 example-helpers = { workspace = true }
 
 [lib]

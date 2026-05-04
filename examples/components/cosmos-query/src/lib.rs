@@ -6,18 +6,12 @@ use example_helpers::{
 };
 use example_types::{CosmosQueryRequest, CosmosQueryResponse};
 
-fn runtime() -> tokio::runtime::Runtime {
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-}
-
 struct Component;
 
 impl Guest for Component {
-    fn run(trigger_action: TriggerAction) -> std::result::Result<Vec<WasmResponse>, String> {
-        runtime().block_on(async move {
+    #[tokio::main(flavor = "current_thread")]
+    async fn run(trigger_action: TriggerAction) -> std::result::Result<Vec<WasmResponse>, String> {
+        let result: anyhow::Result<WasmResponse> = async move {
             let (trigger_id, req) = decode_trigger_event(trigger_action.data)?;
 
             let req: CosmosQueryRequest =
@@ -59,9 +53,10 @@ impl Guest for Component {
                 .map(|output| {
                     encode_trigger_output(trigger_id, output, host::get_service().service.manager)
                 })
-        })
-        .map_err(|e| e.to_string())
-        .map(|x| vec![x])
+        }
+        .await;
+
+        result.map_err(|e| e.to_string()).map(|x| vec![x])
     }
 }
 

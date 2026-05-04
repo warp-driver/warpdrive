@@ -20,18 +20,12 @@ use example_helpers::{
 };
 use warpdrive_wasi_utils::evm::new_evm_provider;
 
-fn runtime() -> tokio::runtime::Runtime {
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-}
-
 struct Component;
 
 impl Guest for Component {
-    fn run(trigger_action: TriggerAction) -> std::result::Result<Vec<WasmResponse>, String> {
-        runtime().block_on(async move {
+    #[tokio::main(flavor = "current_thread")]
+    async fn run(trigger_action: TriggerAction) -> std::result::Result<Vec<WasmResponse>, String> {
+        let result: anyhow::Result<WasmResponse> = async move {
             let (trigger_id, _) = decode_trigger_event(trigger_action.data.clone())?;
 
             let resp = match trigger_action.data {
@@ -90,9 +84,10 @@ impl Guest for Component {
                 resp,
                 host::get_service().service.manager,
             ))
-        })
-        .map_err(|e| e.to_string())
-        .map(|res| vec![res])
+        }
+        .await;
+
+        result.map_err(|e| e.to_string()).map(|res| vec![res])
     }
 }
 
