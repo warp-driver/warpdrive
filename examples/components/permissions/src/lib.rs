@@ -25,8 +25,7 @@ use example_types::{PermissionsRequest, PermissionsResponse};
 struct Component;
 
 impl Guest for Component {
-    #[tokio::main(flavor = "current_thread")]
-    async fn run(trigger_action: TriggerAction) -> std::result::Result<Vec<WasmResponse>, String> {
+    fn run(trigger_action: TriggerAction) -> std::result::Result<Vec<WasmResponse>, String> {
         let (trigger_id, req) =
             decode_trigger_event(trigger_action.data).map_err(|e| e.to_string())?;
 
@@ -38,7 +37,7 @@ impl Guest for Component {
         );
 
         let req: PermissionsRequest = serde_json::from_slice(&req).map_err(|e| e.to_string())?;
-        let resp = inner_run_task(req).await.map_err(|e| e.to_string())?;
+        let resp = inner_run_task(req).map_err(|e| e.to_string())?;
         let resp = serde_json::to_vec(&resp).map_err(|e| e.to_string())?;
         Ok(vec![encode_trigger_output(
             trigger_id,
@@ -48,6 +47,7 @@ impl Guest for Component {
     }
 }
 
+#[tokio::main(flavor = "current_thread")]
 async fn inner_run_task(input: PermissionsRequest) -> Result<PermissionsResponse> {
     const DIRECTORY_NAME: &str = "./responses";
 

@@ -15,31 +15,6 @@ vars:
   COSMWASM_OPTIMIZER_VERSION: '{{.COSMWASM_OPTIMIZER_VERSION | default "0.17.0"}}'
 
 tasks:
-  app-dev:
-    desc: Start Tauri desktop app with hot reload
-    dir: app
-    cmd: pnpm tauri dev
-
-  app-dev-frontend:
-    desc: Start Vite frontend dev server only
-    dir: app
-    cmd: pnpm dev
-
-  app-build-release:
-    desc: Build Tauri desktop app (release)
-    dir: app
-    cmd: pnpm tauri build
-
-  app-build-debug:
-    desc: Build Tauri desktop app (debug)
-    dir: app
-    cmd: pnpm tauri build --debug
-
-  app-build-frontend:
-    desc: Build Vite frontend only
-    dir: app
-    cmd: pnpm build
-
   docker-build:
     desc: Build warpdrive Docker image
     vars:
