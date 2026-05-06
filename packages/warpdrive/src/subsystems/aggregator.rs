@@ -94,6 +94,16 @@ impl Aggregator {
         aggregator_to_self_tx: crossbeam::channel::Sender<AggregatorCommand>,
         subsystem_to_dispatcher_tx: crossbeam::channel::Sender<DispatcherCommand>,
     ) -> Result<Self, AggregatorError> {
+        // Fail-fast on credential misconfiguration. Each helper is a
+        // no-op when its credential is `None` (intentional opt-out).
+        // When a credential *is* set, we parse it offline (no network)
+        // and bail at startup so the sysadmin sees the misconfig
+        // immediately rather than at the first submission for the
+        // affected chain. See #24 for the broader motivation.
+        validate_evm_credential(config.aggregator_evm_credential.as_ref())?;
+        validate_cosmos_credential(config.aggregator_cosmos_credential.as_ref())?;
+        validate_stellar_credential(config.aggregator_stellar_credential.as_ref())?;
+
         Ok(Self {
             storage: WavsDb::new().map_err(AggregatorError::Db)?,
             dispatcher_to_aggregator_rx,
@@ -884,5 +894,183 @@ impl Drop for Aggregator {
         if self.is_primary.load(Ordering::Relaxed) {
             tracing::warn!("Dropping Aggregator subsystem");
         }
+    }
+}
+
+// ── Startup credential validation ────────────────────────────────
+//
+// Each `validate_*_credential` helper is `Option<&Credential>` →
+// `Result<(), AggregatorError>`:
+//   - `None` is a no-op (intentional opt-out — the operator hasn't
+//     configured submission for this chain kind).
+//   - `Some(cred)` is parsed offline (no network calls) using the
+//     same parsing primitives the lazy submission paths use, so a
+//     successful startup validation guarantees the lazy path will
+//     also succeed (modulo network).
+//
+// Splitting them out (vs. one big function) keeps each individually
+// unit-testable without constructing a full `Aggregator`.
+
+fn validate_evm_credential(
+    credential: Option<&warpdrive_types::Credential>,
+) -> Result<(), AggregatorError> {
+    let Some(cred) = credential else {
+        return Ok(());
+    };
+    // `make_signer` accepts either a `0x`-prefixed private key or a
+    // BIP-39 mnemonic. Either form is parsed entirely offline.
+    utils::evm_client::signing::make_signer(cred, None).map_err(|e| {
+        AggregatorError::InvalidStartupCredential {
+            chain_kind: "EVM",
+            detail: format!("{e:?}"),
+        }
+    })?;
+    Ok(())
+}
+
+fn validate_cosmos_credential(
+    credential: Option<&warpdrive_types::Credential>,
+) -> Result<(), AggregatorError> {
+    let Some(cred) = credential else {
+        return Ok(());
+    };
+    KeySigner::new_mnemonic_str(cred, None).map_err(|e| {
+        AggregatorError::InvalidStartupCredential {
+            chain_kind: "Cosmos",
+            detail: format!("{e:?}"),
+        }
+    })?;
+    Ok(())
+}
+
+fn validate_stellar_credential(
+    credential: Option<&warpdrive_types::Credential>,
+) -> Result<(), AggregatorError> {
+    let Some(cred) = credential else {
+        return Ok(());
+    };
+    stellar_strkey::ed25519::PrivateKey::from_string(cred.as_str()).map_err(|e| {
+        AggregatorError::InvalidStartupCredential {
+            chain_kind: "Stellar",
+            detail: format!("strkey parse failed: {e:?}"),
+        }
+    })?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod startup_credential_validation_tests {
+    use super::*;
+    use warpdrive_types::Credential;
+
+    // ── EVM ──────────────────────────────────────────────────────
+
+    #[test]
+    fn evm_none_is_ok() {
+        assert!(validate_evm_credential(None).is_ok());
+    }
+
+    #[test]
+    fn evm_valid_hex_private_key_is_ok() {
+        // 32-byte secp256k1 key, 0x-prefixed hex.
+        let cred = Credential::new(
+            "0x1111111111111111111111111111111111111111111111111111111111111111".to_string(),
+        );
+        assert!(validate_evm_credential(Some(&cred)).is_ok());
+    }
+
+    #[test]
+    fn evm_valid_mnemonic_is_ok() {
+        // BIP-39 test vector — well-formed, never use in production.
+        let cred = Credential::new(
+            "test test test test test test test test test test test junk".to_string(),
+        );
+        assert!(validate_evm_credential(Some(&cred)).is_ok());
+    }
+
+    #[test]
+    fn evm_garbage_bails_at_startup() {
+        let cred = Credential::new("not-a-key-or-mnemonic".to_string());
+        let err = validate_evm_credential(Some(&cred)).unwrap_err();
+        assert!(
+            matches!(
+                err,
+                AggregatorError::InvalidStartupCredential {
+                    chain_kind: "EVM",
+                    ..
+                }
+            ),
+            "expected InvalidStartupCredential{{kind=EVM}}, got {err:?}",
+        );
+    }
+
+    // ── Cosmos ───────────────────────────────────────────────────
+
+    #[test]
+    fn cosmos_none_is_ok() {
+        assert!(validate_cosmos_credential(None).is_ok());
+    }
+
+    #[test]
+    fn cosmos_valid_mnemonic_is_ok() {
+        let cred = Credential::new(
+            "test test test test test test test test test test test junk".to_string(),
+        );
+        assert!(validate_cosmos_credential(Some(&cred)).is_ok());
+    }
+
+    #[test]
+    fn cosmos_garbage_bails_at_startup() {
+        let cred = Credential::new("not a mnemonic".to_string());
+        let err = validate_cosmos_credential(Some(&cred)).unwrap_err();
+        assert!(
+            matches!(
+                err,
+                AggregatorError::InvalidStartupCredential {
+                    chain_kind: "Cosmos",
+                    ..
+                }
+            ),
+            "expected InvalidStartupCredential{{kind=Cosmos}}, got {err:?}",
+        );
+    }
+
+    // ── Stellar ──────────────────────────────────────────────────
+
+    #[test]
+    fn stellar_none_is_ok() {
+        assert!(validate_stellar_credential(None).is_ok());
+    }
+
+    #[test]
+    fn stellar_valid_strkey_is_ok() {
+        // Generate a fresh strkey on the fly so we don't depend on a
+        // brittle hardcoded test vector. SEP-0023 ed25519 secret seed
+        // strkeys start with 'S'; constructing one and round-tripping
+        // through the parser is what we want validate_stellar_credential
+        // to accept.
+        let secret = stellar_strkey::ed25519::PrivateKey([7u8; 32]);
+        let cred = Credential::new(secret.to_string());
+        assert!(
+            validate_stellar_credential(Some(&cred)).is_ok(),
+            "round-tripped strkey {} failed validation",
+            secret
+        );
+    }
+
+    #[test]
+    fn stellar_garbage_bails_at_startup() {
+        let cred = Credential::new("not a stellar strkey".to_string());
+        let err = validate_stellar_credential(Some(&cred)).unwrap_err();
+        assert!(
+            matches!(
+                err,
+                AggregatorError::InvalidStartupCredential {
+                    chain_kind: "Stellar",
+                    ..
+                }
+            ),
+            "expected InvalidStartupCredential{{kind=Stellar}}, got {err:?}",
+        );
     }
 }
