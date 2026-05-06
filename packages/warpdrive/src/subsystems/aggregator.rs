@@ -554,8 +554,17 @@ impl Aggregator {
         queue: Vec<Submission>,
         action: SubmitAction,
     ) -> Result<(), AggregatorError> {
-        // Running in a transaction keyed by chain to avoid nonce errors
-        let result: Result<Option<AnyTransactionReceipt>, AggregatorError> = self
+        // Running in a transaction keyed by chain to avoid nonce errors.
+        //
+        // The closure returns a flat `Result` (no `Option`): missing
+        // credentials and missing chain config used to return
+        // `Ok(None)` here, which the outer loop treated as
+        // "skip without saving" — silently dropping the inbound
+        // submission. They now produce typed `MissingCredential` /
+        // `MissingChainConfig` errors which fall through to the
+        // shared error arm below and call `save_quorum_queue`, so
+        // submissions aren't lost while a sysadmin propagates config.
+        let result: Result<AnyTransactionReceipt, AggregatorError> = self
             .chain_transaction
             .run(action.chain().clone(), {
                 let _self = self.clone();
@@ -564,42 +573,17 @@ impl Aggregator {
                 move || async move {
                     match action {
                         SubmitAction::Evm(action) => {
-                            let client = match _self.get_evm_client(&action.chain).await? {
-                                Some(c) => c,
-                                None => {
-                                    return Ok(None);
-                                }
-                            };
-
-                            _self
-                                .handle_action_submit_evm(client, &queue, action)
-                                .await
-                                .map(Some)
+                            let client = _self.get_evm_client(&action.chain).await?;
+                            _self.handle_action_submit_evm(client, &queue, action).await
                         }
                         SubmitAction::Cosmos(action) => {
-                            let client = match _self.get_cosmos_client(&action.chain).await? {
-                                Some(c) => c,
-                                None => {
-                                    return Ok(None);
-                                }
-                            };
-
+                            let client = _self.get_cosmos_client(&action.chain).await?;
                             _self
                                 .handle_action_submit_cosmos(client, &queue, action)
                                 .await
-                                .map(Some)
                         }
                         SubmitAction::Stellar(action) => {
-                            let signing_key = match _self.get_stellar_signing_key() {
-                                Some(k) => k,
-                                None => {
-                                    tracing::warn!(
-                                        chain = %action.chain,
-                                        "Aggregator: Missing Stellar credential; skipping submission"
-                                    );
-                                    return Ok(None);
-                                }
-                            };
+                            let signing_key = _self.get_stellar_signing_key(&action.chain)?;
                             _self
                                 .handle_action_submit_stellar(
                                     signing_key,
@@ -608,22 +592,11 @@ impl Aggregator {
                                     action,
                                 )
                                 .await
-                                .map(Some)
                         }
                     }
                 }
             })
             .await;
-
-        // just mapping the result to handle the Option
-        // and returning early if None
-        let result = match result {
-            Ok(None) => {
-                return Ok(());
-            }
-            Ok(Some(tx_resp)) => Ok(tx_resp),
-            Err(e) => Err(e),
-        };
 
         // Process the submission result and manage queue state
         // Three outcomes determine queue lifecycle:
@@ -658,25 +631,58 @@ impl Aggregator {
             }
 
             Err(err) => {
-                // Transient: vectors are still being registered on-chain
-                // (common during startup, especially with PoA middleware
-                // whose sequential docker-exec calls are slow). Both EVM
-                // and Stellar submission paths produce this variant —
-                // EVM detects the `SignerNotRegistered()` Solidity
-                // selector (0x3dda1739), Stellar detects contract error
-                // code #302.
-                if matches!(err, AggregatorError::SignerNotRegistered(_)) {
-                    tracing::warn!(
-                        "Aggregator: Signer not registered yet for submission {}. Will retry when vectors complete registration.",
-                        submission.label()
-                    );
-                } else {
-                    // Unexpected error: log as error for investigation.
-                    tracing::error!(
-                        "Aggregator: Error submitting on-chain for submission {}: {:?}",
-                        submission.label(),
-                        err
-                    );
+                // Three categories collapse into "warn & save for
+                // retry"; everything else is logged at error level
+                // for investigation. The retry-on-save behavior is
+                // identical for all three — only the log level
+                // differs, since these three are expected/transient
+                // and the rest are not.
+                match err {
+                    // SignerNotRegistered: vectors are still being
+                    // registered on-chain. Common during startup,
+                    // especially with PoA middleware whose sequential
+                    // docker-exec calls are slow. Both EVM and
+                    // Stellar paths produce this variant — EVM
+                    // detects the Solidity selector 0x3dda1739,
+                    // Stellar detects contract error code #302.
+                    AggregatorError::SignerNotRegistered(_) => {
+                        tracing::warn!(
+                            "Aggregator: Signer not registered yet for submission {}. Will retry when vectors complete registration.",
+                            submission.label()
+                        );
+                    }
+                    // MissingCredential: sysadmin hasn't finished
+                    // propagating config. Save the queue so the
+                    // submission isn't lost while they fix it.
+                    AggregatorError::MissingCredential {
+                        chain_kind, chain, ..
+                    } => {
+                        tracing::warn!(
+                            "Aggregator: Missing {} credential for chain {} for submission {}. Saving queue; will retry once credential is configured (typically requires a node restart).",
+                            chain_kind,
+                            chain,
+                            submission.label()
+                        );
+                    }
+                    // MissingChainConfig: chain referenced by the
+                    // submission isn't in the chain-config registry.
+                    // Same transient framing — save the queue so a
+                    // sysadmin who adds the chain doesn't lose the
+                    // pending submission.
+                    AggregatorError::MissingChainConfig(chain) => {
+                        tracing::warn!(
+                            "Aggregator: Chain config not found for chain {} for submission {}. Saving queue; will retry once the chain is configured.",
+                            chain,
+                            submission.label()
+                        );
+                    }
+                    _ => {
+                        tracing::error!(
+                            "Aggregator: Error submitting on-chain for submission {}: {:?}",
+                            submission.label(),
+                            err
+                        );
+                    }
                 }
                 // IMPORTANT: Always save the queue on error
                 // We appended the current submission above, so failing to save it would lose this submission
@@ -710,10 +716,14 @@ impl Aggregator {
         Ok(())
     }
 
-    async fn get_evm_client(
-        &self,
-        chain: &ChainKey,
-    ) -> Result<Option<EvmSigningClient>, AggregatorError> {
+    /// Resolve (and cache) the EVM signing client for `chain`.
+    ///
+    /// Returns a typed error rather than `Option` so the dispatch loop
+    /// routes credential / chain-config misses through the normal
+    /// `save_quorum_queue` path. Prior to that change, missing config
+    /// returned `Ok(None)` and the dispatch loop silently dropped the
+    /// inbound submission.
+    async fn get_evm_client(&self, chain: &ChainKey) -> Result<EvmSigningClient, AggregatorError> {
         {
             let client = self
                 .evm_submission_clients
@@ -723,25 +733,28 @@ impl Aggregator {
                 .cloned();
 
             if let Some(client) = client {
-                return Ok(Some(client));
+                return Ok(client);
             }
         };
 
-        let credential = match &self.config.aggregator_evm_credential {
-            Some(credential) => credential,
-            None => {
-                tracing::warn!("Aggregator: Missing EVM credential for chain: {}", chain);
-                return Ok(None);
-            }
-        };
+        let credential = self
+            .config
+            .aggregator_evm_credential
+            .as_ref()
+            .ok_or_else(|| AggregatorError::MissingCredential {
+                chain_kind: "EVM",
+                chain: chain.clone(),
+                detail: "config.aggregator_evm_credential is unset".to_string(),
+            })?;
 
-        let chain_config = match self.config.chains.read().unwrap().get_chain(chain) {
-            Some(chain_config) => chain_config.to_evm_config()?,
-            None => {
-                tracing::warn!("Aggregator: Chain config not found for chain: {}", chain);
-                return Ok(None);
-            }
-        };
+        let chain_config = self
+            .config
+            .chains
+            .read()
+            .unwrap()
+            .get_chain(chain)
+            .ok_or_else(|| AggregatorError::MissingChainConfig(chain.clone()))?
+            .to_evm_config()?;
 
         let client_config = chain_config.signing_client_config(credential.clone())?;
 
@@ -754,22 +767,47 @@ impl Aggregator {
             clients.insert(chain.clone(), client.clone());
         }
 
-        Ok(Some(client))
+        Ok(client)
     }
 
     /// Parse `aggregator_stellar_credential` (an ed25519 secret in `S...`
     /// strkey form) into a signing key. Lightweight enough that we don't
     /// bother caching: callers hit this once per submission.
-    fn get_stellar_signing_key(&self) -> Option<ed25519_dalek::SigningKey> {
-        let credential = self.config.aggregator_stellar_credential.as_ref()?;
-        let secret = stellar_strkey::ed25519::PrivateKey::from_string(credential.as_str()).ok()?;
-        Some(ed25519_dalek::SigningKey::from_bytes(&secret.0))
+    ///
+    /// Returns a typed error (rather than `Option`) for the same reason
+    /// as `get_evm_client` — missing/unparseable credentials should
+    /// route through the dispatch loop's save-and-retry path, not the
+    /// silent-drop path.
+    fn get_stellar_signing_key(
+        &self,
+        chain: &ChainKey,
+    ) -> Result<ed25519_dalek::SigningKey, AggregatorError> {
+        let credential = self
+            .config
+            .aggregator_stellar_credential
+            .as_ref()
+            .ok_or_else(|| AggregatorError::MissingCredential {
+                chain_kind: "Stellar",
+                chain: chain.clone(),
+                detail: "config.aggregator_stellar_credential is unset".to_string(),
+            })?;
+        let secret = stellar_strkey::ed25519::PrivateKey::from_string(credential.as_str())
+            .map_err(|e| AggregatorError::MissingCredential {
+                chain_kind: "Stellar",
+                chain: chain.clone(),
+                detail: format!("strkey parse failed: {e:?}"),
+            })?;
+        Ok(ed25519_dalek::SigningKey::from_bytes(&secret.0))
     }
 
+    /// Resolve (and cache) the Cosmos signing client for `chain`.
+    ///
+    /// Returns a typed error rather than `Option` for the same reason
+    /// as `get_evm_client`.
     async fn get_cosmos_client(
         &self,
         chain: &ChainKey,
-    ) -> Result<Option<layer_climb::prelude::SigningClient>, AggregatorError> {
+    ) -> Result<layer_climb::prelude::SigningClient, AggregatorError> {
         {
             let client = self
                 .cosmos_submission_clients
@@ -779,25 +817,28 @@ impl Aggregator {
                 .cloned();
 
             if let Some(client) = client {
-                return Ok(Some(client));
+                return Ok(client);
             }
         };
 
-        let credential = match &self.config.aggregator_cosmos_credential {
-            Some(credential) => credential,
-            None => {
-                tracing::warn!("Aggregator: Missing Cosmos credential for chain: {}", chain);
-                return Ok(None);
-            }
-        };
+        let credential = self
+            .config
+            .aggregator_cosmos_credential
+            .as_ref()
+            .ok_or_else(|| AggregatorError::MissingCredential {
+                chain_kind: "Cosmos",
+                chain: chain.clone(),
+                detail: "config.aggregator_cosmos_credential is unset".to_string(),
+            })?;
 
-        let chain_config = match self.config.chains.read().unwrap().get_chain(chain) {
-            Some(chain_config) => chain_config.to_cosmos_config()?,
-            None => {
-                tracing::warn!("Aggregator: Chain config not found for chain: {}", chain);
-                return Ok(None);
-            }
-        };
+        let chain_config = self
+            .config
+            .chains
+            .read()
+            .unwrap()
+            .get_chain(chain)
+            .ok_or_else(|| AggregatorError::MissingChainConfig(chain.clone()))?
+            .to_cosmos_config()?;
 
         let key_signer =
             KeySigner::new_mnemonic_str(credential, None).map_err(AggregatorError::CosmosClient)?;
@@ -811,7 +852,7 @@ impl Aggregator {
             clients.insert(chain.clone(), client.clone());
         }
 
-        Ok(Some(client))
+        Ok(client)
     }
 }
 
