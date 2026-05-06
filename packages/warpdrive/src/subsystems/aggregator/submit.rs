@@ -368,6 +368,11 @@ impl Aggregator {
             signers_and_sigs.into_iter().unzip();
 
         // ── Reference block = current ledger sequence at submit time.
+        // The verification contract checks each signer's weight against
+        // the operator set _as of this block_, so passing "now" means we
+        // re-validate against the latest set on every retry. Operators
+        // joining or having their weight changed between sig generation
+        // and submission is handled correctly without any cache.
         let rpc = stellar_rpc_client::Client::new(&stellar_chain_config.rpc_url).map_err(|e| {
             AggregatorError::Stellar(format!("failed to build stellar rpc client: {e:?}"))
         })?;
@@ -385,10 +390,26 @@ impl Aggregator {
         .map_err(|e| AggregatorError::Stellar(format!("soroban env: {e:?}")))?;
         let account = soroban_rs::Account::single(soroban_rs::Signer::new(signing_key));
 
-        // ── Submit. `verify_eth` simulates first; the simulation invokes
-        // the verification contract internally, so a bad-signature /
-        // unregistered-signer / insufficient-weight failure surfaces here
-        // without consuming fees.
+        // ── Submit.
+        //
+        // `verify_eth` (via `warpdrive-client::utils::execute`) performs
+        // a free read-only simulation against the Soroban RPC node
+        // _before_ signing or broadcasting:
+        //   1. build tx
+        //   2. simulate_transaction (free RPC call)
+        //   3. if simulation reports an error → bail out, no signing,
+        //      no broadcast, no fees paid
+        //   4. otherwise → sign + broadcast (this consumes fees)
+        //
+        // The handler delegates signature validation to the verification
+        // contract on-chain. Bad signatures, unregistered signers, and
+        // insufficient quorum all panic inside that delegate, which the
+        // simulation sees as `Error(Contract, #N)` — caught at step 3,
+        // returned to us as `SorobanHelperError::TransactionSimulationFailed`,
+        // and translated below into a typed `AggregatorError`.
+        //
+        // Net effect: doomed submissions cost zero fees; only
+        // submissions that would actually succeed make it to step 4.
         let contract_id = stellar_strkey::Contract(action.address);
         let handler_cfg = soroban_rs::ClientContractConfigs {
             contract_id,
@@ -435,15 +456,30 @@ fn map_verify_eth_error(
     err: soroban_rs::SorobanHelperError,
     num_signers: usize,
 ) -> AggregatorError {
+    // `SorobanHelperError::TransactionSimulationFailed(s)` carries the
+    // simulation error string straight from the Soroban RPC node. For
+    // contract panics that string contains `Error(Contract, #N)` where
+    // N is the contract-defined error code. Substring-match is the
+    // pragmatic option here — soroban-rs doesn't expose a structured
+    // contract-error type today, and the format is stable on the RPC
+    // wire.
     let err_str = format!("{err:?}");
     if err_str.contains("Error(Contract, #302)") {
-        // Multi-vector startup race: signer hasn't registered yet.
+        // Multi-vector startup race: a signer in the queue hasn't
+        // registered on-chain yet. The dispatch loop's substring
+        // detection on "SignerNotRegistered" recognizes this as
+        // transient and the queue is saved for retry once the
+        // remaining vectors finish registering.
         return AggregatorError::Stellar(format!("SignerNotRegistered (transient): {err_str}"));
     }
     if err_str.contains("Error(Contract, #303)") {
-        // The verification contract doesn't return weights in the
-        // failure; we don't know exact totals without an extra query.
-        // The dispatch loop only matches on the variant for retry.
+        // We have <required_weight signed; expected when fewer than
+        // quorum vectors have signed yet. The verification contract
+        // doesn't return numeric totals in the panic, and we
+        // deliberately don't issue an extra `required_weight` query
+        // (the whole point of the simulation-only path is to avoid
+        // extra calls). The dispatch loop only matches the variant
+        // shape to decide retry, so the placeholder strings are fine.
         return AggregatorError::InsufficientQuorum {
             signer_weight: "unknown".to_string(),
             threshold_weight: "unknown".to_string(),
