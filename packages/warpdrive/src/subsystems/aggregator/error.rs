@@ -1,7 +1,7 @@
 use thiserror::Error;
 use utils::error::EvmClientError;
 use warpdrive_types::{
-    contracts::cosmwasm::service_manager::error::WavsValidateError, ChainConfigError,
+    contracts::cosmwasm::service_manager::error::WavsValidateError, ChainConfigError, ChainKey,
     QuorumQueueId, ServiceManagerError, SigningError,
 };
 
@@ -81,4 +81,31 @@ pub enum AggregatorError {
     /// sequential `docker exec` calls are slow.
     #[error("Signer not registered (transient): {0}")]
     SignerNotRegistered(String),
+
+    /// The signing credential for the target chain is missing or
+    /// unparseable. Treated as transient by the dispatch loop because
+    /// the typical cause is a sysadmin who hasn't finished propagating
+    /// config; once the credential is in place and the node is
+    /// restarted (or reloaded, if/when that exists), retries pick up
+    /// from the saved queue.
+    ///
+    /// **Important**: prior to this variant, the lazy-credential-fetch
+    /// path returned `Ok(None)` which the dispatch loop treated as
+    /// "nothing to do" — silently dropping the inbound submission.
+    /// Returning a typed error instead routes through the normal
+    /// `save_quorum_queue` path so the submission isn't lost.
+    #[error("Missing or invalid {chain_kind} credential for chain {chain}: {detail}")]
+    MissingCredential {
+        chain_kind: &'static str,
+        chain: ChainKey,
+        detail: String,
+    },
+
+    /// The chain referenced by a submission isn't in the runtime
+    /// chain-config registry. Same transient framing as
+    /// `MissingCredential`: the queue is saved so a sysadmin who
+    /// adds the chain config (or fixes a typo) doesn't lose the
+    /// pending submission.
+    #[error("Chain config not found for chain {0}")]
+    MissingChainConfig(ChainKey),
 }
