@@ -46,7 +46,21 @@ impl Aggregator {
         queue: &[Submission],
         action: EvmSubmitAction,
     ) -> Result<AnyTransactionReceipt, AggregatorError> {
-        tracing::info!("Handling submit for {}", queue.last().unwrap().label());
+        // Bind the canonical (oldest) and latest submissions once at
+        // the top. The dispatch closure always
+        // `append_submission_to_queue`s before calling us, so the
+        // queue is non-empty by construction; surfacing the typed
+        // error rather than `unwrap`ing keeps a logic-bug refactor
+        // from panicking the spawned task.
+        let first = queue
+            .first()
+            .ok_or(AggregatorError::EmptySubmissionQueue { chain_kind: "EVM" })?;
+        // SAFETY: queue.first() returned Some, so queue.last() is also Some.
+        let last = queue
+            .last()
+            .expect("non-empty queue invariant (first() returned Some)");
+
+        tracing::info!("Handling submit for {}", last.label());
         let contract_address = action.address.into();
 
         let service_manager = self
@@ -62,7 +76,6 @@ impl Aggregator {
         // missing (shouldn't happen — receive validation pins on the
         // first valid packet), fall back to current-block-minus-one
         // and warn.
-        let first = queue.first().unwrap();
         let block_height_minus_one = match self
             .get_pinned_reference_block(first.service_id(), &first.event_id)
         {
@@ -87,18 +100,12 @@ impl Aggregator {
             .map(|queued| queued.envelope_signature.clone())
             .collect();
 
-        // safe - we pushed the latest submission into the (temporary) queue
-        let signature_data = queue
-            .first()
-            .unwrap()
+        let signature_data = first
             .envelope
             .signature_data(signatures, block_height_minus_one)?;
 
         let result = service_manager
-            .validate(
-                queue.first().unwrap().envelope.clone().into(),
-                signature_data.clone().into(),
-            )
+            .validate(first.envelope.clone().into(), signature_data.clone().into())
             .call()
             .await;
 
@@ -140,7 +147,7 @@ impl Aggregator {
                             // than substring search.
                             tracing::warn!(
                                 "Signer not registered yet for submission {}. Queue will be saved for retry.",
-                                queue.last().unwrap().label()
+                                last.label()
                             );
                             return Err(AggregatorError::SignerNotRegistered(format!(
                                 "evm {raw_str}"
@@ -157,7 +164,7 @@ impl Aggregator {
 
         let tx_receipt = client
             .send_envelope_signatures(
-                queue.first().unwrap().envelope.clone(),
+                first.envelope.clone(),
                 signature_data,
                 contract_address,
                 None,
@@ -174,6 +181,12 @@ impl Aggregator {
         queue: &[Submission],
         action: CosmosSubmitAction,
     ) -> Result<AnyTransactionReceipt, AggregatorError> {
+        // Same non-empty invariant as the EVM path — bind once, surface
+        // a typed error if the invariant is ever broken.
+        let first = queue.first().ok_or(AggregatorError::EmptySubmissionQueue {
+            chain_kind: "Cosmos",
+        })?;
+
         let service_manager_addr: CosmosAddr = client
             .querier
             .contract_smart(
@@ -186,7 +199,6 @@ impl Aggregator {
         // Pinned reference_block from receive-time validation, with
         // current-1 fallback. See the EVM path above for the same
         // pattern + rationale.
-        let first = queue.first().unwrap();
         let block_height_minus_one = match self
             .get_pinned_reference_block(first.service_id(), &first.event_id)
         {
@@ -211,10 +223,7 @@ impl Aggregator {
             .map(|queued| queued.envelope_signature.clone())
             .collect();
 
-        // safe - we pushed the latest submission into the (temporary) queue
-        let signature_data = queue
-            .first()
-            .unwrap()
+        let signature_data = first
             .envelope
             .signature_data(signatures, block_height_minus_one)?;
 
@@ -223,7 +232,7 @@ impl Aggregator {
             .contract_smart(
                 &service_manager_addr.into(),
                 &ServiceManagerQueryMessages::WarpDriveValidate {
-                    envelope: queue.first().unwrap().envelope.clone().into(),
+                    envelope: first.envelope.clone().into(),
                     signature_data: signature_data.clone().into(),
                 },
             )
@@ -258,7 +267,7 @@ impl Aggregator {
             .contract_execute(
                 &action.address.into(),
                 &ServiceHandlerExecuteMessages::WarpDriveHandleSignedEnvelope {
-                    envelope: queue.first().unwrap().envelope.clone().into(),
+                    envelope: first.envelope.clone().into(),
                     signature_data: signature_data.clone().into(),
                 },
                 vec![],
@@ -349,8 +358,11 @@ impl Aggregator {
 
         // ── Build envelope bytes that the verification contract will
         // re-hash internally to verify each signature.
-        let first = queue.first().ok_or_else(|| {
-            AggregatorError::Stellar("empty submission queue for stellar submit".to_string())
+        //
+        // Same non-empty invariant as the EVM/Cosmos paths — see the
+        // `EmptySubmissionQueue` variant's doc comment.
+        let first = queue.first().ok_or(AggregatorError::EmptySubmissionQueue {
+            chain_kind: "Stellar",
         })?;
         let envelope = first.envelope.clone();
         let envelope_bytes = envelope.encode_data().map_err(|e| {

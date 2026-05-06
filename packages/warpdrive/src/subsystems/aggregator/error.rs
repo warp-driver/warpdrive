@@ -157,4 +157,15 @@ pub enum AggregatorError {
     /// the chain query we can't validate.
     #[error("Receive-validation chain query failed for chain {chain}: {detail}")]
     ReceiveValidationChainQuery { chain: ChainKey, detail: String },
+
+    /// A chain-specific submit fn was reached with an empty queue.
+    /// In normal operation the dispatch closure always
+    /// `append_submission_to_queue`s before calling
+    /// `handle_action_submit_*`, so the queue has at least the
+    /// inbound submission — empty here would be a logic bug. Returns
+    /// a typed error rather than panicking on `unwrap` so the
+    /// dispatch loop's generic error-arm logging fires and the rest
+    /// of the node keeps running.
+    #[error("Empty submission queue for {chain_kind} submit")]
+    EmptySubmissionQueue { chain_kind: &'static str },
 }
