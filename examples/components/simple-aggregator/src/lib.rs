@@ -8,9 +8,10 @@ use world::{
     host,
     warpdrive::aggregator::input::AggregatorInput,
     warpdrive::aggregator::output::{
-        AggregatorAction, CosmosAddress, CosmosSubmitAction, EvmSubmitAction, SubmitAction, U128,
+        AggregatorAction, CosmosAddress, CosmosSubmitAction, EvmSubmitAction, StellarSubmitAction,
+        SubmitAction, U128,
     },
-    warpdrive::types::chain::{AnyTxHash, EvmAddress},
+    warpdrive::types::chain::{AnyTxHash, EvmAddress, StellarAddress},
     Guest,
 };
 
@@ -58,6 +59,16 @@ impl Guest for Component {
                         prefix_len: address.prefix().len() as u32,
                     },
                     gas_price: None,
+                })
+            }
+            AnyChainKey::Stellar(chain) => {
+                let contract = stellar_strkey::Contract::from_string(&service_handler_str)
+                    .map_err(|e| format!("invalid stellar service_handler: {e:?}"))?;
+                SubmitAction::Stellar(StellarSubmitAction {
+                    chain: chain.to_string(),
+                    address: StellarAddress {
+                        raw_bytes: contract.0.to_vec(),
+                    },
                 })
             }
         };
@@ -114,14 +125,24 @@ fn open_kv_bucket(id: &str) -> KvStoreResult<store::Bucket> {
 enum AnyChainKey {
     Evm(ChainKey),
     Cosmos(ChainKey),
+    Stellar(ChainKey),
 }
 
 impl AnyChainKey {
     pub fn from_host(chain: &str) -> Option<Self> {
+        let parsed: ChainKey = chain.parse().ok()?;
+        // Stellar has no host-side `get_stellar_chain_config` shim today;
+        // dispatch on the namespace prefix instead. EVM/Cosmos still go
+        // through their host config lookups so we get an early "no config"
+        // error if the chain isn't actually wired.
+        if parsed.namespace.as_str() == warpdrive_types::ChainKeyNamespace::STELLAR {
+            return Some(AnyChainKey::Stellar(parsed));
+        }
+        #[allow(clippy::manual_map)]
         match host::get_evm_chain_config(chain) {
-            Some(_) => Some(AnyChainKey::Evm(chain.parse().ok()?)),
+            Some(_) => Some(AnyChainKey::Evm(parsed)),
             None => match host::get_cosmos_chain_config(chain) {
-                Some(_) => Some(AnyChainKey::Cosmos(chain.parse().ok()?)),
+                Some(_) => Some(AnyChainKey::Cosmos(parsed)),
                 None => None,
             },
         }

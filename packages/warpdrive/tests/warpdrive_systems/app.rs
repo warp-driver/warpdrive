@@ -66,6 +66,7 @@ fn zeroed_cli_args(
         signing_mnemonic: None,
         aggregator_evm_credential: None,
         aggregator_cosmos_credential: None,
+        aggregator_stellar_credential: None,
         max_wasm_fuel: None,
         max_execution_seconds: None,
         ipfs_gateway: None,

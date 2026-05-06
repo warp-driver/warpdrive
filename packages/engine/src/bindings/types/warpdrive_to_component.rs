@@ -179,6 +179,14 @@ impl From<layer_climb::prelude::CosmosAddr> for component_chain::CosmosAddress {
     }
 }
 
+impl From<stellar_strkey::Contract> for component_chain::StellarAddress {
+    fn from(contract: stellar_strkey::Contract) -> Self {
+        component_chain::StellarAddress {
+            raw_bytes: contract.0.to_vec(),
+        }
+    }
+}
+
 impl From<warpdrive_types::CosmosChainConfig>
     for crate::bindings::operator::world::host::CosmosChainConfig
 {
@@ -382,6 +390,12 @@ impl From<warpdrive_types::ServiceManager> for component_service::ServiceManager
             }
             warpdrive_types::ServiceManager::Cosmos { chain, address } => {
                 component_service::ServiceManager::Cosmos(component_service::CosmosManager {
+                    chain: chain.to_string(),
+                    address: address.into(),
+                })
+            }
+            warpdrive_types::ServiceManager::Stellar { chain, address } => {
+                component_service::ServiceManager::Stellar(component_service::StellarManager {
                     chain: chain.to_string(),
                     address: address.into(),
                 })
@@ -811,6 +825,14 @@ impl From<warpdrive_types::ServiceManager> for aggregator_service::ServiceManage
                     },
                 })
             }
+            warpdrive_types::ServiceManager::Stellar { chain, address } => {
+                aggregator_service::ServiceManager::Stellar(aggregator_service::StellarManager {
+                    chain: chain.to_string(),
+                    address: aggregator_chain::StellarAddress {
+                        raw_bytes: address.0.to_vec(),
+                    },
+                })
+            }
         }
     }
 }
@@ -1101,6 +1123,14 @@ impl From<warpdrive_types::SubmitAction> for aggregator_output::SubmitAction {
                     chain: action.chain.to_string(),
                     address: action.address.into(),
                     gas_price: action.gas_price.map(|x| x.into()),
+                })
+            }
+            warpdrive_types::SubmitAction::Stellar(action) => {
+                aggregator_output::SubmitAction::Stellar(aggregator_output::StellarSubmitAction {
+                    chain: action.chain.to_string(),
+                    address: aggregator_chain::StellarAddress {
+                        raw_bytes: action.address.to_vec(),
+                    },
                 })
             }
         }

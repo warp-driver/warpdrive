@@ -78,6 +78,13 @@ fn http_config() {
             "aggregator_evm_credential should be redacted"
         );
     }
+    if let Some(cred) = &config.aggregator_stellar_credential {
+        assert_eq!(
+            cred.as_str(),
+            "redacted",
+            "aggregator_stellar_credential should be redacted"
+        );
+    }
     if let Some(cred) = &config.bearer_token {
         assert_eq!(cred.as_str(), "redacted", "bearer_token should be redacted");
     }

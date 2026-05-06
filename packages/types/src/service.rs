@@ -113,6 +113,14 @@ pub enum ServiceManager {
         #[cfg_attr(feature = "ts-bindings", ts(type = "string"))]
         address: layer_climb_address::CosmosAddr,
     },
+    /// Stellar service manager. The address is the `ProjectRoot` contract id;
+    /// `Security` and `Verification` contracts are reachable from it.
+    Stellar {
+        chain: ChainKey,
+        #[schema(value_type = String)]
+        #[cfg_attr(feature = "ts-bindings", ts(type = "string"))]
+        address: stellar_strkey::Contract,
+    },
 }
 
 impl From<&ServiceManager> for ServiceId {
@@ -132,6 +140,13 @@ impl From<&ServiceManager> for ServiceId {
                 bytes.extend_from_slice(&address.to_vec());
                 ServiceId::hash(bytes)
             }
+            ServiceManager::Stellar { chain, address } => {
+                let mut bytes = Vec::new();
+                bytes.extend_from_slice(b"stellar");
+                bytes.extend_from_slice(chain.to_string().as_bytes());
+                bytes.extend_from_slice(&address.0);
+                ServiceId::hash(bytes)
+            }
         }
     }
 }
@@ -141,12 +156,18 @@ impl ServiceManager {
         match self {
             ServiceManager::Evm { chain, .. } => chain,
             ServiceManager::Cosmos { chain, .. } => chain,
+            ServiceManager::Stellar { chain, .. } => chain,
         }
     }
-    pub fn address(&self) -> layer_climb_address::Address {
+    /// The manager's contract address as a chain-agnostic `ChainAddress`.
+    /// Total / infallible across all variants. Use `TryInto` if you need to
+    /// fall back to `layer_climb_address::Address` (which can't represent
+    /// Stellar).
+    pub fn address(&self) -> crate::ChainAddress {
         match self {
-            ServiceManager::Evm { address, .. } => (*address).into(),
-            ServiceManager::Cosmos { address, .. } => address.clone().into(),
+            ServiceManager::Evm { address, .. } => crate::ChainAddress::Evm(*address),
+            ServiceManager::Cosmos { address, .. } => crate::ChainAddress::Cosmos(address.clone()),
+            ServiceManager::Stellar { address, .. } => crate::ChainAddress::Stellar(*address),
         }
     }
 }

@@ -12,6 +12,7 @@ use wasm_pkg_client::{PackageRef, Version};
 pub enum ChainType {
     Cosmos,
     EVM,
+    Stellar,
 }
 
 /// Result of service initialization

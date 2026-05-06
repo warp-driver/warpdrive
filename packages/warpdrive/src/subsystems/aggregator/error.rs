@@ -69,4 +69,16 @@ pub enum AggregatorError {
 
     #[error("P2P: {0}")]
     P2p(String),
+
+    #[error("Stellar submit: {0}")]
+    Stellar(String),
+
+    /// A signer in the submission queue isn't registered on-chain yet.
+    /// Treated as transient by the dispatch loop: the queue is saved and
+    /// retried when later submissions arrive (the assumption being that
+    /// the missing vector finishes registering shortly). Common during
+    /// multi-vector startup, especially with PoA middleware whose
+    /// sequential `docker exec` calls are slow.
+    #[error("Signer not registered (transient): {0}")]
+    SignerNotRegistered(String),
 }

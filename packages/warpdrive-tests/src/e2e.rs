@@ -22,7 +22,7 @@ use utils::{
     config::{ConfigBuilder, ConfigExt},
     context::AppContext,
     telemetry::{setup_metrics, setup_tracing, Metrics},
-    test_utils::middleware::evm::EvmMiddleware,
+    test_utils::middleware::{evm::EvmMiddleware, stellar::StellarMiddleware},
 };
 
 use crate::{
@@ -97,7 +97,7 @@ pub fn run(args: TestArgs, ctx: AppContext) {
             _ = kill_receiver.recv() => {
                 tracing::debug!("Test runner killed");
             },
-            _ = _run(configs, clients, mode, handles.evm_middleware.clone(), handles.cosmos_middlewares.clone()) => {
+            _ = _run(configs, clients, mode, handles.evm_middleware.clone(), handles.cosmos_middlewares.clone(), handles.stellar_middleware.clone()) => {
                 tracing::debug!("Test runner completed");
             }
         }
@@ -139,6 +139,7 @@ async fn _run(
     mode: TestMode,
     evm_middleware: Option<EvmMiddleware>,
     cosmos_middlewares: CosmosMiddlewares,
+    stellar_middleware: Option<StellarMiddleware>,
 ) {
     let report = TestReport::new();
 
@@ -160,7 +161,13 @@ async fn _run(
     // bootstrap service managers
     let mut service_managers = ServiceManagers::new(configs.clone());
     service_managers
-        .bootstrap(&registry, &clients, evm_middleware, cosmos_middlewares)
+        .bootstrap(
+            &registry,
+            &clients,
+            evm_middleware,
+            cosmos_middlewares,
+            stellar_middleware,
+        )
         .await;
 
     // upload components to ALL WarpDrive instances

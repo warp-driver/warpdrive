@@ -91,6 +91,7 @@ pub struct StellarChainConfig {
     pub chain_id: ChainKeyId,
     pub chain_poll_interval_ms: u64,
     pub rpc_url: String,
+    pub network_passphrase: String,
     pub friendbot_url: Option<String>,
 }
 
@@ -489,6 +490,7 @@ impl ChainConfigs {
                     let stellar_config = StellarChainConfigBuilder {
                         chain_poll_interval_ms: stellar_config.chain_poll_interval_ms,
                         rpc_url: stellar_config.rpc_url,
+                        network_passphrase: stellar_config.network_passphrase,
                         friendbot_url: stellar_config.friendbot_url,
                     };
                     self.stellar.insert(key.id, stellar_config);
@@ -550,6 +552,7 @@ impl EvmChainConfigBuilder {
 pub struct StellarChainConfigBuilder {
     pub chain_poll_interval_ms: u64,
     pub rpc_url: String,
+    pub network_passphrase: String,
     pub friendbot_url: Option<String>,
 }
 
@@ -559,6 +562,7 @@ impl StellarChainConfigBuilder {
             chain_id: id,
             chain_poll_interval_ms: self.chain_poll_interval_ms,
             rpc_url: self.rpc_url,
+            network_passphrase: self.network_passphrase,
             friendbot_url: self.friendbot_url,
         }
     }

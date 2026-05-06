@@ -19,7 +19,7 @@ interface input {
 
 interface output {
     use core-types.{duration, u128};
-    use chain-types.{chain-key, evm-address, cosmos-address};
+    use chain-types.{chain-key, evm-address, cosmos-address, stellar-address};
 
     variant aggregator-action {
         timer(timer-action),
@@ -33,6 +33,7 @@ interface output {
     variant submit-action {
         evm(evm-submit-action),
         cosmos(cosmos-submit-action),
+        stellar(stellar-submit-action),
     }
 
     record evm-submit-action {
@@ -45,6 +46,14 @@ interface output {
         chain: chain-key,
         address: cosmos-address,
         gas-price: option<u128>,
+    }
+
+    record stellar-submit-action {
+        chain: chain-key,
+        address: stellar-address,
+        // No `gas-price`: Stellar uses fee bumps, not a per-tx gas-price
+        // scalar. If we ever expose fee-bump configuration to components,
+        // add a typed field for it here.
     }
 }
 

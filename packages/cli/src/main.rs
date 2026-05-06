@@ -166,6 +166,9 @@ async fn main() {
                         let client = new_cosmos_client(&ctx, chain.id.clone()).await.unwrap();
                         Some(SetServiceUriArgs::new_cosmos(client, service_uri.clone()))
                     }
+                    warpdrive_types::ServiceManager::Stellar { .. } => {
+                        unimplemented!("Stellar set-service-uri not yet wired up")
+                    }
                 }
             } else {
                 None

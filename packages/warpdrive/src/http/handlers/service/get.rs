@@ -59,10 +59,19 @@ pub async fn handle_get_service(
                 }
             }
             AnyChainConfig::Stellar(_) => {
-                return AnyError::from(anyhow!(
-                    "Stellar chain does not support service managers yet"
-                ))
-                .into_response();
+                let address = match stellar_strkey::Contract::from_string(&address) {
+                    Ok(addr) => addr,
+                    Err(e) => {
+                        return AnyError::from(anyhow!(
+                            "invalid stellar contract id `{address}`: {e:?}"
+                        ))
+                        .into_response();
+                    }
+                };
+                ServiceManager::Stellar {
+                    chain: chain_key,
+                    address,
+                }
             }
         },
         None => {

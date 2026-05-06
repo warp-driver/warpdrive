@@ -82,6 +82,11 @@ pub struct Dispatcher<S: CAStorage> {
     evm_http_providers: Arc<RwLock<HashMap<ChainKey, DynProvider>>>,
     /// Cached Cosmos query clients per chain to avoid creating new connections for each query
     cosmos_query_clients: Arc<RwLock<HashMap<ChainKey, QueryClient>>>,
+    // NOTE: no `stellar_signing_key` field. Read paths use a dummy
+    // `[1u8; 32]` ed25519 key inline (Soroban simulation requires a source
+    // account but the signature is never validated). The aggregator's
+    // write path parses `config.aggregator_stellar_credential` directly
+    // when needed.
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -427,8 +432,7 @@ impl<S: CAStorage + 'static> Dispatcher<S> {
                     let cosmos_clients = &cosmos_clients_for_restore;
                     async move {
                         let result = query_service_from_address(
-                            entry.service_manager.chain().clone(),
-                            entry.service_manager.address(),
+                            &entry.service_manager,
                             chain_configs,
                             ipfs_gateway,
                             evm_providers,
@@ -632,8 +636,7 @@ impl<S: CAStorage + 'static> Dispatcher<S> {
     ) -> Result<Service, DispatcherError> {
         let chain_configs = self.chain_configs.read().unwrap().clone();
         let service = query_service_from_address(
-            service_manager.chain().clone(),
-            service_manager.address(),
+            &service_manager,
             &chain_configs,
             &self.ipfs_gateway,
             &self.evm_http_providers,
@@ -869,8 +872,7 @@ async fn check_service_needs_update(
 
     // Get current service from contract
     let current_service = query_service_from_address(
-        service.manager.chain().clone(),
-        service.manager.address(),
+        &service.manager,
         chain_configs,
         ipfs_gateway,
         evm_http_providers,
@@ -895,13 +897,64 @@ async fn check_service_needs_update(
 }
 
 async fn query_service_from_address(
-    chain: ChainKey,
-    address: layer_climb::prelude::Address,
+    service_manager: &ServiceManager,
     chain_configs: &ChainConfigs,
     ipfs_gateway: &str,
     evm_http_providers: &Arc<RwLock<HashMap<ChainKey, DynProvider>>>,
     cosmos_query_clients: &Arc<RwLock<HashMap<ChainKey, QueryClient>>>,
 ) -> Result<Service, DispatcherError> {
+    let chain = service_manager.chain().clone();
+
+    // Stellar takes its own path: query the project_root via warpdrive-client.
+    // The `project_spec_repo` field on the contract doubles as the service URI.
+    if let ServiceManager::Stellar {
+        address: project_root,
+        ..
+    } = service_manager
+    {
+        let stellar_config = chain_configs
+            .get_chain(&chain)
+            .and_then(|c| match c {
+                AnyChainConfig::Stellar(cfg) => Some(cfg),
+                _ => None,
+            })
+            .ok_or_else(|| {
+                DispatcherError::Config(format!("No stellar chain config for chain {chain}"))
+            })?;
+        let env = soroban_rs::Env::new(soroban_rs::EnvConfigs {
+            rpc_url: stellar_config.rpc_url.clone(),
+            network_passphrase: stellar_config.network_passphrase.clone(),
+        })
+        .map_err(|e| DispatcherError::Config(format!("building soroban env: {e:?}")))?;
+        // Read-only Soroban simulations require a source account on the tx
+        // body but the signature is never validated; any key works. See the
+        // documented pattern at warpdrive-contracts `packages/client/README.md`.
+        let dummy_signing_key = ed25519_dalek::SigningKey::from_bytes(&[1u8; 32]);
+        let account = soroban_rs::Account::single(soroban_rs::Signer::new(dummy_signing_key));
+        let cfg = soroban_rs::ClientContractConfigs {
+            contract_id: *project_root,
+            env,
+            source_account: account,
+        };
+        let client = warpdrive_client::project_root::ProjectRootClient::new(cfg);
+        let service_uri = client.project_spec_repo().await.map_err(|e| {
+            DispatcherError::Config(format!(
+                "ProjectRoot::project_spec_repo on {project_root} failed: {e:?}"
+            ))
+        })?;
+        let service_uri = UriString::try_from(service_uri)?;
+        return fetch_service(&service_uri, ipfs_gateway)
+            .await
+            .map_err(DispatcherError::FetchService);
+    }
+
+    let address: layer_climb::prelude::Address =
+        service_manager.address().try_into().map_err(|e| {
+            DispatcherError::Config(format!(
+                "ServiceManager for chain {chain} cannot be expressed as layer_climb::Address: {e}"
+            ))
+        })?;
+
     // Get the chain config
     let chain_config = chain_configs.get_chain(&chain).ok_or_else(|| {
         DispatcherError::Config(format!("Could not get chain config for chain {chain}"))
@@ -984,9 +1037,10 @@ async fn query_service_from_address(
         }
 
         AnyChainConfig::Stellar(_) => {
-            return Err(DispatcherError::Config(
-                "Stellar chain type is not supported yet".to_string(),
-            ));
+            // Unreachable: Stellar service managers take the early return path
+            // above; reaching here would mean an EVM/Cosmos manager pointing
+            // at a stellar chain config, which isn't a valid combination.
+            unreachable!("stellar chain config reached without ServiceManager::Stellar")
         }
     };
 

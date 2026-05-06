@@ -51,8 +51,12 @@ pub struct LookupMaps {
     /// lookup id by (collection pattern, optional repo_did, optional action) for wildcard matches
     pub triggers_by_atproto_event_pattern:
         Arc<RwLock<HashMap<(String, Option<String>, Option<AtProtoAction>), HashSet<LookupId>>>>,
-    // ServiceId <-> ServiceManager address
-    pub service_manager: Arc<RwLock<BiMap<ServiceId, layer_climb::prelude::Address>>>,
+    // ServiceId <-> ServiceManager address. `ChainAddress` is chain-agnostic
+    // so EVM, Cosmos, and Stellar all flow through the same BiMap; the
+    // URI-update event correlator looks up entries by constructing the
+    // matching `ChainAddress::Evm(_) / Cosmos(_) / Stellar(_)` from the
+    // event source.
+    pub service_manager: Arc<RwLock<BiMap<ServiceId, warpdrive_types::ChainAddress>>>,
     /// Efficient block schedulers (one per chain) for block interval triggers
     pub block_schedulers: BlockSchedulers,
     /// lookup id by service id -> workflow id
@@ -126,12 +130,10 @@ impl LookupMaps {
         service: &warpdrive_types::Service,
         stellar_controllers: &Arc<std::sync::RwLock<HashMap<ChainKey, StellarStreamController>>>,
     ) -> Result<(), TriggerError> {
-        let manager_address: layer_climb::prelude::Address = service.manager.address();
-
         self.service_manager
             .write()
             .unwrap()
-            .insert(service.id(), manager_address);
+            .insert(service.id(), service.manager.address());
 
         for (id, workflow) in &service.workflows {
             let trigger = TriggerConfig {
@@ -422,7 +424,11 @@ impl LookupMaps {
         let mut triggers_by_service_workflow_lock =
             self.triggers_by_service_workflow.write().unwrap();
 
-        // Remove the service manager
+        // Remove the service manager. Cleanup of the Stellar
+        // `UpdatedSpecRepo` filter (when this service is Stellar-managed)
+        // is handled one level up in `TriggerManager::remove_service`,
+        // which sends an `UnwatchStellarServiceUri` command using the
+        // rpc_id it tracked at registration time.
         self.service_manager
             .write()
             .unwrap()
@@ -598,6 +604,7 @@ mod tests {
             chain_id: chain.id.clone(),
             chain_poll_interval_ms: 1000,
             rpc_url: "http://localhost:0".to_string(),
+            network_passphrase: "Standalone Network ; February 2017".to_string(),
             friendbot_url: None,
         };
         let controller = StellarStreamController::new(config).unwrap();

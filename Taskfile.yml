@@ -1,5 +1,7 @@
 version: "3"
 
+silent: true
+
 vars:
   SUDO:
     sh: 'if groups 2>/dev/null | grep -q docker; then echo ""; else echo "sudo"; fi'
@@ -42,11 +44,11 @@ tasks:
     desc: Build warpdrive Docker image
     vars:
       TAG: '{{.TAG | default "local"}}'
-    cmd: '{{.SUDO}} docker build . -t ghcr.io/warp-driver/warpdrive:{{.TAG}}'
+    cmd: "{{.SUDO}} docker build . -t ghcr.io/warp-driver/warpdrive:{{.TAG}}"
 
   docker-run:
     desc: Run warpdrive:latest Docker container
-    cmd: '{{.SUDO}} docker run --rm ghcr.io/warp-driver/warpdrive:latest'
+    cmd: "{{.SUDO}} docker run --rm ghcr.io/warp-driver/warpdrive:latest"
 
   docker-stop:
     desc: Stop running warpdrive Docker container
@@ -62,19 +64,19 @@ tasks:
   install-native:
     desc: Install warpdrive and CLI binaries via cargo
     vars:
-      HOME: '{{.HOME}}'
-      DATA: '{{.DATA | default .HOME}}'
+      HOME: "{{.HOME}}"
+      DATA: "{{.DATA | default .HOME}}"
     cmds:
       - task: _install-native
         vars:
-          HOME: '{{.HOME}}'
-          DATA: '{{.DATA}}'
+          HOME: "{{.HOME}}"
+          DATA: "{{.DATA}}"
 
   _install-native:
     internal: true
     vars:
-      HOME: '{{.HOME}}'
-      DATA: '{{.DATA}}'
+      HOME: "{{.HOME}}"
+      DATA: "{{.DATA}}"
     cmds:
       - rm -rf "{{.HOME}}"
       - rm -rf "{{.DATA}}"
@@ -150,7 +152,7 @@ tasks:
   wasi-publish:
     desc: Publish WASM components to wa.dev registry
     vars:
-      VERSION: '{{.VERSION}}'
+      VERSION: "{{.VERSION}}"
       COMPONENT: '{{.COMPONENT | default "*"}}'
       FLAGS: '{{.FLAGS | default ""}}'
     cmd: |
@@ -232,13 +234,13 @@ tasks:
   _stellar-build-inner:
     internal: true
     vars:
-      CONTRACT_PATH: '{{.CONTRACT_PATH}}'
+      CONTRACT_PATH: "{{.CONTRACT_PATH}}"
     cmd: cd {{.REPO_ROOT}}/{{.CONTRACT_PATH}} && stellar contract build --optimize
 
   _cosmwasm-build-inner:
     internal: true
     vars:
-      CONTRACT_PATH: '{{.CONTRACT_PATH}}'
+      CONTRACT_PATH: "{{.CONTRACT_PATH}}"
     cmd: |
       if [ "{{.ARCH}}" = "arm64" ]; then
         docker run --rm \
@@ -283,7 +285,7 @@ tasks:
     cmds:
       - task: _inner-wit-build
         vars:
-          CONFIG_ARG: '{{if .CONFIG}} --config ../../{{.CONFIG}}{{end}}'
+          CONFIG_ARG: "{{if .CONFIG}} --config ../../{{.CONFIG}}{{end}}"
 
   wit-publish:
     desc: Publish WIT packages to registry
@@ -292,7 +294,7 @@ tasks:
     cmds:
       - task: _inner-wit-publish
         vars:
-          CONFIG_ARG: '{{if .CONFIG}} --config ../../{{.CONFIG}}{{end}}'
+          CONFIG_ARG: "{{if .CONFIG}} --config ../../{{.CONFIG}}{{end}}"
 
   _inner-wit-build:
     internal: true
@@ -386,8 +388,8 @@ tasks:
   cli-exec:
     desc: "Execute a WASI component via CLI (e.g. task cli-exec COMPONENT=./examples/build/components/echo_data.wasm INPUT='hello world')"
     vars:
-      COMPONENT: '{{.COMPONENT}}'
-      INPUT: '{{.INPUT}}'
+      COMPONENT: "{{.COMPONENT}}"
+      INPUT: "{{.INPUT}}"
     dir: packages/cli
     cmd: cargo run exec --component {{.COMPONENT}} --input '{{.INPUT}}'
 
@@ -420,7 +422,7 @@ tasks:
   set-version:
     desc: "Update version in Cargo.toml and WIT files (e.g. task set-version VERSION=2.7.0)"
     vars:
-      VERSION: '{{.VERSION}}'
+      VERSION: "{{.VERSION}}"
     cmd: |
       set -euo pipefail
 
@@ -449,7 +451,7 @@ tasks:
   push-tag:
     desc: "Create and push git tags (e.g. task push-tag VERSION=v2.7.0)"
     vars:
-      VERSION: '{{.VERSION}}'
+      VERSION: "{{.VERSION}}"
     cmd: |
       set -euo pipefail
 

@@ -121,6 +121,13 @@ pub fn encode_trigger_output(
     match service_manager {
         ServiceManager::Evm(_) => evm_encode_trigger_output(trigger_id, output),
         ServiceManager::Cosmos(_) => cosmos_encode_trigger_output(trigger_id, output),
+        // Stellar uses the same ABI-encoded `DataWithId` payload as EVM —
+        // the mock_submit Soroban contract decodes the envelope's payload
+        // bytes via alloy_sol_types and matches the EVM SimpleSubmit shape
+        // byte-for-byte. The aggregator wraps this payload in an
+        // ABI-encoded `Envelope { eventId, ordering, payload }` before
+        // submitting; the mock_submit's `verify_eth` decodes both layers.
+        ServiceManager::Stellar(_) => evm_encode_trigger_output(trigger_id, output),
     }
 }
 // For EVM ServiceHandler contracts, encode output using DataWithId struct

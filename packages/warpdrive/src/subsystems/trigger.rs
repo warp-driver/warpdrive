@@ -33,6 +33,7 @@ use std::{
     sync::Arc,
     time::Duration,
 };
+use streams::stellar_stream::filters::StellarRpcId;
 use streams::stellar_stream::start_stellar_event_stream;
 use streams::{cosmos_stream, cron_stream, evm_stream, MultiplexedStream, StreamTriggers};
 use tracing::instrument;
@@ -60,6 +61,28 @@ pub enum TriggerCommand {
     },
     WatchStellarBlocks {
         chain: ChainKey,
+    },
+    /// Subscribe to a Stellar `project_root`'s `UpdatedSpecRepo` contract
+    /// event for service-URI change detection. Fire-and-forget — the
+    /// watcher waits for the chain's stellar controller to come up and
+    /// then registers the filter, mirroring the EVM
+    /// `WatchEvmContractEvents` async pattern. The `service_id` is
+    /// recorded alongside the resulting `StellarRpcId` so a later
+    /// `UnwatchStellarServiceUri` can drop the precise filter handle
+    /// without touching sibling subscriptions.
+    WatchStellarServiceUri {
+        service_id: ServiceId,
+        chain: ChainKey,
+        project_root: stellar_strkey::Contract,
+    },
+    /// Drop the `UpdatedSpecRepo` filter previously registered for
+    /// `service_id`. Sent from `TriggerManager::remove_service`; the
+    /// watcher resolves the recorded `StellarRpcId` and calls
+    /// `remove_filter_by_id` so other services that happen to share a
+    /// project root (impossible in practice but guarded structurally)
+    /// keep their subscriptions.
+    UnwatchStellarServiceUri {
+        service_id: ServiceId,
     },
     StartListeningAtProto,
     ManualTrigger(Box<TriggerAction>),
@@ -165,6 +188,12 @@ pub struct TriggerManager {
     pub services: Services,
     pub evm_controllers: Arc<std::sync::RwLock<HashMap<ChainKey, EvmTriggerStreamsController>>>,
     pub stellar_controllers: Arc<std::sync::RwLock<HashMap<ChainKey, StellarStreamController>>>,
+    /// Tracks the `UpdatedSpecRepo` event-filter handle registered for each
+    /// Stellar-managed service so `remove_service` can drop the exact filter.
+    /// Keyed by `ServiceId` (one URI subscription per service); the value is
+    /// the chain plus the `StellarRpcId` returned by `add_filter` at
+    /// registration time.
+    stellar_uri_subscriptions: Arc<std::sync::RwLock<HashMap<ServiceId, (ChainKey, StellarRpcId)>>>,
     pub config: Config,
 }
 
@@ -191,6 +220,7 @@ impl TriggerManager {
             services,
             evm_controllers: Arc::new(std::sync::RwLock::new(HashMap::new())),
             stellar_controllers: Arc::new(std::sync::RwLock::new(HashMap::new())),
+            stellar_uri_subscriptions: Arc::new(std::sync::RwLock::new(HashMap::new())),
             config: config.clone(),
         })
     }
@@ -287,6 +317,19 @@ impl TriggerManager {
             warpdrive_types::ServiceManager::Cosmos { .. } => {
                 /* Nothing to do, Cosmos consumes all events, service URI changes will be handled */
             }
+            warpdrive_types::ServiceManager::Stellar { chain, address } => {
+                // Stellar analogue of the EVM `ServiceURIUpdated` log
+                // subscription above. Fire-and-forget: the watcher waits
+                // for the chain's stellar controller to come up and then
+                // registers the filter — same async pattern as
+                // `WatchEvmContractEvents`.
+                self.command_sender
+                    .send(TriggerCommand::WatchStellarServiceUri {
+                        service_id: service.id(),
+                        chain,
+                        project_root: address,
+                    })?;
+            }
         }
 
         for command in workflow_commands {
@@ -300,6 +343,23 @@ impl TriggerManager {
     pub fn remove_service(&self, service_id: ServiceId) -> Result<(), TriggerError> {
         self.lookup_maps
             .remove_service(service_id.clone(), &self.stellar_controllers)?;
+
+        // Drop any `UpdatedSpecRepo` subscription that `add_service`
+        // registered for this service. Presence in the map is the canonical
+        // signal that this service is Stellar-managed — no need to look up
+        // the service's manager (which has already been removed from the
+        // Services store by the dispatcher at this point).
+        if self
+            .stellar_uri_subscriptions
+            .read()
+            .unwrap()
+            .contains_key(&service_id)
+        {
+            self.command_sender
+                .send(TriggerCommand::UnwatchStellarServiceUri {
+                    service_id: service_id.clone(),
+                })?;
+        }
 
         // TODO - consider sending commands to:
         // 1. stop listening to chains if no triggers remain for them
@@ -770,8 +830,130 @@ impl TriggerManager {
                                 }
                             }
                         }
-                        // There is no WatchStellarContractEvents command because we need the rpc_id to add filters,
-                        // so we already added the filters earlier
+                        // There is no `WatchStellarContractEvents` command for *trigger* filters
+                        // because they need the rpc_id round-tripped — they're added inline in
+                        // `lookup_maps.add_service`. Service-URI subscriptions don't need that:
+                        // we match incoming events by service-manager address + topic at dispatch
+                        // time, so we can fire-and-forget here.
+                        TriggerCommand::WatchStellarServiceUri {
+                            service_id,
+                            chain,
+                            project_root,
+                        } => {
+                            use stellar_xdr::curr::{ScSymbol, ScVal, StringM};
+                            use streams::stellar_stream::filters::StellarEventFilter;
+                            use warpdrive_types::StellarTopicSegment;
+
+                            // Topic name MUST match the soroban-sdk
+                            // `#[contractevent]` macro's symbol-derivation rule
+                            // (snake_case of the struct name) for `UpdatedSpecRepo`
+                            // in `warpdrive-contracts/.../project_root.rs`. If
+                            // either the macro behavior or the struct name changes,
+                            // this filter silently won't match — symptom is
+                            // `wait_for_service_update` timing out with no events
+                            // dispatched.
+                            let topic = match StringM::try_from("updated_spec_repo".as_bytes()) {
+                                Ok(s) => ScVal::Symbol(ScSymbol(s)),
+                                Err(err) => {
+                                    tracing::error!(
+                                        ?err,
+                                        "Failed to encode 'updated_spec_repo' topic symbol"
+                                    );
+                                    continue;
+                                }
+                            };
+                            let filter = match StellarEventFilter::new(
+                                project_root.to_string(),
+                                vec![StellarTopicSegment::Exact(topic)],
+                            ) {
+                                Ok(f) => f,
+                                Err(err) => {
+                                    tracing::error!(
+                                        ?err,
+                                        chain = %chain,
+                                        project_root = %project_root,
+                                        "Failed to build UpdatedSpecRepo event filter"
+                                    );
+                                    continue;
+                                }
+                            };
+                            match self.stellar_controllers.read().unwrap().get(&chain) {
+                                Some(controller) => {
+                                    match controller
+                                        .client
+                                        .update_event_filters(|f| f.add_filter(filter))
+                                    {
+                                        Ok(rpc_id) => {
+                                            self.stellar_uri_subscriptions.write().unwrap().insert(
+                                                service_id.clone(),
+                                                (chain.clone(), rpc_id),
+                                            );
+                                            tracing::debug!(
+                                                chain = %chain,
+                                                project_root = %project_root,
+                                                service_id = %service_id,
+                                                "Registered UpdatedSpecRepo subscription"
+                                            );
+                                        }
+                                        Err(err) => {
+                                            tracing::error!(
+                                                ?err,
+                                                chain = %chain,
+                                                project_root = %project_root,
+                                                "Failed to register UpdatedSpecRepo filter"
+                                            );
+                                        }
+                                    }
+                                }
+                                None => {
+                                    tracing::error!(
+                                        chain = %chain,
+                                        "No Stellar controller for chain when registering UpdatedSpecRepo filter"
+                                    );
+                                    continue;
+                                }
+                            }
+                        }
+                        TriggerCommand::UnwatchStellarServiceUri { service_id } => {
+                            let entry = self
+                                .stellar_uri_subscriptions
+                                .write()
+                                .unwrap()
+                                .remove(&service_id);
+                            let (chain, rpc_id) = match entry {
+                                Some(v) => v,
+                                None => {
+                                    tracing::debug!(
+                                        service_id = %service_id,
+                                        "UnwatchStellarServiceUri: no subscription tracked, nothing to do"
+                                    );
+                                    continue;
+                                }
+                            };
+                            match self.stellar_controllers.read().unwrap().get(&chain) {
+                                Some(controller) => {
+                                    controller
+                                        .client
+                                        .update_event_filters(|f| f.remove_filter_by_id(rpc_id));
+                                    tracing::debug!(
+                                        chain = %chain,
+                                        service_id = %service_id,
+                                        "Removed UpdatedSpecRepo subscription"
+                                    );
+                                }
+                                None => {
+                                    // Controller is gone (e.g. shutdown) — the
+                                    // filter went with it, so the bookkeeping
+                                    // entry we already removed above is
+                                    // sufficient.
+                                    tracing::debug!(
+                                        chain = %chain,
+                                        service_id = %service_id,
+                                        "UnwatchStellarServiceUri: no controller for chain (already gone)"
+                                    );
+                                }
+                            }
+                        }
                         TriggerCommand::WatchStellarBlocks { chain } => {
                             match self.stellar_controllers.read().unwrap().get(&chain) {
                                 Some(controller) => {
@@ -947,7 +1129,57 @@ impl TriggerManager {
                     value,
                     rpc_ids,
                 } => {
-                    // TODO - see if it's a ServiceURIUpdated for service manager
+                    // First: is this an `UpdatedSpecRepo` event from a
+                    // registered Stellar service manager? Match on
+                    // (contract_id, topic[0]) directly using the existing
+                    // `service_manager` BiMap — no per-service rpc_id
+                    // tracking needed because we filter by topic at
+                    // registration time and check it again here for safety
+                    // (in case some other filter on the same project_root
+                    // contract gets added later).
+                    if is_updated_spec_repo_topic(&topic_segments) {
+                        if let Ok(parsed) = stellar_strkey::Contract::from_string(&contract_id) {
+                            let chain_addr = warpdrive_types::ChainAddress::Stellar(parsed);
+                            let service_id_opt = self
+                                .lookup_maps
+                                .service_manager
+                                .read()
+                                .unwrap()
+                                .get_by_right(&chain_addr)
+                                .cloned();
+                            if let Some(service_id) = service_id_opt {
+                                match decode_stellar_event_string_field(&value, "repo") {
+                                    Some(uri_str) => match UriString::try_from(uri_str.clone()) {
+                                        Ok(uri) => {
+                                            tracing::info!(
+                                                service_id = %service_id,
+                                                contract = %contract_id,
+                                                new_uri = %uri_str,
+                                                "Stellar UpdatedSpecRepo event → ChangeServiceUri"
+                                            );
+                                            dispatcher_commands.push(
+                                                DispatcherCommand::ChangeServiceUri {
+                                                    service_id: service_id.clone(),
+                                                    uri,
+                                                },
+                                            );
+                                        }
+                                        Err(err) => {
+                                            tracing::warn!(
+                                                ?err,
+                                                "Stellar UpdatedSpecRepo payload was not a valid URI; skipping"
+                                            );
+                                        }
+                                    },
+                                    None => {
+                                        tracing::warn!(
+                                            "Stellar UpdatedSpecRepo event value did not decode to repo:String; skipping"
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
 
                     // Handle regular events
 
@@ -1312,6 +1544,63 @@ impl TriggerManager {
     #[cfg(feature = "dev")]
     pub fn get_lookup_maps(&self) -> &Arc<LookupMaps> {
         &self.lookup_maps
+    }
+}
+
+/// True iff `topic_segments[0]` decodes to `Symbol("updated_spec_repo")`.
+/// Lets the StellarEvent dispatcher distinguish `UpdatedSpecRepo` events
+/// from triggers that happen to share a contract id. Topic name MUST stay
+/// in sync with `warpdrive-contracts/.../project_root.rs` `UpdatedSpecRepo`
+/// (snake_case of the struct name, per soroban-sdk's `#[contractevent]`).
+fn is_updated_spec_repo_topic(topic_segments: &[String]) -> bool {
+    use base64::{engine::general_purpose::STANDARD, Engine};
+    use stellar_xdr::curr::{Limits, ReadXdr, ScSymbol, ScVal};
+    let Some(first) = topic_segments.first() else {
+        return false;
+    };
+    let Ok(bytes) = STANDARD.decode(first) else {
+        return false;
+    };
+    let Ok(scval) = ScVal::from_xdr(&bytes, Limits::none()) else {
+        return false;
+    };
+    matches!(
+        scval,
+        ScVal::Symbol(ScSymbol(ref s)) if s.as_slice() == b"updated_spec_repo"
+    )
+}
+
+/// Decode the `value` field of a Stellar contract event (XDR-base64 of an
+/// `ScVal`) into the named string field's value.
+///
+/// `#[contractevent]` on a struct like `UpdatedSpecRepo { repo: String }`
+/// publishes the data as `ScVal::Map { Symbol(field_name) -> ScVal::String(value) }`.
+/// We pull out the entry matching `field_name` and return its string. Also
+/// handles the bare `ScVal::String` case for events that happen to have a
+/// single-string data layout.
+///
+/// Returns `None` for any decode failure or shape mismatch so callers can
+/// log + skip without aborting.
+fn decode_stellar_event_string_field(value_xdr_base64: &str, field_name: &str) -> Option<String> {
+    use base64::{engine::general_purpose::STANDARD, Engine};
+    use stellar_xdr::curr::{Limits, ReadXdr, ScString, ScSymbol, ScVal};
+    let bytes = STANDARD.decode(value_xdr_base64).ok()?;
+    let scval = ScVal::from_xdr(&bytes, Limits::none()).ok()?;
+    match scval {
+        ScVal::String(ScString(s)) => String::from_utf8(s.as_slice().to_vec()).ok(),
+        ScVal::Map(Some(map)) => {
+            for entry in map.iter() {
+                if let ScVal::Symbol(ScSymbol(sym)) = &entry.key {
+                    if sym.as_slice() == field_name.as_bytes() {
+                        if let ScVal::String(ScString(s)) = &entry.val {
+                            return String::from_utf8(s.as_slice().to_vec()).ok();
+                        }
+                    }
+                }
+            }
+            None
+        }
+        _ => None,
     }
 }
 

@@ -86,16 +86,26 @@ impl HttpClient {
                     provider,
                     service_uri,
                 } => {
-                    let address = service_manager.address().try_into()?;
-                    self.evm_set_service_url(provider, address, service_uri.to_string())
+                    let ServiceManager::Evm { address, .. } = &service_manager else {
+                        anyhow::bail!(
+                            "SetServiceUriArgs::Evm requires an EVM service manager, got {:?}",
+                            service_manager
+                        );
+                    };
+                    self.evm_set_service_url(provider, *address, service_uri.to_string())
                         .await?;
                 }
                 SetServiceUriArgs::Cosmos {
                     client,
                     service_uri,
                 } => {
-                    let address = service_manager.address().try_into()?;
-                    self.cosmos_set_service_url(client, address, service_uri.to_string())
+                    let ServiceManager::Cosmos { address, .. } = &service_manager else {
+                        anyhow::bail!(
+                            "SetServiceUriArgs::Cosmos requires a Cosmos service manager, got {:?}",
+                            service_manager
+                        );
+                    };
+                    self.cosmos_set_service_url(client, address.clone(), service_uri.to_string())
                         .await?;
                 }
             }
@@ -128,6 +138,7 @@ impl HttpClient {
         let (chain, address) = match &service_manager {
             ServiceManager::Evm { chain, address } => (chain, address.to_string()),
             ServiceManager::Cosmos { chain, address } => (chain, address.to_string()),
+            ServiceManager::Stellar { chain, address } => (chain, format!("{}", address)),
         };
         let service = self.get_service_from_node(chain, &address).await?;
 
@@ -297,7 +308,8 @@ impl HttpClient {
 
                 let (chain, address) = match &service.manager {
                     ServiceManager::Evm { chain, address } => (chain, address.to_string()),
-                    ServiceManager::Cosmos { chain, address} => (chain, address.to_string())
+                    ServiceManager::Cosmos { chain, address} => (chain, address.to_string()),
+                    ServiceManager::Stellar { chain, address } => (chain, format!("{}", address)),
                 };
                 if let Ok(current_service) = self.get_service_from_node(chain, &address).await {
                     if current_service.hash()? == service_hash {

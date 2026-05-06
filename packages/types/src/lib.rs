@@ -1,5 +1,6 @@
 mod aggregator_types;
 mod bytes;
+mod chain_address;
 mod chain_config;
 pub mod contracts;
 mod credential;
@@ -15,6 +16,7 @@ mod time;
 pub const WARPDRIVE_ENV_PREFIX: &str = "WARPDRIVE_ENV";
 pub use aggregator_types::*;
 pub use bytes::*;
+pub use chain_address::*;
 pub use chain_config::*;
 pub use credential::*;
 pub use http::*;

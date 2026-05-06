@@ -35,6 +35,11 @@ interface chain {
     raw-bytes: list<u8>,
   }
 
+  record stellar-address {
+    /// Soroban contract id, raw 32 bytes (the payload of a `C...` strkey).
+    raw-bytes: list<u8>,
+  }
+
   record evm-event-log-data {
     /// the raw log topics that can be decoded into an event
     topics: list<list<u8>>,
@@ -174,7 +179,7 @@ interface events {
 
 interface service {
   use core.{digest, timestamp};
-  use chain.{chain-key, evm-address, cosmos-address};
+  use chain.{chain-key, evm-address, cosmos-address, stellar-address};
 
   /// Basic types
   type service-id = string;
@@ -200,9 +205,18 @@ interface service {
     address: cosmos-address,
   }
 
+  record stellar-manager {
+    chain: chain-key,
+    /// The deployed `project_root` Soroban contract; the rest of the
+    /// warpdrive contract stack (security/verification/handlers) is
+    /// reachable from it.
+    address: stellar-address,
+  }
+
   variant service-manager {
     evm(evm-manager),
     cosmos(cosmos-manager),
+    stellar(stellar-manager),
   }
 
   record component-source-download {

@@ -560,6 +560,7 @@ impl Aggregator {
             .run(action.chain().clone(), {
                 let _self = self.clone();
                 let queue = queue.clone();
+                let service_clone = service.clone();
                 move || async move {
                     match action {
                         SubmitAction::Evm(action) => {
@@ -585,6 +586,27 @@ impl Aggregator {
 
                             _self
                                 .handle_action_submit_cosmos(client, &queue, action)
+                                .await
+                                .map(Some)
+                        }
+                        SubmitAction::Stellar(action) => {
+                            let signing_key = match _self.get_stellar_signing_key() {
+                                Some(k) => k,
+                                None => {
+                                    tracing::warn!(
+                                        chain = %action.chain,
+                                        "Aggregator: Missing Stellar credential; skipping submission"
+                                    );
+                                    return Ok(None);
+                                }
+                            };
+                            _self
+                                .handle_action_submit_stellar(
+                                    signing_key,
+                                    &service_clone,
+                                    &queue,
+                                    action,
+                                )
                                 .await
                                 .map(Some)
                         }
@@ -636,18 +658,20 @@ impl Aggregator {
             }
 
             Err(err) => {
-                // Handle submission errors with appropriate logging
-                let err_str = format!("{:?}", err);
-                if err_str.contains("SignerNotRegistered") || err_str.contains("0x3dda1739") {
-                    // Transient error: Vectors are still being registered on-chain
-                    // Common during startup, especially with PoA middleware which does
-                    // sequential vector registration via multiple docker exec calls
+                // Transient: vectors are still being registered on-chain
+                // (common during startup, especially with PoA middleware
+                // whose sequential docker-exec calls are slow). Both EVM
+                // and Stellar submission paths produce this variant —
+                // EVM detects the `SignerNotRegistered()` Solidity
+                // selector (0x3dda1739), Stellar detects contract error
+                // code #302.
+                if matches!(err, AggregatorError::SignerNotRegistered(_)) {
                     tracing::warn!(
                         "Aggregator: Signer not registered yet for submission {}. Will retry when vectors complete registration.",
                         submission.label()
                     );
                 } else {
-                    // Unexpected error: Log as error for investigation
+                    // Unexpected error: log as error for investigation.
                     tracing::error!(
                         "Aggregator: Error submitting on-chain for submission {}: {:?}",
                         submission.label(),
@@ -676,6 +700,7 @@ impl Aggregator {
                                 AnyTxHash::Evm(transaction_receipt.transaction_hash.to_vec())
                             }
                             AnyTransactionReceipt::Cosmos(tx_hash) => AnyTxHash::Cosmos(tx_hash),
+                            AnyTransactionReceipt::Stellar(tx_hash) => AnyTxHash::Stellar(tx_hash),
                         })
                         .map_err(|err| err.to_string()),
                 },
@@ -730,6 +755,15 @@ impl Aggregator {
         }
 
         Ok(Some(client))
+    }
+
+    /// Parse `aggregator_stellar_credential` (an ed25519 secret in `S...`
+    /// strkey form) into a signing key. Lightweight enough that we don't
+    /// bother caching: callers hit this once per submission.
+    fn get_stellar_signing_key(&self) -> Option<ed25519_dalek::SigningKey> {
+        let credential = self.config.aggregator_stellar_credential.as_ref()?;
+        let secret = stellar_strkey::ed25519::PrivateKey::from_string(credential.as_str()).ok()?;
+        Some(ed25519_dalek::SigningKey::from_bytes(&secret.0))
     }
 
     async fn get_cosmos_client(

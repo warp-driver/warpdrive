@@ -54,6 +54,7 @@ impl Default for QuorumQueue {
 pub enum SubmitAction {
     Evm(EvmSubmitAction),
     Cosmos(CosmosSubmitAction),
+    Stellar(StellarSubmitAction),
 }
 
 impl SubmitAction {
@@ -61,6 +62,7 @@ impl SubmitAction {
         match self {
             SubmitAction::Evm(action) => &action.chain,
             SubmitAction::Cosmos(action) => &action.chain,
+            SubmitAction::Stellar(action) => &action.chain,
         }
     }
 }
@@ -104,6 +106,32 @@ pub struct CosmosSubmitAction {
     pub chain: ChainKey,
     pub address: CosmosAddr,
     pub gas_price: Option<u128>,
+}
+
+#[derive(
+    Serialize,
+    Deserialize,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    Hash,
+    PartialOrd,
+    Ord,
+    bincode::Encode,
+    bincode::Decode,
+    ToSchema,
+)]
+pub struct StellarSubmitAction {
+    pub chain: ChainKey,
+    /// Soroban contract id (raw 32 bytes). The strkey "C..." form is
+    /// recoverable via `stellar_strkey::Contract(address).to_string()`. We
+    /// store raw bytes here so the type works with `bincode` (which
+    /// `stellar_strkey::Contract` doesn't support).
+    pub address: [u8; 32],
+    // No `gas_price`: Stellar uses fee bumps, not a per-tx gas-price
+    // scalar. If we ever expose fee-bump configuration to components, add
+    // a typed field for that here rather than reusing `gas_price`.
 }
 
 #[derive(

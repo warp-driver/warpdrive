@@ -11,6 +11,7 @@ use utils::{
     test_utils::middleware::{
         cosmos::{CosmosMiddleware, CosmosMiddlewareKind},
         evm::EvmMiddleware,
+        stellar::StellarMiddleware,
     },
 };
 use warpdrive::dispatcher::Dispatcher;
@@ -26,6 +27,7 @@ pub struct AppHandles {
     /// One handle per WarpDrive vector instance
     pub wavs_handles: Vec<std::thread::JoinHandle<()>>,
     pub evm_middleware: Option<EvmMiddleware>,
+    pub stellar_middleware: Option<StellarMiddleware>,
     pub cosmos_middlewares: CosmosMiddlewares,
     _evm_chains: Vec<EvmInstance>,
     _cosmos_chains: Vec<CosmosInstance>,
@@ -36,15 +38,43 @@ pub type CosmosMiddlewares = Arc<HashMap<ChainKey, CosmosMiddleware>>;
 impl AppHandles {
     pub fn start(ctx: &AppContext, configs: &mut Configs, metrics: Metrics) -> Self {
         let mut evm_chains = Vec::new();
-        let mut cosmos_chains = Vec::new();
+        let evm_middleware;
 
+        let mut cosmos_chains = Vec::new();
         let mut cosmos_middlewares = HashMap::new();
+
+        let stellar_middleware;
+
         {
             let chains = configs.chains.read().unwrap();
             for chain_config in chains.evm_iter() {
                 let handle = EvmInstance::spawn(ctx.clone(), configs, chain_config.clone());
                 evm_chains.push(handle);
             }
+
+            evm_middleware = if chains.evm_iter().next().is_some() {
+                Some(EvmMiddleware::new(configs.evm_middleware_type).unwrap())
+            } else {
+                None
+            };
+
+            stellar_middleware = if let Some(stellar_chain_config) = chains.stellar_iter().next() {
+                let deployer_secret = configs
+                    .mnemonics
+                    .stellar_middleware
+                    .as_ref()
+                    .expect("stellar deployer secret missing despite stellar chain enabled");
+                Some(
+                    ctx.rt
+                        .block_on(StellarMiddleware::new(
+                            stellar_chain_config,
+                            deployer_secret.as_str(),
+                        ))
+                        .unwrap(),
+                )
+            } else {
+                None
+            };
 
             for (index, chain_config) in chains.cosmos_iter().enumerate() {
                 let handle =
@@ -86,15 +116,10 @@ impl AppHandles {
             }
         }
 
-        let evm_middleware = if evm_chains.is_empty() {
-            None
-        } else {
-            Some(EvmMiddleware::new(configs.evm_middleware_type).unwrap())
-        };
-
         Self {
             wavs_handles,
             evm_middleware,
+            stellar_middleware,
             cosmos_middlewares: Arc::new(cosmos_middlewares),
             _evm_chains: evm_chains,
             _cosmos_chains: cosmos_chains,

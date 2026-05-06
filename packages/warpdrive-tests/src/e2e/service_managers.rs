@@ -5,6 +5,7 @@ use utils::test_utils::{
     middleware::{
         cosmos::CosmosServiceManager,
         evm::{EvmMiddleware, MiddlewareServiceManagerConfig},
+        stellar::{SignerScheme, StellarMiddleware, StellarServiceManager},
         vector::AvsOperator,
     },
     mock_service_manager::MockEvmServiceManager,
@@ -42,6 +43,11 @@ pub enum AnyServiceManagerInstance {
         chain: ChainKey,
         manager: CosmosServiceManager,
     },
+    Stellar {
+        chain: ChainKey,
+        manager: StellarServiceManager,
+        middleware: StellarMiddleware,
+    },
 }
 
 impl ServiceManagers {
@@ -60,6 +66,7 @@ impl ServiceManagers {
         clients: &Clients,
         evm_middleware: Option<EvmMiddleware>,
         cosmos_middlewares: CosmosMiddlewares,
+        stellar_middleware: Option<StellarMiddleware>,
     ) {
         tracing::warn!("WarpDrive Concurrency: {}", self.configs.wavs_concurrency);
         tracing::warn!(
@@ -67,8 +74,14 @@ impl ServiceManagers {
             self.configs.middleware_concurrency
         );
         tracing::warn!("Bootstrapping service managers...");
-        self.deploy_service_managers(registry, clients, evm_middleware, cosmos_middlewares)
-            .await;
+        self.deploy_service_managers(
+            registry,
+            clients,
+            evm_middleware,
+            cosmos_middlewares,
+            stellar_middleware,
+        )
+        .await;
         tracing::warn!("Bootstrapping initial service uris...");
         self.set_initial_service_uris(registry, clients).await;
         tracing::warn!("Bootstrapping initial services...");
@@ -87,6 +100,10 @@ impl ServiceManagers {
                 chain: chain.clone(),
                 address: manager.address.clone(),
             },
+            AnyServiceManagerInstance::Stellar { chain, manager, .. } => ServiceManager::Stellar {
+                chain: chain.clone(),
+                address: manager.project_root,
+            },
         }
     }
 
@@ -96,6 +113,7 @@ impl ServiceManagers {
         clients: &Clients,
         evm_middleware: Option<EvmMiddleware>,
         cosmos_middlewares: CosmosMiddlewares,
+        stellar_middleware: Option<StellarMiddleware>,
     ) {
         let mut lookup = HashMap::new();
 
@@ -109,6 +127,7 @@ impl ServiceManagers {
             futures.push({
                 let evm_middleware = evm_middleware.clone();
                 let cosmos_middlewares = cosmos_middlewares.clone();
+                let stellar_middleware = stellar_middleware.clone();
                 async move {
                     match chain.namespace.as_str() {
                         ChainKeyNamespace::EVM => {
@@ -137,6 +156,29 @@ impl ServiceManagers {
                             (
                                 test.name.clone(),
                                 AnyServiceManagerInstance::Cosmos { manager, chain },
+                            )
+                        }
+                        ChainKeyNamespace::STELLAR => {
+                            let middleware = stellar_middleware
+                                .clone()
+                                .expect("stellar middleware not initialized");
+                            tracing::info!(
+                                "Deploying stellar service manager for test {}",
+                                test.name
+                            );
+                            let manager = middleware.deploy_service_manager().await.unwrap();
+                            tracing::info!(
+                                "Stellar Service manager for test {} project_root is {}",
+                                test.name,
+                                manager.project_root
+                            );
+                            (
+                                test.name.clone(),
+                                AnyServiceManagerInstance::Stellar {
+                                    manager,
+                                    chain,
+                                    middleware,
+                                },
                             )
                         }
                         other => panic!("Unsupported chain namespace: {}", other),
@@ -193,6 +235,16 @@ impl ServiceManagers {
                     }
                     AnyServiceManagerInstance::Cosmos { manager, .. } => {
                         manager.set_service_uri(&service_url).await.unwrap();
+                    }
+                    AnyServiceManagerInstance::Stellar {
+                        manager,
+                        middleware,
+                        ..
+                    } => {
+                        middleware
+                            .set_service_uri(&manager.deploy_file_path, &service_url)
+                            .await
+                            .unwrap();
                     }
                 }
             });
@@ -339,6 +391,71 @@ impl ServiceManagers {
                             manager.register_operator(vector.clone()).await.unwrap();
                         }
                     }
+                    AnyServiceManagerInstance::Stellar {
+                        manager,
+                        middleware,
+                        ..
+                    } => {
+                        // IMPORTANT: operators use the **same secp256k1
+                        // signing key** across EVM, Cosmos, and Stellar — what
+                        // differs is only how that key is materialized for
+                        // each chain's signer-set:
+                        //
+                        //   - EVM:     signer's 20-byte address = keccak256(uncompressed_pubkey)[12..]
+                        //   - Cosmos:  signer's bech32 address derived from the same secp256k1 pubkey
+                        //   - Stellar: signer is the **33-byte compressed
+                        //              secp256k1 public key**, registered as
+                        //              hex on `secp256k1_security`. We pass
+                        //              the same key bytes through soroban-sdk
+                        //              ed25519 verifier? No — secp256k1 has its
+                        //              own contract on stellar (the Warpdrive
+                        //              contracts repo deploys both
+                        //              `secp256k1_security` AND
+                        //              `ed25519_security`; we only register on
+                        //              the secp256k1 side because operators
+                        //              sign with secp256k1).
+                        //
+                        // Derivation: alloy stores the key as a 32-byte
+                        // private scalar; we reconstruct `k256::SigningKey`
+                        // from it and call `verifying_key().to_sec1_bytes()`
+                        // for the compressed (0x02 || x | 0x03 || x) form.
+                        // This matches the test-vectors helper in
+                        // `warpdrive-contracts/tools/test-vectors`.
+                        //
+                        // Threshold maps directly: `required_to_pass /
+                        // num_vectors` (e.g. 2/3 for multi-vector).
+                        let denominator = std::cmp::max(num_vectors, 1) as u32;
+                        for operator in &avs_operators {
+                            let private_hex = operator
+                                .signer_private_key
+                                .as_ref()
+                                .expect("AvsOperator missing signer_private_key");
+                            let private_bytes = const_hex::decode(private_hex)
+                                .expect("operator signer_private_key not valid hex");
+                            let secp_key = k256::ecdsa::SigningKey::from_slice(&private_bytes)
+                                .expect("operator signer_private_key not a valid secp256k1 key");
+                            let compressed_pubkey = secp_key.verifying_key().to_sec1_bytes();
+                            let pubkey_hex = const_hex::encode(&compressed_pubkey);
+                            middleware
+                                .add_signer(
+                                    &manager.deploy_file_path,
+                                    SignerScheme::Secp256k1,
+                                    &pubkey_hex,
+                                    operator.weight as u32,
+                                )
+                                .await
+                                .unwrap();
+                        }
+                        middleware
+                            .set_threshold(
+                                &manager.deploy_file_path,
+                                SignerScheme::Secp256k1,
+                                required_to_pass as u32,
+                                denominator,
+                            )
+                            .await
+                            .unwrap();
+                    }
                 }
             });
         }
@@ -364,6 +481,13 @@ impl ServiceManagers {
 
         for test in registry.list_all() {
             let service_manager = self.get_service_manager(&test.name);
+            // Pull the StellarServiceManager out of the lookup if this test
+            // has one — the deploy_submit_contract Stellar arm needs the
+            // verification_contract address from its manifest.
+            let stellar_service_manager = self.lookup.get(&test.name).and_then(|inst| match inst {
+                AnyServiceManagerInstance::Stellar { manager, .. } => Some(manager.clone()),
+                _ => None,
+            });
 
             futures.push(create_service_for_test(
                 test,
@@ -371,6 +495,7 @@ impl ServiceManagers {
                 component_sources,
                 service_manager,
                 cosmos_code_map.clone(),
+                stellar_service_manager,
             ));
         }
 
@@ -423,44 +548,36 @@ impl ServiceManagers {
                     AnyServiceManagerInstance::Cosmos { manager, .. } => {
                         manager.set_service_uri(&service_url).await.unwrap();
                     }
-                }
-
-                // Directly add the service to ALL instances using the dev endpoint
-                // This bypasses on-chain event detection which may not work reliably
-                // across multiple WarpDrive instances in the test environment
-                for (idx, http_client) in http_clients.iter().enumerate() {
-                    tracing::info!(
-                        "Directly adding service to instance {} for service {}",
-                        idx,
-                        service.name
-                    );
-                    // Ignore "already registered" errors - the instance may have
-                    // already received the service via on-chain event detection
-                    match http_client.dev_add_service_direct(&service).await {
-                        Ok(_) => {
-                            tracing::info!(
-                                "Service directly added to instance {} for service {}",
-                                idx,
-                                service.name
-                            );
-                        }
-                        Err(e) if e.to_string().contains("already registered") => {
-                            tracing::info!(
-                                "Service already registered on instance {} for service {} (via on-chain detection)",
-                                idx,
-                                service.name
-                            );
-                        }
-                        Err(e) => {
-                            panic!(
-                                "Failed to add service to instance {} for service {}: {}",
-                                idx, service.name, e
-                            );
-                        }
+                    AnyServiceManagerInstance::Stellar {
+                        manager,
+                        middleware,
+                        ..
+                    } => {
+                        middleware
+                            .set_service_uri(&manager.deploy_file_path, &service_url)
+                            .await
+                            .unwrap();
                     }
                 }
 
-                // Wait for service update on all WarpDrive instances (should be instant now)
+                // No more `dev_add_service_direct` shortcut: we just set
+                // the URI on chain (above) and rely on each WarpDrive
+                // instance picking up the change via its native detection
+                // path — EVM `ServiceURIUpdated` log, Cosmos wasm event,
+                // Stellar service-URI poller. The wait below is what
+                // actually blocks until propagation completes.
+
+                // Wait for service update on all WarpDrive instances.
+                // Stellar manager? Allow extra propagation time — testnet
+                // ledger close + RPC indexing delay can comfortably push
+                // past 30s, especially under load. EVM/Cosmos use anvil /
+                // local cosmwasm so the default suffices.
+                let wait_timeout = match &service.manager {
+                    warpdrive_types::ServiceManager::Stellar { .. } => {
+                        Some(std::time::Duration::from_secs(120))
+                    }
+                    _ => None,
+                };
                 for (idx, http_client) in http_clients.iter().enumerate() {
                     tracing::info!(
                         "Waiting for service update on instance {} for service {}",
@@ -468,7 +585,7 @@ impl ServiceManagers {
                         service.name
                     );
                     http_client
-                        .wait_for_service_update(&service, None)
+                        .wait_for_service_update(&service, wait_timeout)
                         .await
                         .unwrap();
                     tracing::info!(

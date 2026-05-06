@@ -97,6 +97,20 @@ impl From<component_chain::EvmAddress> for alloy_primitives::Address {
     }
 }
 
+impl TryFrom<component_chain::StellarAddress> for stellar_strkey::Contract {
+    type Error = anyhow::Error;
+
+    fn try_from(address: component_chain::StellarAddress) -> Result<Self, Self::Error> {
+        let bytes: [u8; 32] = address.raw_bytes.as_slice().try_into().map_err(|_| {
+            anyhow::anyhow!(
+                "stellar contract id must be 32 bytes, got {}",
+                address.raw_bytes.len()
+            )
+        })?;
+        Ok(stellar_strkey::Contract(bytes))
+    }
+}
+
 impl From<component_core::Timestamp> for warpdrive_types::Timestamp {
     fn from(src: component_core::Timestamp) -> Self {
         warpdrive_types::Timestamp::from_nanos(src.nanos)
@@ -240,6 +254,12 @@ impl TryFrom<component_service::ServiceManager> for warpdrive_types::ServiceMana
                     address: cosmos.address.into(),
                 }
             }
+            component_service::ServiceManager::Stellar(stellar) => {
+                warpdrive_types::ServiceManager::Stellar {
+                    chain: stellar.chain.parse()?,
+                    address: stellar.address.try_into()?,
+                }
+            }
         })
     }
 }
@@ -330,6 +350,24 @@ impl TryFrom<aggregator_output::SubmitAction> for warpdrive_types::SubmitAction 
                     chain: action.chain.parse()?,
                     address: action.address.try_into()?,
                     gas_price: action.gas_price.map(|x| x.into()),
+                })
+            }
+            aggregator_output::SubmitAction::Stellar(action) => {
+                let bytes: [u8; 32] =
+                    action
+                        .address
+                        .raw_bytes
+                        .as_slice()
+                        .try_into()
+                        .map_err(|_| {
+                            anyhow::anyhow!(
+                                "Stellar contract id must be 32 bytes, got {}",
+                                action.address.raw_bytes.len()
+                            )
+                        })?;
+                warpdrive_types::SubmitAction::Stellar(warpdrive_types::StellarSubmitAction {
+                    chain: action.chain.parse()?,
+                    address: bytes,
                 })
             }
         })
