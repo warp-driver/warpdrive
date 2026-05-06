@@ -256,24 +256,25 @@ impl Aggregator {
     /// Submit a queue of signed envelopes to a Stellar mock_submit (or any
     /// `EthereumHandler`-shaped) contract via warpdrive-client.
     ///
-    /// Walks the queue, recovers the compressed secp256k1 public key from
-    /// each WavsSignature (operators sign with the same secp256k1 key
-    /// they use everywhere — the chain just consumes a different
+    /// Recovers the compressed secp256k1 public key from each
+    /// `WavsSignature` (operators sign with the same secp256k1 key they
+    /// use everywhere — the chain just consumes a different
     /// representation), sorts by pubkey ascending (the verification
-    /// contract requires sorted input), runs the same per-signature
-    /// `check_one` + `required_weight` pre-flight as the EVM path does
-    /// against `IWavsServiceManager.validate`, then calls `verify_eth`
-    /// on the destination handler contract.
+    /// contract requires sorted input), then calls `verify_eth` on the
+    /// handler contract.
     ///
-    /// Pre-flight failures are translated into typed `AggregatorError`
-    /// variants so the dispatch loop's queue-save-and-retry machinery
-    /// kicks in:
-    /// - **Insufficient summed weight** → `InsufficientQuorum` (queue is
-    ///   saved, retried when the next vector signs).
-    /// - **Any signer not registered yet** → error stringified as
-    ///   `SignerNotRegistered` so the substring detection in
-    ///   `aggregator.rs::handle_submit_action` recognizes it as
-    ///   transient (common during multi-vector registration races).
+    /// `verify_eth` invokes a transaction simulation before signing &
+    /// submitting. The handler delegates to the secp256k1 verification
+    /// contract, which panics with a `VerifyError` code on bad
+    /// signatures, unregistered signers, or insufficient weight — those
+    /// surface in the simulation result with no fee paid. We translate
+    /// the relevant codes to typed `AggregatorError` variants:
+    ///   - `#302 SignerNotRegistered` → `Stellar(SignerNotRegistered ...)`
+    ///     (string-tagged so the dispatch loop recognizes it as
+    ///     transient and retries when the next vector signs).
+    ///   - `#303 InsufficientWeight` → `InsufficientQuorum` (queue saved,
+    ///     retried when the next vector signs).
+    ///   - other codes → `Stellar(...)`.
     pub async fn handle_action_submit_stellar(
         &self,
         signing_key: ed25519_dalek::SigningKey,
@@ -282,10 +283,8 @@ impl Aggregator {
         action: StellarSubmitAction,
     ) -> Result<AnyTransactionReceipt, AggregatorError> {
         use k256::ecdsa::{RecoveryId, Signature as K256Sig, VerifyingKey};
-        use warpdrive_client::project_root::{ProjectRootClient, VerificationType};
-        use warpdrive_client::secp256k1_verification::Secp256k1VerificationClient;
 
-        // ── Resolve chain config + project_root from the service manager.
+        // ── Resolve chain config (RPC URL / network passphrase).
         let chain_configs = self.config.chains.read().unwrap().clone();
         let stellar_chain_config = chain_configs
             .get_chain(&action.chain)
@@ -297,14 +296,12 @@ impl Aggregator {
                 AggregatorError::Stellar(format!("no Stellar chain config for {}", action.chain))
             })?;
 
-        let project_root = match &service.manager {
-            ServiceManager::Stellar { address, .. } => *address,
-            other => {
-                return Err(AggregatorError::Stellar(format!(
-                    "stellar submit on non-stellar service manager: {other:?}"
-                )));
-            }
-        };
+        if !matches!(&service.manager, ServiceManager::Stellar { .. }) {
+            return Err(AggregatorError::Stellar(format!(
+                "stellar submit on non-stellar service manager: {:?}",
+                service.manager
+            )));
+        }
 
         // ── Build envelope bytes + the EIP-191 prehash that operators signed.
         let envelope = queue
@@ -380,106 +377,18 @@ impl Aggregator {
             .map_err(|e| AggregatorError::BlockNumber(anyhow::anyhow!("{e:?}")))?
             .sequence;
 
-        // ── Build a soroban env once; the verification + handler clients
-        // share it. The signing key here only matters for write txs; for
-        // the verification queries below it just supplies a source account
-        // (the simulation never validates the signature).
+        // ── Build the soroban env + source account for the handler call.
         let env = soroban_rs::Env::new(soroban_rs::EnvConfigs {
             rpc_url: stellar_chain_config.rpc_url.clone(),
             network_passphrase: stellar_chain_config.network_passphrase.clone(),
         })
         .map_err(|e| AggregatorError::Stellar(format!("soroban env: {e:?}")))?;
-        let account = soroban_rs::Account::single(soroban_rs::Signer::new(signing_key.clone()));
+        let account = soroban_rs::Account::single(soroban_rs::Signer::new(signing_key));
 
-        // ── Pre-flight validation: walk to verification_contract via
-        // project_root (matching the design spec), then check_one each
-        // signature and tally weights against required_weight.
-        let project_root_cfg = soroban_rs::ClientContractConfigs {
-            contract_id: project_root,
-            env: env.clone(),
-            source_account: account.clone(),
-        };
-        let project_root_client = ProjectRootClient::new(project_root_cfg);
-        match project_root_client.verification_type().await.map_err(|e| {
-            AggregatorError::Stellar(format!(
-                "ProjectRoot::verification_type query failed: {e:?}"
-            ))
-        })? {
-            VerificationType::Ethereum => {}
-            VerificationType::Stellar => {
-                return Err(AggregatorError::Stellar(
-                    "VerificationType::Stellar (ed25519/SEP-0053) is not supported yet — \
-                     operators sign with secp256k1 today."
-                        .to_string(),
-                ));
-            }
-        }
-        let verification_contract =
-            project_root_client
-                .verification_contract()
-                .await
-                .map_err(|e| {
-                    AggregatorError::Stellar(format!(
-                        "ProjectRoot::verification_contract query failed: {e:?}"
-                    ))
-                })?;
-
-        let verification_cfg = soroban_rs::ClientContractConfigs {
-            contract_id: verification_contract,
-            env: env.clone(),
-            source_account: account.clone(),
-        };
-        let verification_client = Secp256k1VerificationClient::new(verification_cfg);
-
-        let required_weight = verification_client.required_weight().await.map_err(|e| {
-            AggregatorError::Stellar(format!(
-                "Secp256k1VerificationClient::required_weight query failed: {e:?}"
-            ))
-        })?;
-
-        let mut total_weight: u64 = 0;
-        for (signer_pubkey, sig) in signers.iter().zip(signatures.iter()) {
-            match verification_client
-                .check_one(
-                    envelope_bytes.clone(),
-                    *sig,
-                    *signer_pubkey,
-                    Some(reference_block),
-                )
-                .await
-            {
-                Ok(weight) => {
-                    total_weight = total_weight.saturating_add(weight);
-                }
-                Err(err) => {
-                    let err_str = format!("{err:?}");
-                    // Translate the verification-contract error name into
-                    // the substring `aggregator.rs::handle_submit_action`
-                    // matches on for transient-retry behavior. A signer
-                    // that hasn't registered yet is the canonical
-                    // multi-vector-startup race.
-                    if err_str.contains("SignerNotRegistered") {
-                        return Err(AggregatorError::Stellar(format!(
-                            "SignerNotRegistered (transient): {err_str}"
-                        )));
-                    }
-                    return Err(AggregatorError::Stellar(format!(
-                        "check_one for signer 0x{} failed: {err_str}",
-                        const_hex::encode(signer_pubkey)
-                    )));
-                }
-            }
-        }
-
-        if total_weight < required_weight {
-            return Err(AggregatorError::InsufficientQuorum {
-                signer_weight: total_weight.to_string(),
-                threshold_weight: required_weight.to_string(),
-                total_weight: total_weight.to_string(),
-            });
-        }
-
-        // ── Pre-flight passed: send the actual handler call.
+        // ── Submit. `verify_eth` simulates first; the simulation invokes
+        // the verification contract internally, so a bad-signature /
+        // unregistered-signer / insufficient-weight failure surfaces here
+        // without consuming fees.
         let contract_id = stellar_strkey::Contract(action.address);
         let handler_cfg = soroban_rs::ClientContractConfigs {
             contract_id,
@@ -488,6 +397,7 @@ impl Aggregator {
         };
         let mut handler =
             warpdrive_client::ethereum_handler::EthereumHandlerClient::new(handler_cfg);
+        let num_signers = signers.len();
         let sig_data = warpdrive_client::ethereum_handler::SignatureData {
             signers,
             signatures,
@@ -497,19 +407,48 @@ impl Aggregator {
         tracing::info!(
             chain = %action.chain,
             handler = %contract_id,
-            project_root = %project_root,
-            num_signers = sig_data.signers.len(),
-            total_weight,
-            required_weight,
+            num_signers,
             reference_block,
-            "Stellar pre-flight passed; submitting via EthereumHandlerClient::verify_eth"
+            "Stellar: submitting via EthereumHandlerClient::verify_eth"
         );
 
-        let resp = handler
-            .verify_eth(envelope_bytes, sig_data)
-            .await
-            .map_err(|e| AggregatorError::Stellar(format!("verify_eth failed: {e:?}")))?;
-
-        Ok(AnyTransactionReceipt::Stellar(format!("{resp:?}")))
+        match handler.verify_eth(envelope_bytes, sig_data).await {
+            Ok(resp) => Ok(AnyTransactionReceipt::Stellar(format!("{resp:?}"))),
+            Err(err) => Err(map_verify_eth_error(err, num_signers)),
+        }
     }
+}
+
+/// Translate a `verify_eth` failure into a typed `AggregatorError`.
+///
+/// Soroban surfaces contract errors from simulation as
+/// `Error(Contract, #N)`. The verification contract uses the codes
+/// defined in `warpdrive-shared::interfaces::verification::VerifyError`:
+///   301 InvalidSignature      304 EmptySignatures   307 ZeroRequiredWeight
+///   302 SignerNotRegistered   305 LengthMismatch
+///   303 InsufficientWeight    306 SignersNotOrdered
+///
+/// Only #302 (transient — vectors not yet registered) and #303
+/// (insufficient quorum — wait for more vectors) get distinct handling
+/// in the dispatch loop today; the rest collapse into `Stellar(...)`.
+fn map_verify_eth_error(
+    err: soroban_rs::SorobanHelperError,
+    num_signers: usize,
+) -> AggregatorError {
+    let err_str = format!("{err:?}");
+    if err_str.contains("Error(Contract, #302)") {
+        // Multi-vector startup race: signer hasn't registered yet.
+        return AggregatorError::Stellar(format!("SignerNotRegistered (transient): {err_str}"));
+    }
+    if err_str.contains("Error(Contract, #303)") {
+        // The verification contract doesn't return weights in the
+        // failure; we don't know exact totals without an extra query.
+        // The dispatch loop only matches on the variant for retry.
+        return AggregatorError::InsufficientQuorum {
+            signer_weight: "unknown".to_string(),
+            threshold_weight: "unknown".to_string(),
+            total_weight: format!("{num_signers} signature(s) sent"),
+        };
+    }
+    AggregatorError::Stellar(format!("verify_eth failed: {err_str}"))
 }
