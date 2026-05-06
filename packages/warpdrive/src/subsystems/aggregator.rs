@@ -3,6 +3,7 @@ pub mod p2p;
 pub mod peer;
 mod queue;
 mod submit;
+mod validate;
 
 use std::{
     collections::HashMap,
@@ -30,8 +31,12 @@ use crate::{
     services::Services,
     subsystems::{
         aggregator::{
-            error::AggregatorError, p2p::P2pHandle, peer::Peer, queue::append_submission_to_queue,
+            error::AggregatorError,
+            p2p::P2pHandle,
+            peer::Peer,
+            queue::append_submission_to_queue,
             submit::AnyTransactionReceipt,
+            validate::{reject_reason_for, CosmosQueryClientMap, EvmQueryClientMap},
         },
         engine::AggregatorExecuteKind,
     },
@@ -48,6 +53,14 @@ pub struct Aggregator {
     evm_submission_clients: Arc<std::sync::RwLock<HashMap<ChainKey, EvmSigningClient>>>,
     cosmos_submission_clients:
         Arc<std::sync::RwLock<HashMap<ChainKey, layer_climb::prelude::SigningClient>>>,
+    /// Read-only EVM clients used by `validate_packet_at_receive`.
+    /// Separate from `evm_submission_clients` because receive-time
+    /// validation may target a manager chain we don't sign on (e.g.
+    /// service manager on EVM, submit destination on Stellar).
+    evm_query_clients: EvmQueryClientMap,
+    /// Read-only Cosmos clients used by `validate_packet_at_receive`,
+    /// for the same reason as `evm_query_clients`.
+    cosmos_query_clients: CosmosQueryClientMap,
     queue_transaction: AsyncTransaction<QuorumQueueId>,
     chain_transaction: AsyncTransaction<ChainKey>,
     /// Optional P2P handle for broadcasting submissions to peers
@@ -113,6 +126,8 @@ impl Aggregator {
             services,
             evm_submission_clients: Arc::new(std::sync::RwLock::new(HashMap::default())),
             cosmos_submission_clients: Arc::new(std::sync::RwLock::new(HashMap::default())),
+            evm_query_clients: Arc::new(std::sync::RwLock::new(HashMap::default())),
+            cosmos_query_clients: Arc::new(std::sync::RwLock::new(HashMap::default())),
             config: Arc::new(config.clone()),
             queue_transaction: AsyncTransaction::new(false),
             chain_transaction: AsyncTransaction::new(false),
@@ -521,6 +536,52 @@ impl Aggregator {
         // Note: Broadcasting to peers happens in handle_broadcast when we create our own submission.
         // When we receive from peers via P2P, it comes here with Peer::Other and gets processed locally.
 
+        // ── Receive-time validation gate.
+        //
+        // Reject (drop with warn + metric) any packet whose signer
+        // isn't in the operator set as of the manager-chain block we
+        // validate against. Three reasons we want this here, before
+        // forwarding to the dispatcher / wasm aggregator component:
+        //   1. The wasm `process_input` doesn't waste cycles on
+        //      packets that can never form a valid quorum.
+        //   2. Storage doesn't fill with sigs that will never
+        //      validate (DoS resistance — flooding from a non-set
+        //      key gets dropped at this gate).
+        //   3. The submit path's `verify_eth` simulation can rely on
+        //      every queued packet being valid against the pinned
+        //      reference block, removing the need for the
+        //      `#302`-cleanup path that used to live in
+        //      `submit.rs`.
+        //
+        // On the first valid packet for an event we pin the
+        // manager-chain block we just validated against; subsequent
+        // packets for the same `(service_id, event_id)` revalidate
+        // against that pinned block so the operator set is frozen
+        // for the aggregation window. See validate.rs for the
+        // per-chain implementation.
+        match self.validate_packet_at_receive(&submission, &service).await {
+            Ok(validation_block) => {
+                self.pin_event_reference_block_if_unset(
+                    &service.id(),
+                    &submission.event_id,
+                    validation_block,
+                );
+            }
+            Err(err) => {
+                let chain = service.manager.chain().clone();
+                let reason = reject_reason_for(&err);
+                tracing::warn!(
+                    chain = %chain,
+                    reason,
+                    error = %err,
+                    submission = %submission.label(),
+                    "Aggregator: dropping inbound packet at receive (failed validation; not forwarded to wasm component)",
+                );
+                self.metrics.increment_packets_rejected(&chain, reason);
+                return Ok(());
+            }
+        }
+
         self.subsystem_to_dispatcher_tx
             .send(DispatcherCommand::AggregatorExecute {
                 submission,
@@ -878,6 +939,8 @@ impl Clone for Aggregator {
             subsystem_to_dispatcher_tx: self.subsystem_to_dispatcher_tx.clone(),
             evm_submission_clients: self.evm_submission_clients.clone(),
             cosmos_submission_clients: self.cosmos_submission_clients.clone(),
+            evm_query_clients: self.evm_query_clients.clone(),
+            cosmos_query_clients: self.cosmos_query_clients.clone(),
             queue_transaction: self.queue_transaction.clone(),
             chain_transaction: self.chain_transaction.clone(),
             p2p_handle: self.p2p_handle.clone(),

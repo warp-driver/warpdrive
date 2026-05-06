@@ -11202,6 +11202,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "iri-string",
+ "k256",
  "layer-climb-address",
  "layer-climb-config",
  "regex",

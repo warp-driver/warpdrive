@@ -55,12 +55,32 @@ impl Aggregator {
 
         // TODO - query to see if we should submit at all (e.g. has it already been submitted?)
 
-        let block_height_minus_one = service_manager
-            .provider()
-            .get_block_number()
-            .await
-            .map_err(|e| AggregatorError::BlockNumber(e.into()))?
-            - 1;
+        // Use the reference_block pinned at receive time (see
+        // validate.rs). All packets in this queue were validated
+        // against this block, so the on-chain `validate()` call will
+        // see the same operator-set membership we did. If the pin is
+        // missing (shouldn't happen — receive validation pins on the
+        // first valid packet), fall back to current-block-minus-one
+        // and warn.
+        let first = queue.first().unwrap();
+        let block_height_minus_one = match self
+            .get_pinned_reference_block(first.service_id(), &first.event_id)
+        {
+            Some(b) => b,
+            None => {
+                let current = service_manager
+                    .provider()
+                    .get_block_number()
+                    .await
+                    .map_err(|e| AggregatorError::BlockNumber(e.into()))?;
+                tracing::warn!(
+                    "Aggregator (EVM): no pinned reference_block for submission {}; falling back to current block {}-1. Receive-time validation should have pinned it — investigate.",
+                    first.label(),
+                    current,
+                );
+                current.saturating_sub(1)
+            }
+        };
 
         let signatures: Vec<WavsSignature> = queue
             .iter()
@@ -163,12 +183,28 @@ impl Aggregator {
             .await
             .map_err(AggregatorError::CosmosClient)?;
 
-        let block_height_minus_one = client
-            .querier
-            .block_height()
-            .await
-            .map_err(AggregatorError::BlockNumber)?
-            - 1;
+        // Pinned reference_block from receive-time validation, with
+        // current-1 fallback. See the EVM path above for the same
+        // pattern + rationale.
+        let first = queue.first().unwrap();
+        let block_height_minus_one = match self
+            .get_pinned_reference_block(first.service_id(), &first.event_id)
+        {
+            Some(b) => b,
+            None => {
+                let current = client
+                    .querier
+                    .block_height()
+                    .await
+                    .map_err(AggregatorError::BlockNumber)?;
+                tracing::warn!(
+                    "Aggregator (Cosmos): no pinned reference_block for submission {}; falling back to current block {}-1. Receive-time validation should have pinned it — investigate.",
+                    first.label(),
+                    current,
+                );
+                current.saturating_sub(1)
+            }
+        };
 
         let signatures: Vec<WavsSignature> = queue
             .iter()
@@ -263,24 +299,28 @@ impl Aggregator {
     /// `EthereumHandler`-shaped) contract via warpdrive-client.
     ///
     /// Recovers the compressed secp256k1 public key from each
-    /// `WavsSignature` (operators sign with the same secp256k1 key they
-    /// use everywhere — the chain just consumes a different
+    /// `WavsSignature` (operators sign with the same secp256k1 key
+    /// they use everywhere — the chain just consumes a different
     /// representation), sorts by pubkey ascending (the verification
-    /// contract requires sorted input), then calls `verify_eth` on the
-    /// handler contract.
+    /// contract requires sorted input), then calls `verify_eth` on
+    /// the handler contract.
     ///
     /// `verify_eth` invokes a transaction simulation before signing &
     /// submitting. The handler delegates to the secp256k1 verification
     /// contract, which panics with a `VerifyError` code on bad
-    /// signatures, unregistered signers, or insufficient weight — those
-    /// surface in the simulation result with no fee paid. We translate
-    /// the relevant codes to typed `AggregatorError` variants:
-    ///   - `#302 SignerNotRegistered` → `SignerNotRegistered(...)` —
-    ///     dispatch loop recognizes this variant as transient and
-    ///     retries when the next vector signs.
-    ///   - `#303 InsufficientWeight` → `InsufficientQuorum` — queue
-    ///     saved, retried when the next vector signs.
-    ///   - other codes → `Stellar(...)`.
+    /// signatures, unregistered signers, or insufficient weight —
+    /// those surface in the simulation result with no fee paid.
+    ///
+    /// Under the receive-time-validation design (see `validate.rs`
+    /// and issue #33), every queued packet has *already* been
+    /// validated against the pinned `reference_block`, so:
+    /// - `#301 InvalidSignature` and `#302 SignerNotRegistered`
+    ///   should not fire here in normal operation. If they do, the
+    ///   error flows through `map_verify_eth_error` like any other
+    ///   chain error.
+    /// - `#303 InsufficientWeight` is the expected non-success: it
+    ///   simply means quorum hasn't been reached yet, the queue is
+    ///   saved, and the next packet retries.
     pub async fn handle_action_submit_stellar(
         &self,
         signing_key: ed25519_dalek::SigningKey,
@@ -288,8 +328,6 @@ impl Aggregator {
         queue: &[Submission],
         action: StellarSubmitAction,
     ) -> Result<AnyTransactionReceipt, AggregatorError> {
-        use k256::ecdsa::{RecoveryId, Signature as K256Sig, VerifyingKey};
-
         // ── Resolve chain config (RPC URL / network passphrase).
         let chain_configs = self.config.chains.read().unwrap().clone();
         let stellar_chain_config = chain_configs
@@ -309,25 +347,20 @@ impl Aggregator {
             )));
         }
 
-        // ── Build envelope bytes + the EIP-191 prehash that operators signed.
-        let envelope = queue
-            .first()
-            .ok_or_else(|| {
-                AggregatorError::Stellar("empty submission queue for stellar submit".to_string())
-            })?
-            .envelope
-            .clone();
+        // ── Build envelope bytes that the verification contract will
+        // re-hash internally to verify each signature.
+        let first = queue.first().ok_or_else(|| {
+            AggregatorError::Stellar("empty submission queue for stellar submit".to_string())
+        })?;
+        let envelope = first.envelope.clone();
         let envelope_bytes = envelope.encode_data().map_err(|e| {
             AggregatorError::Stellar(format!("failed to abi-encode stellar envelope: {e:?}"))
         })?;
-        let prefixed_hash: alloy_primitives::FixedBytes<32> =
-            envelope.prefix_eip191_hash().map_err(|e| {
-                AggregatorError::Stellar(format!(
-                    "failed to compute eip-191 hash for stellar envelope: {e:?}"
-                ))
-            })?;
 
-        // ── Recover (compressed_pubkey, signature) per queue entry.
+        // ── Recover compressed pubkey + sig per queue entry. The
+        // shared `WavsSignature::secp256k1_compressed_pubkey` helper
+        // does the EIP-191 prehash + recovery; same primitive used by
+        // the receive-time validator in `validate.rs`.
         let mut signers_and_sigs: Vec<([u8; 33], [u8; 65])> = Vec::with_capacity(queue.len());
         for queued in queue {
             let sig_bytes: &[u8] = &queued.envelope_signature.data;
@@ -337,35 +370,17 @@ impl Aggregator {
                     sig_bytes.len()
                 )));
             }
-            let r_s: [u8; 64] = sig_bytes[..64]
-                .try_into()
-                .expect("65-byte slice gives 64-byte head");
-            let v = sig_bytes[64];
-            let k_sig = K256Sig::from_slice(&r_s).map_err(|e| {
-                AggregatorError::Stellar(format!("invalid secp256k1 signature: {e:?}"))
-            })?;
-            // Operator signatures use Ethereum-style v (27/28); reduce to
-            // the 0/1 recovery id k256 expects.
-            let recid_byte = if v >= 27 { v - 27 } else { v };
-            let recid = RecoveryId::try_from(recid_byte).map_err(|e| {
-                AggregatorError::Stellar(format!("invalid recovery id {recid_byte}: {e:?}"))
-            })?;
-            let vk = VerifyingKey::recover_from_prehash(prefixed_hash.as_slice(), &k_sig, recid)
+            let pubkey = queued
+                .envelope_signature
+                .secp256k1_compressed_pubkey(&queued.envelope)
                 .map_err(|e| {
                     AggregatorError::Stellar(format!(
                         "secp256k1 recovery failed for stellar submit: {e:?}"
                     ))
                 })?;
-            let pubkey_bytes = vk.to_sec1_bytes();
-            let compressed: [u8; 33] = pubkey_bytes.as_ref().try_into().map_err(|_| {
-                AggregatorError::Stellar(format!(
-                    "expected 33-byte compressed pubkey, got {}",
-                    pubkey_bytes.len()
-                ))
-            })?;
             let mut sig_arr = [0u8; 65];
             sig_arr.copy_from_slice(sig_bytes);
-            signers_and_sigs.push((compressed, sig_arr));
+            signers_and_sigs.push((pubkey, sig_arr));
         }
 
         // Verification contract expects signers in ascending pubkey order.
@@ -373,20 +388,39 @@ impl Aggregator {
         let (signers, signatures): (Vec<[u8; 33]>, Vec<[u8; 65]>) =
             signers_and_sigs.into_iter().unzip();
 
-        // ── Reference block = current ledger sequence at submit time.
-        // The verification contract checks each signer's weight against
-        // the operator set _as of this block_, so passing "now" means we
-        // re-validate against the latest set on every retry. Operators
-        // joining or having their weight changed between sig generation
-        // and submission is handled correctly without any cache.
-        let rpc = stellar_rpc_client::Client::new(&stellar_chain_config.rpc_url).map_err(|e| {
-            AggregatorError::Stellar(format!("failed to build stellar rpc client: {e:?}"))
-        })?;
-        let reference_block: u32 = rpc
-            .get_latest_ledger()
-            .await
-            .map_err(|e| AggregatorError::BlockNumber(anyhow::anyhow!("{e:?}")))?
-            .sequence;
+        // ── Reference block: pinned at receive-time validation. All
+        // queued packets were validated against this exact ledger
+        // sequence, so the verification contract's per-signer weight
+        // checks (also keyed off `reference_block`) will see the same
+        // operator set we did. The fallback to current ledger
+        // shouldn't normally fire — receive validation pins on the
+        // first valid packet — but it keeps the submit path correct
+        // if the pin is missing.
+        let reference_block: u32 = match self
+            .get_pinned_reference_block(first.service_id(), &first.event_id)
+        {
+            Some(b) => b as u32,
+            None => {
+                let rpc = stellar_rpc_client::Client::new(&stellar_chain_config.rpc_url).map_err(
+                    |e| {
+                        AggregatorError::Stellar(format!(
+                            "failed to build stellar rpc client: {e:?}"
+                        ))
+                    },
+                )?;
+                let current = rpc
+                    .get_latest_ledger()
+                    .await
+                    .map_err(|e| AggregatorError::BlockNumber(anyhow::anyhow!("{e:?}")))?
+                    .sequence;
+                tracing::warn!(
+                    chain = %action.chain,
+                    "Stellar: no pinned reference_block for submission {}; falling back to current ledger {current}. Receive-time validation should have pinned it — investigate.",
+                    first.label(),
+                );
+                current
+            }
+        };
 
         // ── Build the soroban env + source account for the handler call.
         let env = soroban_rs::Env::new(soroban_rs::EnvConfigs {
@@ -398,36 +432,33 @@ impl Aggregator {
 
         // ── Submit.
         //
-        // `verify_eth` (via `warpdrive-client::utils::execute`) performs
-        // a free read-only simulation against the Soroban RPC node
-        // _before_ signing or broadcasting:
+        // `verify_eth` (via `warpdrive-client::utils::execute`)
+        // performs a free read-only simulation against the Soroban
+        // RPC node before signing or broadcasting:
         //   1. build tx
         //   2. simulate_transaction (free RPC call)
-        //   3. if simulation reports an error → bail out, no signing,
-        //      no broadcast, no fees paid
+        //   3. if simulation reports an error → bail out, no
+        //      signing, no broadcast, no fees paid
         //   4. otherwise → sign + broadcast (this consumes fees)
         //
-        // The handler delegates signature validation to the verification
-        // contract on-chain. Bad signatures, unregistered signers, and
-        // insufficient quorum all panic inside that delegate, which the
-        // simulation sees as `Error(Contract, #N)` — caught at step 3,
-        // returned to us as `SorobanHelperError::TransactionSimulationFailed`,
-        // and translated below into a typed `AggregatorError`.
-        //
-        // Net effect: doomed submissions cost zero fees; only
-        // submissions that would actually succeed make it to step 4.
+        // Doomed submissions cost zero fees; only submissions that
+        // would actually succeed make it to step 4. The expected
+        // simulation failure here is `#303 InsufficientWeight`
+        // (quorum not yet met), translated to
+        // `AggregatorError::InsufficientQuorum` so the dispatch loop
+        // saves the queue for retry.
         let contract_id = stellar_strkey::Contract(action.address);
         let handler_cfg = soroban_rs::ClientContractConfigs {
             contract_id,
-            env: env.clone(),
-            source_account: account.clone(),
+            env,
+            source_account: account,
         };
         let mut handler =
             warpdrive_client::ethereum_handler::EthereumHandlerClient::new(handler_cfg);
         let num_signers = signers.len();
         let sig_data = warpdrive_client::ethereum_handler::SignatureData {
-            signers: signers.clone(),
-            signatures: signatures.clone(),
+            signers,
+            signatures,
             reference_block,
         };
 
@@ -439,190 +470,11 @@ impl Aggregator {
             "Stellar: submitting via EthereumHandlerClient::verify_eth"
         );
 
-        // ── First attempt: try verify_eth with all queued sigs.
-        //
-        // The happy path is just this match. The cleanup path below is
-        // only reached when simulation reports #302
-        // (SignerNotRegistered) — i.e. at least one signer in the
-        // queue isn't in the operator set. The simulation tells us
-        // *that* it failed but not *which* signer, so we have to do
-        // the per-signer query work ourselves.
-        match handler.verify_eth(envelope_bytes.clone(), sig_data).await {
-            Ok(resp) => return Ok(AnyTransactionReceipt::Stellar(format!("{resp:?}"))),
-            Err(err) => {
-                let err_str = format!("{err:?}");
-                if !err_str.contains("Error(Contract, #302)") {
-                    // Any other failure (insufficient quorum, bad sig,
-                    // network error, etc.) gets the standard mapping.
-                    return Err(map_verify_eth_error(err, num_signers));
-                }
-                // Fall through to per-signer cleanup. The queue
-                // currently contains at least one sig that will never
-                // validate (operator-set joins are not retroactive: a
-                // sig generated before the signer joined the set is
-                // permanently invalid). If we don't filter it out,
-                // every future submit attempt re-includes it and #302
-                // fires again — quorum can never be reached, the
-                // queue blocks forever. Classic DoS shape: a single
-                // peer that signs from outside the set permanently
-                // wedges this submission's queue.
-                //
-                // Cleanup strategy (Approach A — filter locally,
-                // don't mutate persisted queue):
-                //   1. Identify the unregistered signers.
-                //   2. Retry verify_eth with only the registered
-                //      subset.
-                //   3. Persisted queue stays as-is. The dispatch loop
-                //      saves the original queue on error (and burns
-                //      it on success). Bad sigs stay in storage but
-                //      are filtered out of every future attempt, so
-                //      they no longer block quorum. Trade-off: O(N)
-                //      bytes of wasted storage per stuck queue, no
-                //      plumbing through the dispatch loop's closure.
-                tracing::warn!(
-                    chain = %action.chain,
-                    "Stellar: verify_eth reported SignerNotRegistered (#302); attempting per-signer cleanup"
-                );
-            }
-        }
-
-        // ── Per-signer cleanup path (only reached on #302).
-        //
-        // We need to find which signer(s) are unregistered. The
-        // verification contract exposes `signer_weight(pubkey)` which
-        // returns the signer's current weight, or 0 if they're not in
-        // the set. weight == 0 ⇔ unregistered.
-        //
-        // Note: `signer_weight` reads the *current* operator set; it
-        // does NOT take a reference_block. The first verify_eth call
-        // checked against `reference_block` (which we set to "now" at
-        // submit time). In normal operation these are within seconds
-        // of each other and agree. The two corner cases are handled
-        // explicitly below (no-drops case and all-drops case).
-        let verification_contract = handler.verification_contract().await.map_err(|e| {
-            AggregatorError::Stellar(format!(
-                "verification_contract lookup during #302 cleanup failed: {e:?}"
-            ))
-        })?;
-        let verification_cfg = soroban_rs::ClientContractConfigs {
-            contract_id: verification_contract,
-            env: env.clone(),
-            source_account: account.clone(),
-        };
-        let verification_client =
-            warpdrive_client::secp256k1_verification::Secp256k1VerificationClient::new(
-                verification_cfg,
-            );
-
-        let mut weights: Vec<u64> = Vec::with_capacity(signers.len());
-        for pubkey in &signers {
-            let w = verification_client
-                .signer_weight(*pubkey)
-                .await
-                .map_err(|e| {
-                    AggregatorError::Stellar(format!(
-                        "signer_weight query during #302 cleanup failed for 0x{}: {e:?}",
-                        const_hex::encode(pubkey)
-                    ))
-                })?;
-            weights.push(w);
-        }
-
-        // ── Decide who to keep, who to drop.
-        //
-        // partition_by_registration is a pure helper (and unit-tested
-        // separately): given `weights`, returns two index lists in
-        // input order. We use indices rather than filtering the
-        // signer/signature vectors directly so the parallel arrays
-        // stay aligned without an extra zip+sort.
-        let (keep_idx, drop_idx) = partition_by_registration(&weights);
-        for idx in &drop_idx {
-            tracing::warn!(
-                chain = %action.chain,
-                pubkey = %format!("0x{}", const_hex::encode(signers[*idx])),
-                "Stellar: dropping signature from unregistered signer (will be filtered on every future submit attempt until queue is burned)"
-            );
-        }
-        if keep_idx.is_empty() {
-            // Every signer in the queue is unregistered. Nothing we
-            // can submit. Surface as SignerNotRegistered so the
-            // dispatch loop saves and retries — by the next attempt
-            // either some of these have registered, or new sigs from
-            // valid signers have been appended.
-            return Err(AggregatorError::SignerNotRegistered(format!(
-                "stellar #302 cleanup: all {num_signers} queued signers unregistered"
-            )));
-        }
-        if drop_idx.is_empty() {
-            // verify_eth said #302 but `signer_weight` reports every
-            // signer is registered. Possible explanation: a signer
-            // was registered between the simulation (which checked
-            // weights at our `reference_block`) and our cleanup
-            // queries (which read "current" weight). They were at 0
-            // when simulation ran, are at >0 now.
-            //
-            // The race resolves itself: dispatch will save the queue
-            // and the next submission attempt picks a fresh
-            // reference_block (later than the registration), so the
-            // simulation will see them as registered. No retry from
-            // here — let the dispatch loop's normal save+retry path
-            // handle it.
-            return Err(AggregatorError::SignerNotRegistered(format!(
-                "stellar #302 but all signers report registered (likely registration race between simulation and cleanup); {num_signers} sigs"
-            )));
-        }
-
-        // Slice the original parallel arrays by the keep indices.
-        // Order is preserved (partition_by_registration emits indices
-        // in input order), so the sorted-pubkey invariant required by
-        // the verification contract still holds for the survivors.
-        let kept_signers: Vec<[u8; 33]> = keep_idx.iter().map(|i| signers[*i]).collect();
-        let kept_signatures: Vec<[u8; 65]> = keep_idx.iter().map(|i| signatures[*i]).collect();
-        let kept_count = kept_signers.len();
-        let kept_sig_data = warpdrive_client::ethereum_handler::SignatureData {
-            signers: kept_signers,
-            signatures: kept_signatures,
-            reference_block,
-        };
-
-        tracing::info!(
-            chain = %action.chain,
-            kept = kept_count,
-            dropped = drop_idx.len(),
-            "Stellar: retrying verify_eth with registered-only subset"
-        );
-
-        match handler.verify_eth(envelope_bytes, kept_sig_data).await {
+        match handler.verify_eth(envelope_bytes, sig_data).await {
             Ok(resp) => Ok(AnyTransactionReceipt::Stellar(format!("{resp:?}"))),
-            Err(err) => Err(map_verify_eth_error(err, kept_count)),
+            Err(err) => Err(map_verify_eth_error(err, num_signers)),
         }
     }
-}
-
-/// Pure helper: split signer indices by whether they're registered
-/// (weight > 0) or not. Used by the Stellar #302 cleanup path —
-/// caller takes the parallel `signers`/`signatures` arrays, queries
-/// `signer_weight` per pubkey, then feeds the resulting weights
-/// here to find out which entries to keep and which to drop.
-///
-/// Kept separate from the async submit code so it's trivially
-/// unit-testable.
-///
-/// Both output vectors list indices in *input order*. This matters:
-/// the verification contract requires `signers` to be sorted by
-/// pubkey ascending, and the input arrays already are; preserving
-/// order keeps that invariant intact for the kept subset.
-fn partition_by_registration(weights: &[u64]) -> (Vec<usize>, Vec<usize>) {
-    let mut keep = Vec::new();
-    let mut drop = Vec::new();
-    for (i, w) in weights.iter().enumerate() {
-        if *w > 0 {
-            keep.push(i);
-        } else {
-            drop.push(i);
-        }
-    }
-    (keep, drop)
 }
 
 /// Translate a `verify_eth` failure into a typed `AggregatorError`.
@@ -744,51 +596,5 @@ mod map_verify_eth_error_tests {
             map_verify_eth_error(err, 1),
             AggregatorError::SignerNotRegistered(_)
         ));
-    }
-}
-
-#[cfg(test)]
-mod partition_by_registration_tests {
-    use super::partition_by_registration;
-
-    #[test]
-    fn empty_input_yields_empty_partitions() {
-        let (keep, drop) = partition_by_registration(&[]);
-        assert!(keep.is_empty());
-        assert!(drop.is_empty());
-    }
-
-    #[test]
-    fn all_registered_keeps_all() {
-        let (keep, drop) = partition_by_registration(&[1, 100, 5000]);
-        assert_eq!(keep, vec![0, 1, 2]);
-        assert!(drop.is_empty());
-    }
-
-    #[test]
-    fn all_unregistered_drops_all() {
-        let (keep, drop) = partition_by_registration(&[0, 0, 0]);
-        assert!(keep.is_empty());
-        assert_eq!(drop, vec![0, 1, 2]);
-    }
-
-    #[test]
-    fn mixed_preserves_input_order_in_both_partitions() {
-        // weight=0 signers are unregistered; the rest are kept.
-        // Both output vectors must list indices in input order so
-        // callers can use them to slice the original `signers`/
-        // `signatures` arrays without re-sorting.
-        let (keep, drop) = partition_by_registration(&[10, 0, 20, 0, 30]);
-        assert_eq!(keep, vec![0, 2, 4]);
-        assert_eq!(drop, vec![1, 3]);
-    }
-
-    #[test]
-    fn weight_one_is_registered() {
-        // Boundary: weight==1 is a registered signer. Only weight==0
-        // means "not in the set".
-        let (keep, drop) = partition_by_registration(&[1]);
-        assert_eq!(keep, vec![0]);
-        assert!(drop.is_empty());
     }
 }

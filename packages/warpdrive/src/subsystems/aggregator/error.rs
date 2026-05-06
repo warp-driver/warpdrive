@@ -122,4 +122,39 @@ pub enum AggregatorError {
         chain_kind: &'static str,
         detail: String,
     },
+
+    // ── Receive-time validation errors ────────────────────────────
+    //
+    // Returned by `validate_packet_at_receive` / its per-chain
+    // helpers. The receive-side caller treats *any* of these as
+    // "drop the packet, increment the rejection metric, don't run
+    // the wasm aggregator component". They're surfaced as variants
+    // (rather than a single string) so the metric label can be a
+    // stable enum.
+    /// Signature couldn't be recovered into a usable signer (malformed
+    /// secp256k1 sig, wrong length, bad EIP-191 hash, etc.). The
+    /// signer can never be identified, so there's no way to validate
+    /// against the operator set.
+    #[error("Invalid packet signature: {0}")]
+    InvalidPacketSignature(String),
+
+    /// Recovered signer is not in the operator set as of the
+    /// validation block. Either they were never registered, or they
+    /// signed before joining (operator-set joins are not
+    /// retroactive). Permanent for this packet.
+    #[error(
+        "Packet signer 0x{signer_pubkey_hex} not registered for chain {chain} at block {block}"
+    )]
+    SignerUnregisteredAtReceive {
+        chain: ChainKey,
+        signer_pubkey_hex: String,
+        block: u64,
+    },
+
+    /// Failed to query the chain for current block height (needed to
+    /// pin a fresh `reference_block` for an unseen event) or for
+    /// signer weight at a specific block. Drop the packet — without
+    /// the chain query we can't validate.
+    #[error("Receive-validation chain query failed for chain {chain}: {detail}")]
+    ReceiveValidationChainQuery { chain: ChainKey, detail: String },
 }

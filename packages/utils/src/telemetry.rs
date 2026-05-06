@@ -817,6 +817,13 @@ pub struct AggregatorMetrics {
 
     submit_count: Counter<u64>,
     submit_count_raw: Arc<AtomicU64>,
+
+    /// Inbound packets dropped at receive time before reaching the
+    /// quorum queue or the aggregator wasm component. Labeled with
+    /// `chain` (the manager chain we attempted to validate against)
+    /// and `reason` (`bad_sig` | `unregistered` | `chain_query_failed`).
+    packets_rejected_count: Counter<u64>,
+    packets_rejected_count_raw: Arc<AtomicU64>,
 }
 
 impl AggregatorMetrics {
@@ -847,7 +854,27 @@ impl AggregatorMetrics {
                 .with_description("Total submissions sent by aggregator")
                 .build(),
             submit_count_raw: Arc::new(AtomicU64::new(0)),
+
+            packets_rejected_count: meter
+                .u64_counter(format!("{}.packets_rejected_count", Self::NAMESPACE))
+                .with_description(
+                    "Inbound packets dropped at receive time (before queueing / wasm execution)",
+                )
+                .build(),
+            packets_rejected_count_raw: Arc::new(AtomicU64::new(0)),
         }
+    }
+
+    pub fn increment_packets_rejected(&self, chain: &ChainKey, reason: &'static str) {
+        self.packets_rejected_count.add(
+            1,
+            &[
+                KeyValue::new("chain", chain.to_string()),
+                KeyValue::new("reason", reason),
+            ],
+        );
+        self.packets_rejected_count_raw
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     }
 
     pub fn increment_receive_count(&self, service: &Service, workflow_id: &WorkflowId) {
