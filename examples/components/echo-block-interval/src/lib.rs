@@ -1,4 +1,3 @@
-use anyhow::Result;
 use example_helpers::bindings::world::{
     host,
     warpdrive::{
@@ -15,36 +14,29 @@ use example_helpers::export_layer_trigger_world;
 use example_helpers::trigger::encode_trigger_output;
 use example_types::BlockIntervalResponse;
 
+// hardcoding this because our tests are mostly about event-based triggers
+// but this component is not event-based
+const TRIGGER_ID: u64 = 1337;
+
 struct Component;
 
 impl Guest for Component {
     fn run(trigger_action: TriggerAction) -> std::result::Result<Vec<WasmResponse>, String> {
-        // hardcoding this because our tests are mostly about event-based triggers
-        // but this component is not event-based
-        let trigger_id = 1337;
-
         match (trigger_action.config.trigger, trigger_action.data) {
             (Trigger::BlockInterval(config), TriggerData::BlockInterval(data)) => {
-                if let Some(resp) = inner_run_task(config, data).map_err(|e| e.to_string())? {
-                    let resp = serde_json::to_vec(&resp).map_err(|e| e.to_string())?;
-                    Ok(vec![encode_trigger_output(
-                        trigger_id,
-                        resp,
-                        host::get_service().service.manager,
-                    )])
-                } else {
-                    Ok(Vec::new())
-                }
+                run_maybe_one(config, data)
+                    .map_err(|e| format!("{e:?}"))
+                    .map(|r| r.into_iter().collect())
             }
             _ => Err("Invalid trigger config or data".to_string()),
         }
     }
 }
 
-fn inner_run_task(
+fn run_maybe_one(
     config: TriggerBlockInterval,
     data: TriggerDataBlockInterval,
-) -> Result<Option<BlockIntervalResponse>> {
+) -> std::result::Result<Option<WasmResponse>, anyhow::Error> {
     let bucket = store::open("foo")?;
     let count = atomics::increment(&bucket, "bar", 1)?.try_into()?;
 
@@ -54,16 +46,21 @@ fn inner_run_task(
     // (test will hang because trigger is deleted as a one-shot, but we haven't returned a response yet)
     if count == 1 && config.start_block.is_none() {
         // If this is the first trigger and no start block is set, wait for the next trigger
-        Ok(None)
-    } else {
-        Ok(Some(BlockIntervalResponse {
-            trigger_config_start: config.start_block,
-            trigger_config_end: config.end_block,
-            trigger_config_interval: config.n_blocks,
-            trigger_data_block_height: data.block_height,
-            count,
-        }))
+        return Ok(None);
     }
+    let resp = BlockIntervalResponse {
+        trigger_config_start: config.start_block,
+        trigger_config_end: config.end_block,
+        trigger_config_interval: config.n_blocks,
+        trigger_data_block_height: data.block_height,
+        count,
+    };
+    let resp = serde_json::to_vec(&resp)?;
+    Ok(Some(encode_trigger_output(
+        TRIGGER_ID,
+        resp,
+        host::get_service().service.manager,
+    )))
 }
 
 export_layer_trigger_world!(Component);

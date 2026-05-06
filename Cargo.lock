@@ -3554,6 +3554,7 @@ dependencies = [
 name = "echo-data"
 version = "2.10.0"
 dependencies = [
+ "anyhow",
  "example-helpers",
  "tokio",
 ]
@@ -5424,6 +5425,7 @@ dependencies = [
 name = "kv-store"
 version = "2.10.0"
 dependencies = [
+ "anyhow",
  "example-helpers",
  "example-types",
  "serde_json",

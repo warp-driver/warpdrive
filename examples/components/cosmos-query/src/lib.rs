@@ -10,14 +10,14 @@ struct Component;
 
 impl Guest for Component {
     fn run(trigger_action: TriggerAction) -> std::result::Result<Vec<WasmResponse>, String> {
-        inner_run_task(trigger_action)
-            .map_err(|e| e.to_string())
+        run_one(trigger_action)
+            .map_err(|e: anyhow::Error| format!("{e:?}"))
             .map(|res| vec![res])
     }
 }
 
 #[tokio::main(flavor = "current_thread")]
-async fn inner_run_task(
+async fn run_one(
     trigger_action: TriggerAction,
 ) -> std::result::Result<WasmResponse, anyhow::Error> {
     let (trigger_id, req) = decode_trigger_event(trigger_action.data)?;

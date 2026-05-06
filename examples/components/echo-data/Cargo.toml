@@ -9,6 +9,7 @@ repository.workspace = true
 [dependencies]
 tokio = { workspace = true, features = ["sync", "io-util", "macros", "rt", "time"] }
 example-helpers = { workspace = true }
+anyhow = { workspace = true }
 
 [lib]
 crate-type = ["cdylib"]

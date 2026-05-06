@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use anyhow::{bail, Context};
+
 use example_helpers::bindings::world::wasi::keyvalue::store::KeyResponse;
 use example_helpers::bindings::world::wasi::keyvalue::{atomics, batch, store};
 use example_helpers::bindings::world::WasmResponse;
@@ -14,64 +16,67 @@ struct Component;
 
 impl Guest for Component {
     fn run(trigger_action: TriggerAction) -> Result<Vec<WasmResponse>, String> {
-        host::log(host::LogLevel::Info, "KV Store component triggered");
-
-        let (trigger_id, req) =
-            decode_trigger_event(trigger_action.data).map_err(|e| e.to_string())?;
-
-        let resp = match serde_json::from_slice::<KvStoreRequest>(&req) {
-            Ok(KvStoreRequest::Write { bucket, key, value }) => {
-                write_value(&bucket, &key, &value).map_err(|e| e.to_string())?;
-                KvStoreResponse::Write
-            }
-            Ok(KvStoreRequest::Read { bucket, key }) => {
-                let value = read_value(&bucket, &key).map_err(|e| e.to_string())?;
-                KvStoreResponse::Read { value }
-            }
-            Ok(KvStoreRequest::AtomicIncrement { bucket, key, delta }) => {
-                let value = atomic_increment(&bucket, &key, delta).map_err(|e| e.to_string())?;
-                KvStoreResponse::AtomicIncrement { value }
-            }
-            Ok(KvStoreRequest::AtomicSwap { bucket, key, value }) => {
-                atomic_swap(&bucket, &key, &value).map_err(|e| e.to_string())?;
-                KvStoreResponse::AtomicSwap
-            }
-            Ok(KvStoreRequest::AtomicRead { bucket, key }) => {
-                let value = atomic_read(&bucket, &key).map_err(|e| e.to_string())?;
-                KvStoreResponse::AtomicRead { value }
-            }
-            Ok(KvStoreRequest::BatchRead { bucket, keys }) => {
-                let values = batch_read(&bucket, &keys).map_err(|e| e.to_string())?;
-                KvStoreResponse::BatchRead { values }
-            }
-            Ok(KvStoreRequest::BatchWrite { bucket, values }) => {
-                batch_write(&bucket, values).map_err(|e| e.to_string())?;
-                KvStoreResponse::BatchWrite
-            }
-            Ok(KvStoreRequest::BatchDelete { bucket, keys }) => {
-                batch_delete(&bucket, &keys).map_err(|e| e.to_string())?;
-                KvStoreResponse::BatchDelete
-            }
-            Ok(KvStoreRequest::ListKeys { bucket, cursor }) => {
-                let KeyResponse { keys, cursor } =
-                    list_keys(&bucket, cursor.as_deref()).map_err(|e| e.to_string())?;
-                KvStoreResponse::ListKeys { keys, cursor }
-            }
-
-            Err(e) => {
-                return Err(format!("Failed to parse request: {e}"));
-            }
-        };
-
-        let resp_bytes =
-            serde_json::to_vec(&resp).map_err(|e| format!("Failed to serialize response: {e}"))?;
-
-        Ok(vec![encode_trigger_output(
-            trigger_id,
-            resp_bytes,
-            host::get_service().service.manager,
-        )])
+        run_one(trigger_action)
+            .map_err(|e: anyhow::Error| format!("{e:?}"))
+            .map(|res| vec![res])
     }
+}
+
+fn run_one(trigger_action: TriggerAction) -> Result<WasmResponse, anyhow::Error> {
+    host::log(host::LogLevel::Info, "KV Store component triggered");
+
+    let (trigger_id, req) = decode_trigger_event(trigger_action.data)?;
+
+    let resp = match serde_json::from_slice::<KvStoreRequest>(&req) {
+        Ok(KvStoreRequest::Write { bucket, key, value }) => {
+            write_value(&bucket, &key, &value)?;
+            KvStoreResponse::Write
+        }
+        Ok(KvStoreRequest::Read { bucket, key }) => {
+            let value = read_value(&bucket, &key)?;
+            KvStoreResponse::Read { value }
+        }
+        Ok(KvStoreRequest::AtomicIncrement { bucket, key, delta }) => {
+            let value = atomic_increment(&bucket, &key, delta)?;
+            KvStoreResponse::AtomicIncrement { value }
+        }
+        Ok(KvStoreRequest::AtomicSwap { bucket, key, value }) => {
+            atomic_swap(&bucket, &key, &value)?;
+            KvStoreResponse::AtomicSwap
+        }
+        Ok(KvStoreRequest::AtomicRead { bucket, key }) => {
+            let value = atomic_read(&bucket, &key)?;
+            KvStoreResponse::AtomicRead { value }
+        }
+        Ok(KvStoreRequest::BatchRead { bucket, keys }) => {
+            let values = batch_read(&bucket, &keys)?;
+            KvStoreResponse::BatchRead { values }
+        }
+        Ok(KvStoreRequest::BatchWrite { bucket, values }) => {
+            batch_write(&bucket, values)?;
+            KvStoreResponse::BatchWrite
+        }
+        Ok(KvStoreRequest::BatchDelete { bucket, keys }) => {
+            batch_delete(&bucket, &keys)?;
+            KvStoreResponse::BatchDelete
+        }
+        Ok(KvStoreRequest::ListKeys { bucket, cursor }) => {
+            let KeyResponse { keys, cursor } = list_keys(&bucket, cursor.as_deref())?;
+            KvStoreResponse::ListKeys { keys, cursor }
+        }
+
+        Err(e) => {
+            bail!("Failed to parse request: {e}");
+        }
+    };
+
+    let resp_bytes = serde_json::to_vec(&resp).context("Failed to serialize response")?;
+
+    Ok(encode_trigger_output(
+        trigger_id,
+        resp_bytes,
+        host::get_service().service.manager,
+    ))
 }
 
 fn open_bucket(id: &str) -> KvStoreResult<store::Bucket> {
