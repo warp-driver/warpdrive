@@ -1,4 +1,4 @@
-package warpdrive:types@2.11.0;
+package warpdrive:types@2.12.0;
 
 interface chain {
   /// A string mostly following the caip-2 format of namespace:reference, e.g. "eip155:1" for Ethereum mainnet or "cosmos:cosmoshub-4" for Cosmos Hub
@@ -65,6 +65,17 @@ interface chain {
     chain-id: string,
     ws-endpoints: list<string>,
     http-endpoint: option<string>,
+  }
+
+  /// Soroban (Stellar smart-contract) chain config exposed to WASI
+  /// components for read-only queries. Mirrors the host-side
+  /// `warpdrive_types::StellarChainConfig` minus operator-only
+  /// fields (poll interval, friendbot URL) — components only need
+  /// what's required to spin up a Soroban RPC client.
+  record stellar-chain-config {
+    chain-id: string,
+    rpc-url: string,
+    network-passphrase: string,
   }
 
   type stellar-tx-hash = string;

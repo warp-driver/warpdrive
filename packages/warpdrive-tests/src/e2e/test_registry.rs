@@ -1,7 +1,7 @@
 use dashmap::DashMap;
 use example_types::{
     BlockIntervalResponse, CosmosQueryRequest, KvStoreRequest, KvStoreResponse, PermissionsRequest,
-    PermissionsResponse, SquareRequest, SquareResponse,
+    PermissionsResponse, SquareRequest, SquareResponse, StellarQueryRequest,
 };
 use serde_json::json;
 use std::collections::BTreeMap;
@@ -238,6 +238,9 @@ impl TestRegistry {
                 StellarService::BlockInterval | StellarService::BlockIntervalStartStop => {
                     tracing::warn!("Stellar interval tests are not yet registered in e2e");
                 }
+                StellarService::StellarQuery => {
+                    registry.register_stellar_stellar_query_test(stellar);
+                }
             }
         }
 
@@ -308,6 +311,55 @@ impl TestRegistry {
                         .build(),
                 )
                 .with_service_manager_chain(submit_chain)
+                .build(),
+        )
+    }
+
+    /// Drives the `stellar-query` component, which calls
+    /// `host::get_stellar_chain_config` and then `unimplemented!()`s.
+    /// The component logs the chain config so the panic line in the
+    /// runtime trace shows that the host plumbing works end-to-end —
+    /// the test itself is *expected to fail* until issue #5's
+    /// follow-up integrates a Soroban-from-component RPC client.
+    /// Don't add this to the CI configs; it's only in
+    /// `warpdrive-tests-default.toml`.
+    fn register_stellar_stellar_query_test(&mut self, chain: &ChainKey) -> &mut Self {
+        self.register(
+            TestBuilder::new("stellar_stellar_query")
+                .with_description(
+                    "Drives the StellarQuery component; expected to fail at unimplemented!() \
+                     until Soroban-from-component RPC is wired up (issue #5).",
+                )
+                .add_workflow(
+                    WorkflowId::new("stellar_query").unwrap(),
+                    WorkflowBuilder::new()
+                        .with_operator_component(VectorComponent::StellarQuery)
+                        .with_aggregator_component(AggregatorComponent::SimpleAggregator)
+                        .with_trigger(TriggerDefinition::NewStellarContract(
+                            StellarTriggerDefinition::SimpleContractEvent {
+                                chain: chain.clone(),
+                            },
+                        ))
+                        .with_input_data(InputData::StellarQuery(
+                            StellarQueryRequest::LedgerSequence {
+                                chain: chain.to_string(),
+                            },
+                        ))
+                        .with_submit(SubmitDefinition::Aggregator(Self::simple_aggregator(chain)))
+                        // The component never produces output (it
+                        // panics first). Expected output is set so
+                        // the test framework has something to compare
+                        // against on timeout — the actual failure
+                        // mode is the panic surfaced in the engine
+                        // logs.
+                        .with_expected_output(ExpectedOutput::Text(
+                            "stellar-query never produces output until issue #5 is finished"
+                                .to_string(),
+                        ))
+                        .with_timeout(Duration::from_secs(90))
+                        .build(),
+                )
+                .with_service_manager_chain(chain)
                 .build(),
         )
     }

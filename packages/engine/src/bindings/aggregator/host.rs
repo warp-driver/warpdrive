@@ -33,6 +33,19 @@ impl Host for AggregatorHostComponent {
             .map(Into::into)
     }
 
+    fn get_stellar_chain_config(
+        &mut self,
+        chain: String,
+    ) -> Option<super::world::warpdrive::types::chain::StellarChainConfig> {
+        let chain = ChainKey::new(chain).ok()?;
+
+        self.chain_configs
+            .get_chain(&chain)?
+            .to_stellar_config()
+            .ok()
+            .map(Into::into)
+    }
+
     fn config_var(&mut self, key: String) -> Option<String> {
         self.service
             .workflows

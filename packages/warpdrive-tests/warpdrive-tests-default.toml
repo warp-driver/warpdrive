@@ -7,7 +7,13 @@ middleware_concurrency = true
 grouping = false
 evm_middleware_type = "poa"
 p2p = "mdns"
-mode = { "isolated" = [{ stellar = "echo_data" }] }
+# `stellar_query` drives the `stellar-query` component which calls
+# the new `host::get_stellar_chain_config` host fn (see issue #5)
+# and then `unimplemented!()`s. The default config includes it so a
+# local `cargo test -p warpdrive-tests` run exercises the WIT
+# round-trip end-to-end. The CI configs deliberately don't include
+# it, so CI stays green while issue #5's follow-up is in flight.
+mode = { "isolated" = [{ stellar = "echo_data" }, { stellar = "stellar_query" }] }
 
 
 # Run all tests

@@ -1,0 +1,19 @@
+[package]
+name = "stellar-query"
+edition.workspace = true
+version.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+example-helpers = { workspace = true }
+example-types = { workspace = true }
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[package.metadata.component]
+package = "warpdrive-tests:stellar-query"

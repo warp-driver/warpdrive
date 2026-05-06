@@ -31,6 +31,19 @@ impl super::world::host::Host for OperatorHostComponent {
             .map(Into::into)
     }
 
+    fn get_stellar_chain_config(
+        &mut self,
+        chain: String,
+    ) -> Option<super::world::warpdrive::types::chain::StellarChainConfig> {
+        let chain = ChainKey::new(chain).ok()?;
+
+        self.chain_configs
+            .get_chain(&chain)?
+            .to_stellar_config()
+            .ok()
+            .map(Into::into)
+    }
+
     fn get_service(&mut self) -> ServiceAndWorkflowId {
         ServiceAndWorkflowId {
             service: self.service.clone().try_into().unwrap(),
