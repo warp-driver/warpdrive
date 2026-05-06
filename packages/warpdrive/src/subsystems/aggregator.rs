@@ -724,14 +724,32 @@ impl Aggregator {
                         );
                     }
                 }
-                // IMPORTANT: Always save the queue on error
-                // We appended the current submission above, so failing to save it would lose this submission
-                // When the next submission arrives (from P2P or vector), it will:
-                // 1. Load this saved queue with accumulated submissions
-                // 2. Append its own submission
-                // 3. Retry submission with all signatures
-                // This implements automatic retry for transient errors like SignerNotRegistered
-                self.save_quorum_queue(queue_id, queue).await?;
+                // Save the (possibly cleaned) queue on error so retry
+                // works for transient categories (SignerNotRegistered
+                // race, MissingCredential pending sysadmin fix, etc.).
+                //
+                // Exception: if the chain-specific submit fn pruned
+                // every entry out of the queue (e.g. all queued
+                // signers were unregistered, see the
+                // `keep_idx.is_empty()` branch in
+                // `handle_action_submit_stellar`), there's nothing
+                // left to retry with — saving an empty queue would
+                // just litter storage. Drop the persistence call
+                // entirely; new sigs from valid signers will start a
+                // fresh queue for the same `queue_id`.
+                if queue.is_empty() {
+                    tracing::warn!(
+                        "Aggregator: all queued submissions for {} were dropped during chain-specific cleanup; skipping save (no valid sigs to retry with)",
+                        submission.label()
+                    );
+                } else {
+                    // We appended the current submission above; failing
+                    // to save would lose it. The next submission (from
+                    // P2P or local vector) loads this queue, appends
+                    // its own, and retries with all accumulated
+                    // signatures.
+                    self.save_quorum_queue(queue_id, queue).await?;
+                }
             }
         }
 
