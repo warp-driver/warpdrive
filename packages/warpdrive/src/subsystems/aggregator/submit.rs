@@ -112,13 +112,19 @@ impl Aggregator {
                         // 2. Retry submission when next submission arrives
                         // 3. Succeed once vectors are registered on-chain
                         if raw_str == "0x3dda1739" {
+                            // 0x3dda1739 is the Solidity selector for
+                            // `SignerNotRegistered()` on the service
+                            // manager. Surface it as the typed variant
+                            // so the dispatch loop's transient-retry
+                            // matcher catches it via `matches!` rather
+                            // than substring search.
                             tracing::warn!(
                                 "Signer not registered yet for submission {}. Queue will be saved for retry.",
                                 queue.last().unwrap().label()
                             );
-                            return Err(AggregatorError::EvmServiceManagerValidateAnyRevert(
-                                format!("SignerNotRegistered ({})", raw_str),
-                            ));
+                            return Err(AggregatorError::SignerNotRegistered(format!(
+                                "evm {raw_str}"
+                            )));
                         }
                         return Err(AggregatorError::EvmServiceManagerValidateAnyRevert(raw_str));
                     }
@@ -269,11 +275,11 @@ impl Aggregator {
     /// signatures, unregistered signers, or insufficient weight — those
     /// surface in the simulation result with no fee paid. We translate
     /// the relevant codes to typed `AggregatorError` variants:
-    ///   - `#302 SignerNotRegistered` → `Stellar(SignerNotRegistered ...)`
-    ///     (string-tagged so the dispatch loop recognizes it as
-    ///     transient and retries when the next vector signs).
-    ///   - `#303 InsufficientWeight` → `InsufficientQuorum` (queue saved,
-    ///     retried when the next vector signs).
+    ///   - `#302 SignerNotRegistered` → `SignerNotRegistered(...)` —
+    ///     dispatch loop recognizes this variant as transient and
+    ///     retries when the next vector signs.
+    ///   - `#303 InsufficientWeight` → `InsufficientQuorum` — queue
+    ///     saved, retried when the next vector signs.
     ///   - other codes → `Stellar(...)`.
     pub async fn handle_action_submit_stellar(
         &self,
@@ -466,11 +472,11 @@ fn map_verify_eth_error(
     let err_str = format!("{err:?}");
     if err_str.contains("Error(Contract, #302)") {
         // Multi-vector startup race: a signer in the queue hasn't
-        // registered on-chain yet. The dispatch loop's substring
-        // detection on "SignerNotRegistered" recognizes this as
-        // transient and the queue is saved for retry once the
-        // remaining vectors finish registering.
-        return AggregatorError::Stellar(format!("SignerNotRegistered (transient): {err_str}"));
+        // registered on-chain yet. The dispatch loop matches on this
+        // variant directly to recognize it as transient and save the
+        // queue for retry once the remaining vectors finish
+        // registering.
+        return AggregatorError::SignerNotRegistered(format!("stellar #302: {err_str}"));
     }
     if err_str.contains("Error(Contract, #303)") {
         // We have <required_weight signed; expected when fewer than
@@ -487,4 +493,77 @@ fn map_verify_eth_error(
         };
     }
     AggregatorError::Stellar(format!("verify_eth failed: {err_str}"))
+}
+
+#[cfg(test)]
+mod map_verify_eth_error_tests {
+    use super::*;
+    use soroban_rs::SorobanHelperError;
+
+    // The simulation error string from soroban-rpc embeds the contract
+    // panic as `Error(Contract, #N)`. We feed a representative wrapper
+    // string here; the helper's contract is "match the substring on
+    // the debug-formatted error", which is exactly what these inputs
+    // exercise.
+    fn sim_err(inner: &str) -> SorobanHelperError {
+        SorobanHelperError::TransactionSimulationFailed(inner.to_string())
+    }
+
+    #[test]
+    fn maps_302_to_signer_not_registered() {
+        let err = sim_err("HostError: Error(Contract, #302) ...");
+        match map_verify_eth_error(err, 1) {
+            AggregatorError::SignerNotRegistered(s) => {
+                assert!(s.contains("#302"), "detail should preserve raw error: {s}");
+            }
+            other => panic!("expected SignerNotRegistered, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn maps_303_to_insufficient_quorum() {
+        let err = sim_err("HostError: Error(Contract, #303) ...");
+        match map_verify_eth_error(err, 2) {
+            AggregatorError::InsufficientQuorum { total_weight, .. } => {
+                assert!(
+                    total_weight.contains('2'),
+                    "expected num_signers (2) preserved in total_weight, got {total_weight}"
+                );
+            }
+            other => panic!("expected InsufficientQuorum, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn unknown_contract_code_falls_through_to_stellar() {
+        let err = sim_err("HostError: Error(Contract, #999) ...");
+        assert!(
+            matches!(map_verify_eth_error(err, 0), AggregatorError::Stellar(_)),
+            "unknown contract code should map to Stellar(_)",
+        );
+    }
+
+    #[test]
+    fn non_simulation_error_falls_through_to_stellar() {
+        // Anything that's not the simulation-failure shape (e.g.
+        // network errors, encoding errors) also collapses to Stellar.
+        let err = SorobanHelperError::NotSupported("placeholder".to_string());
+        assert!(
+            matches!(map_verify_eth_error(err, 0), AggregatorError::Stellar(_)),
+            "non-simulation error should map to Stellar(_)",
+        );
+    }
+
+    #[test]
+    fn matches_302_anywhere_in_string() {
+        // The match is a substring scan, so the marker can appear
+        // surrounded by other diagnostic noise from soroban-rpc.
+        let err = sim_err(
+            "transaction simulation failed: HostError: Error(Contract, #302) trace [foo bar baz]",
+        );
+        assert!(matches!(
+            map_verify_eth_error(err, 1),
+            AggregatorError::SignerNotRegistered(_)
+        ));
+    }
 }

@@ -658,18 +658,20 @@ impl Aggregator {
             }
 
             Err(err) => {
-                // Handle submission errors with appropriate logging
-                let err_str = format!("{:?}", err);
-                if err_str.contains("SignerNotRegistered") || err_str.contains("0x3dda1739") {
-                    // Transient error: Vectors are still being registered on-chain
-                    // Common during startup, especially with PoA middleware which does
-                    // sequential vector registration via multiple docker exec calls
+                // Transient: vectors are still being registered on-chain
+                // (common during startup, especially with PoA middleware
+                // whose sequential docker-exec calls are slow). Both EVM
+                // and Stellar submission paths produce this variant —
+                // EVM detects the `SignerNotRegistered()` Solidity
+                // selector (0x3dda1739), Stellar detects contract error
+                // code #302.
+                if matches!(err, AggregatorError::SignerNotRegistered(_)) {
                     tracing::warn!(
                         "Aggregator: Signer not registered yet for submission {}. Will retry when vectors complete registration.",
                         submission.label()
                     );
                 } else {
-                    // Unexpected error: Log as error for investigation
+                    // Unexpected error: log as error for investigation.
                     tracing::error!(
                         "Aggregator: Error submitting on-chain for submission {}: {:?}",
                         submission.label(),
