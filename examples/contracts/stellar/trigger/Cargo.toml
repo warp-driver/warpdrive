@@ -1,3 +1,9 @@
+# See the matching note in `examples/contracts/stellar/mock_submit/Cargo.toml`
+# — empty `[workspace]` makes cargo treat this contract as its own
+# workspace root, so cargo doesn't walk up past the warpdrive
+# workspace into whatever outer Cargo.toml might exist on disk.
+[workspace]
+
 [package]
 name = "warpdrive-stellar-trigger"
 version = "0.0.0"
