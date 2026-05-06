@@ -566,44 +566,74 @@ impl Aggregator {
     ) -> Result<(), AggregatorError> {
         // Running in a transaction keyed by chain to avoid nonce errors.
         //
-        // The closure returns a flat `Result` (no `Option`): missing
-        // credentials and missing chain config used to return
-        // `Ok(None)` here, which the outer loop treated as
-        // "skip without saving" — silently dropping the inbound
-        // submission. They now produce typed `MissingCredential` /
-        // `MissingChainConfig` errors which fall through to the
-        // shared error arm below and call `save_quorum_queue`, so
-        // submissions aren't lost while a sysadmin propagates config.
-        let result: Result<AnyTransactionReceipt, AggregatorError> = self
+        // ── Closure return shape: (Result<Receipt, _>, Vec<Submission>).
+        //
+        // Prior to this PR the closure returned just the result; the
+        // dispatch loop saved the *original* queue on error.
+        // The Stellar #302 cleanup path needs to drop unregistered
+        // signers from the persisted queue (so they aren't re-tried
+        // forever), which means the cleaned queue has to flow back
+        // out of the closure.
+        //
+        // Tradeoff: closure callers now have to track that the
+        // persisted queue may differ from what was passed in. EVM
+        // and Cosmos arms simply return their input queue unchanged,
+        // making the contract uniform: "use the queue I give you
+        // back; don't reach for the original". The Stellar arm
+        // mutates its `&mut Vec<Submission>` argument in place; the
+        // owned queue (`queue` in the closure) is then returned to
+        // outer scope.
+        //
+        // Missing credential / missing chain config still flow as
+        // typed `Err`s into the shared error arm below — the queue
+        // is still persisted, just unmodified by those paths.
+        let (result, queue): (
+            Result<AnyTransactionReceipt, AggregatorError>,
+            Vec<Submission>,
+        ) = self
             .chain_transaction
             .run(action.chain().clone(), {
                 let _self = self.clone();
-                let queue = queue.clone();
+                let captured_queue = queue.clone();
                 let service_clone = service.clone();
                 move || async move {
-                    match action {
+                    let mut queue = captured_queue;
+                    let outcome = match action {
                         SubmitAction::Evm(action) => {
-                            let client = _self.get_evm_client(&action.chain).await?;
-                            _self.handle_action_submit_evm(client, &queue, action).await
+                            match _self.get_evm_client(&action.chain).await {
+                                Ok(client) => {
+                                    _self.handle_action_submit_evm(client, &queue, action).await
+                                }
+                                Err(e) => Err(e),
+                            }
                         }
                         SubmitAction::Cosmos(action) => {
-                            let client = _self.get_cosmos_client(&action.chain).await?;
-                            _self
-                                .handle_action_submit_cosmos(client, &queue, action)
-                                .await
+                            match _self.get_cosmos_client(&action.chain).await {
+                                Ok(client) => {
+                                    _self
+                                        .handle_action_submit_cosmos(client, &queue, action)
+                                        .await
+                                }
+                                Err(e) => Err(e),
+                            }
                         }
                         SubmitAction::Stellar(action) => {
-                            let signing_key = _self.get_stellar_signing_key(&action.chain)?;
-                            _self
-                                .handle_action_submit_stellar(
-                                    signing_key,
-                                    &service_clone,
-                                    &queue,
-                                    action,
-                                )
-                                .await
+                            match _self.get_stellar_signing_key(&action.chain) {
+                                Ok(signing_key) => {
+                                    _self
+                                        .handle_action_submit_stellar(
+                                            signing_key,
+                                            &service_clone,
+                                            &mut queue,
+                                            action,
+                                        )
+                                        .await
+                                }
+                                Err(e) => Err(e),
+                            }
                         }
-                    }
+                    };
+                    (outcome, queue)
                 }
             })
             .await;

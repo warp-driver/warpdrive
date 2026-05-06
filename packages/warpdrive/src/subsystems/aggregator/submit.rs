@@ -281,11 +281,18 @@ impl Aggregator {
     ///   - `#303 InsufficientWeight` → `InsufficientQuorum` — queue
     ///     saved, retried when the next vector signs.
     ///   - other codes → `Stellar(...)`.
+    ///
+    /// Note on `queue: &mut Vec<Submission>`: on `#302` cleanup, this
+    /// fn drops the corresponding entries from the queue in place so
+    /// the dispatch loop persists the cleaned version. EVM and Cosmos
+    /// paths still take the queue by `&[..]` because their failure
+    /// modes don't currently require pruning. See the dispatch closure
+    /// in `aggregator.rs::handle_submit_action` for the full contract.
     pub async fn handle_action_submit_stellar(
         &self,
         signing_key: ed25519_dalek::SigningKey,
         service: &Service,
-        queue: &[Submission],
+        queue: &mut Vec<Submission>,
         action: StellarSubmitAction,
     ) -> Result<AnyTransactionReceipt, AggregatorError> {
         use k256::ecdsa::{RecoveryId, Signature as K256Sig, VerifyingKey};
@@ -327,9 +334,13 @@ impl Aggregator {
                 ))
             })?;
 
-        // ── Recover (compressed_pubkey, signature) per queue entry.
-        let mut signers_and_sigs: Vec<([u8; 33], [u8; 65])> = Vec::with_capacity(queue.len());
-        for queued in queue {
+        // ── Recover (queue_idx, compressed_pubkey, signature) per
+        // queue entry. We track the original queue index alongside
+        // the recovered pubkey so that after sorting we can map a
+        // "drop this signer" decision back to the corresponding
+        // queue entry for in-place removal.
+        let mut entries: Vec<(usize, [u8; 33], [u8; 65])> = Vec::with_capacity(queue.len());
+        for (queue_idx, queued) in queue.iter().enumerate() {
             let sig_bytes: &[u8] = &queued.envelope_signature.data;
             if sig_bytes.len() != 65 {
                 return Err(AggregatorError::Stellar(format!(
@@ -365,13 +376,18 @@ impl Aggregator {
             })?;
             let mut sig_arr = [0u8; 65];
             sig_arr.copy_from_slice(sig_bytes);
-            signers_and_sigs.push((compressed, sig_arr));
+            entries.push((queue_idx, compressed, sig_arr));
         }
 
         // Verification contract expects signers in ascending pubkey order.
-        signers_and_sigs.sort_by(|a, b| a.0.cmp(&b.0));
-        let (signers, signatures): (Vec<[u8; 33]>, Vec<[u8; 65]>) =
-            signers_and_sigs.into_iter().unzip();
+        entries.sort_by(|a, b| a.1.cmp(&b.1));
+        // After sort: position `i` in `signers`/`signatures` ↔ position
+        // `sorted_to_queue[i]` in the input queue. We use this mapping
+        // below to translate "drop signer i (sorted)" into the right
+        // `queue.retain` decision.
+        let sorted_to_queue: Vec<usize> = entries.iter().map(|(qi, _, _)| *qi).collect();
+        let signers: Vec<[u8; 33]> = entries.iter().map(|(_, pk, _)| *pk).collect();
+        let signatures: Vec<[u8; 65]> = entries.iter().map(|(_, _, sig)| *sig).collect();
 
         // ── Reference block = current ledger sequence at submit time.
         // The verification contract checks each signer's weight against
@@ -540,15 +556,33 @@ impl Aggregator {
             tracing::warn!(
                 chain = %action.chain,
                 pubkey = %format!("0x{}", const_hex::encode(signers[*idx])),
-                "Stellar: dropping signature from unregistered signer (will be filtered on every future submit attempt until queue is burned)"
+                "Stellar: dropping signature from unregistered signer (pruning from persisted queue)"
             );
         }
+
+        // ── Mutate the queue in place to drop the unregistered
+        // signers' submissions. This is the difference between this
+        // PR and the previous local-filter-only approach (#19): the
+        // cleaned queue propagates back to the dispatch loop, which
+        // persists it via save_quorum_queue. Subsequent retries see
+        // the smaller queue, so we don't repeatedly re-query
+        // signer_weight for the same dead entries every attempt.
+        //
+        // The pure helper `prune_indices_in_place` handles the index
+        // mapping (sorted ↔ queue) and is unit-tested separately so
+        // we don't have to construct real Submissions to validate
+        // the plumbing.
+        prune_indices_in_place(queue, &sorted_to_queue, &drop_idx);
+
         if keep_idx.is_empty() {
             // Every signer in the queue is unregistered. Nothing we
             // can submit. Surface as SignerNotRegistered so the
             // dispatch loop saves and retries — by the next attempt
             // either some of these have registered, or new sigs from
-            // valid signers have been appended.
+            // valid signers have been appended. Note: queue is now
+            // empty (we just dropped everything), so the persisted
+            // queue is also empty — submission won't retry from this
+            // queue, but new submissions will start a fresh one.
             return Err(AggregatorError::SignerNotRegistered(format!(
                 "stellar #302 cleanup: all {num_signers} queued signers unregistered"
             )));
@@ -597,6 +631,33 @@ impl Aggregator {
             Err(err) => Err(map_verify_eth_error(err, kept_count)),
         }
     }
+}
+
+/// Pure helper: prune entries from `queue` whose corresponding
+/// position in the *sorted* signers/signatures arrays appears in
+/// `drop_sorted`.
+///
+/// `sorted_to_queue` is the index mapping built during the recovery
+/// loop: `sorted_to_queue[sorted_i]` is the index in `queue` of the
+/// submission whose pubkey ended up at position `sorted_i` after the
+/// pubkey-sort. `drop_sorted` is the list of sorted indices to remove
+/// (output of `partition_by_registration`).
+///
+/// Kept generic over `T` and separate from the async submit code so
+/// we can unit-test it on plain integers — no need to construct real
+/// `Submission` values to verify the index plumbing.
+fn prune_indices_in_place<T>(queue: &mut Vec<T>, sorted_to_queue: &[usize], drop_sorted: &[usize]) {
+    if drop_sorted.is_empty() {
+        return;
+    }
+    let queue_drop_set: std::collections::HashSet<usize> =
+        drop_sorted.iter().map(|i| sorted_to_queue[*i]).collect();
+    let mut q_idx = 0usize;
+    queue.retain(|_| {
+        let keep = !queue_drop_set.contains(&q_idx);
+        q_idx += 1;
+        keep
+    });
 }
 
 /// Pure helper: split signer indices by whether they're registered
@@ -790,5 +851,58 @@ mod partition_by_registration_tests {
         let (keep, drop) = partition_by_registration(&[1]);
         assert_eq!(keep, vec![0]);
         assert!(drop.is_empty());
+    }
+}
+
+#[cfg(test)]
+mod prune_indices_in_place_tests {
+    use super::prune_indices_in_place;
+
+    #[test]
+    fn empty_drop_set_is_noop() {
+        let mut q = vec![10u32, 20, 30];
+        prune_indices_in_place(&mut q, &[0, 1, 2], &[]);
+        assert_eq!(q, vec![10, 20, 30]);
+    }
+
+    #[test]
+    fn drop_one_through_identity_mapping() {
+        // sorted == queue order. Dropping sorted index 1 drops
+        // queue index 1.
+        let mut q = vec![10u32, 20, 30];
+        prune_indices_in_place(&mut q, &[0, 1, 2], &[1]);
+        assert_eq!(q, vec![10, 30]);
+    }
+
+    #[test]
+    fn drop_through_nontrivial_mapping() {
+        // Queue: [10, 20, 30, 40]
+        // After pubkey-sort, suppose order became: queue indices 2, 0, 3, 1.
+        // So sorted_to_queue = [2, 0, 3, 1].
+        // We want to drop sorted indices 0 and 2 — that maps to queue
+        // indices 2 and 3 — leaving the queue with [10, 20].
+        let mut q = vec![10u32, 20, 30, 40];
+        prune_indices_in_place(&mut q, &[2, 0, 3, 1], &[0, 2]);
+        assert_eq!(q, vec![10, 20]);
+    }
+
+    #[test]
+    fn drop_all() {
+        let mut q = vec![10u32, 20];
+        prune_indices_in_place(&mut q, &[0, 1], &[0, 1]);
+        assert!(q.is_empty());
+    }
+
+    #[test]
+    fn drop_preserves_relative_order_of_kept() {
+        // Verify that retain() preserves the relative order of the
+        // kept entries — important because the queue's append-order
+        // matters for the "first submission's envelope" lookup
+        // elsewhere in the submit path.
+        let mut q = vec![100u32, 200, 300, 400, 500];
+        // sorted_to_queue arbitrary; drop sorted indices that map to
+        // queue indices 1 and 3. Expect [100, 300, 500].
+        prune_indices_in_place(&mut q, &[1, 3, 0, 2, 4], &[0, 1]);
+        assert_eq!(q, vec![100, 300, 500]);
     }
 }
