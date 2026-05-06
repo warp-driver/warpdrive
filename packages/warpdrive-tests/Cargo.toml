@@ -20,7 +20,7 @@ cw-warpdrive-mock-api = { workspace = true }
 cw-warpdrive-trigger-api = { workspace = true }
 clap = { workspace = true }
 anyhow = { workspace = true }
-tokio = { workspace = true }
+tokio = { workspace = true, features = ["full"]}
 serde = { workspace = true }
 serde_json = { workspace = true }
 opentelemetry = { workspace = true }

@@ -10,6 +10,7 @@ repository.workspace = true
 example-helpers = { workspace = true }
 example-types = { workspace = true }
 serde_json = { workspace = true }
+anyhow = { workspace = true }
 
 [lib]
 crate-type = ["rlib", "cdylib"]

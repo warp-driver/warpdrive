@@ -16,9 +16,8 @@ use std::{fs, io::Write, path::Path};
 use warpdrive_wasi_utils::http::{
     fetch_json, fetch_string, http_request_get, http_request_post_json,
 };
-use wstd::runtime::block_on;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use serde::Deserialize;
 
 use example_types::{PermissionsRequest, PermissionsResponse};
@@ -27,31 +26,24 @@ struct Component;
 
 impl Guest for Component {
     fn run(trigger_action: TriggerAction) -> std::result::Result<Vec<WasmResponse>, String> {
-        block_on(async move {
-            let (trigger_id, req) =
-                decode_trigger_event(trigger_action.data).map_err(|e| e.to_string())?;
-
-            println!("(permissions println!) trigger id: {trigger_id}");
-            eprintln!("(permissions eprintln!) trigger id: {trigger_id}");
-            host::log(
-                LogLevel::Info,
-                &format!("(permissions host log) trigger id: {trigger_id}"),
-            );
-
-            let req: PermissionsRequest =
-                serde_json::from_slice(&req).map_err(|e| e.to_string())?;
-            let resp = inner_run_task(req).await.map_err(|e| e.to_string())?;
-            let resp = serde_json::to_vec(&resp).map_err(|e| e.to_string())?;
-            Ok(vec![encode_trigger_output(
-                trigger_id,
-                resp,
-                host::get_service().service.manager,
-            )])
-        })
+        run_one(trigger_action)
+            .map_err(|e: anyhow::Error| format!("{e:?}"))
+            .map(|res| vec![res])
     }
 }
 
-async fn inner_run_task(input: PermissionsRequest) -> Result<PermissionsResponse> {
+#[tokio::main(flavor = "current_thread")]
+async fn run_one(trigger_action: TriggerAction) -> Result<WasmResponse> {
+    let (trigger_id, req) = decode_trigger_event(trigger_action.data).context("Decode event")?;
+    let input: PermissionsRequest = serde_json::from_slice(&req).context("Parsing request")?;
+
+    println!("(permissions println!) trigger id: {trigger_id}");
+    eprintln!("(permissions eprintln!) trigger id: {trigger_id}");
+    host::log(
+        LogLevel::Info,
+        &format!("(permissions host log) trigger id: {trigger_id}"),
+    );
+
     const DIRECTORY_NAME: &str = "./responses";
 
     let responses_path = Path::new(DIRECTORY_NAME);
@@ -107,12 +99,18 @@ async fn inner_run_task(input: PermissionsRequest) -> Result<PermissionsResponse
         ComponentSource::Digest(digest) => digest,
     };
 
-    Ok(PermissionsResponse {
+    let resp = PermissionsResponse {
         filename: response_path.to_path_buf(),
         contents,
         filecount: responses_count,
         digest,
-    })
+    };
+    let resp = serde_json::to_vec(&resp).context("Serializing response")?;
+    Ok(encode_trigger_output(
+        trigger_id,
+        resp,
+        host::get_service().service.manager,
+    ))
 }
 
 export_layer_trigger_world!(Component);
