@@ -108,4 +108,18 @@ pub enum AggregatorError {
     /// pending submission.
     #[error("Chain config not found for chain {0}")]
     MissingChainConfig(ChainKey),
+
+    /// At startup, a configured credential failed to parse. Distinct
+    /// from `MissingCredential` (which is per-chain at submit time):
+    /// at startup we don't have a specific chain in context — the
+    /// credentials are global per kind (one EVM, one Cosmos, one
+    /// Stellar). Returning this variant from `Aggregator::new` makes
+    /// the node refuse to start so the sysadmin sees the misconfig
+    /// immediately, not at the first submission for the affected
+    /// chain.
+    #[error("Invalid {chain_kind} credential at startup: {detail}")]
+    InvalidStartupCredential {
+        chain_kind: &'static str,
+        detail: String,
+    },
 }
