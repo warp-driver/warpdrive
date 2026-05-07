@@ -12,8 +12,10 @@
 
 use anyhow::anyhow;
 use example_helpers::bindings::world::{host, Guest, TriggerAction, WasmResponse};
+use example_helpers::trigger::encode_trigger_output;
 use example_helpers::{export_layer_trigger_world, trigger::decode_trigger_event};
-use example_types::StellarQueryRequest;
+use example_types::{StellarQueryRequest, StellarQueryResponse};
+use soroban_rs::{Env, EnvConfigs};
 
 struct Component;
 
@@ -25,16 +27,17 @@ impl Guest for Component {
     }
 }
 
+// #[tokio::main(flavor = "current_thread")]
 fn run_one(trigger_action: TriggerAction) -> std::result::Result<WasmResponse, anyhow::Error> {
-    let (_trigger_id, req) = decode_trigger_event(trigger_action.data)?;
-    let req: StellarQueryRequest = serde_json::from_slice(&req).map_err(|e| anyhow!("{:?}", e))?;
+    let (trigger_id, req) = decode_trigger_event(trigger_action.data)?;
+    let req: StellarQueryRequest = serde_json::from_slice(&req)?;
 
     // Pull the chain key out of the request. All current
     // `StellarQueryRequest` variants carry a `chain` string; this
     // pattern stays correct as new variants are added because they
     // share the same convention.
     let chain_key = match &req {
-        StellarQueryRequest::LedgerSequence { chain } => chain.clone(),
+        StellarQueryRequest::Balance { chain, .. } => chain.clone(),
     };
 
     // Resolve the chain config via the new host function. This is
@@ -55,15 +58,25 @@ fn run_one(trigger_action: TriggerAction) -> std::result::Result<WasmResponse, a
         ),
     );
 
-    // Intentional stop: querying Soroban contracts from a wasip2
-    // component requires a wasip2-compatible RPC client we don't
-    // ship yet. Panicking here surfaces clearly in the engine logs
-    // and in the e2e test output so it's obvious the component
-    // reached the host call but couldn't proceed.
-    unimplemented!(
-        "stellar-query: host config resolution works; Soroban RPC from \
-         components is not implemented yet (see warp-driver/warpdrive#5)"
-    );
+    let env = Env::new(EnvConfigs {
+        rpc_url: chain_config.rpc_url,
+        network_passphrase: chain_config.network_passphrase,
+    })?;
+
+    // Actually do the queries or whatever
+    let resp = match req {
+        StellarQueryRequest::Balance { account_id, .. } => {
+            let account_entry = env.get_account(&account_id).await?;
+            StellarQueryResponse::Balance(account_entry.balance)
+        }
+    };
+
+    let output = serde_json::to_vec(&resp)?;
+    Ok(encode_trigger_output(
+        trigger_id,
+        output,
+        host::get_service().service.manager,
+    ))
 }
 
 export_layer_trigger_world!(Component);

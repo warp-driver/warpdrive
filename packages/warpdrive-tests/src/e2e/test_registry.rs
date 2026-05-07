@@ -324,6 +324,14 @@ impl TestRegistry {
     /// Don't add this to the CI configs; it's only in
     /// `warpdrive-tests-default.toml`.
     fn register_stellar_stellar_query_test(&mut self, chain: &ChainKey) -> &mut Self {
+        // In warpdrive-contracts: task testnet:fund SOURCE=query-test
+        //
+        // XLM=$(stellar contract id asset --asset native)
+        // ACCOUNT=$(stellar keys address query-test)
+        // BALANCE=$(stellar contract invoke --id $XLM --source-account $ACCOUNT -- balance --id $ACCOUNT)
+        const TESTNET_ACCOUNT: &str = "GBQFSBD5IXIYE2E74SQVZR4KKHDR66YH62FCNEK3ZBFJHZVNNB6ZLCXT";
+        const TESTNET_BALANCE: i64 = 100000000000;
+
         self.register(
             TestBuilder::new("stellar_stellar_query")
                 .with_description(
@@ -340,21 +348,13 @@ impl TestRegistry {
                                 chain: chain.clone(),
                             },
                         ))
-                        .with_input_data(InputData::StellarQuery(
-                            StellarQueryRequest::LedgerSequence {
-                                chain: chain.to_string(),
-                            },
-                        ))
+                        .with_input_data(InputData::StellarQuery(StellarQueryRequest::Balance {
+                            chain: chain.to_string(),
+                            account_id: TESTNET_ACCOUNT.to_string(),
+                        }))
                         .with_submit(SubmitDefinition::Aggregator(Self::simple_aggregator(chain)))
-                        // The component never produces output (it
-                        // panics first). Expected output is set so
-                        // the test framework has something to compare
-                        // against on timeout — the actual failure
-                        // mode is the panic surfaced in the engine
-                        // logs.
                         .with_expected_output(ExpectedOutput::Text(
-                            "stellar-query never produces output until issue #5 is finished"
-                                .to_string(),
+                            json!({"balance": TESTNET_BALANCE}).to_string(),
                         ))
                         .with_timeout(Duration::from_secs(90))
                         .build(),

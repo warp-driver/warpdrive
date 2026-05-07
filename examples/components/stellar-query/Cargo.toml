@@ -11,6 +11,8 @@ serde_json = { workspace = true }
 anyhow = { workspace = true }
 example-helpers = { workspace = true }
 example-types = { workspace = true }
+tokio = { workspace = true, features = ["sync", "io-util", "macros", "rt", "time"] }
+soroban-rs = { git = "https://github.com/warp-driver/soroban-helpers", rev = "afc5a819ec65d427a775f0cf392fc7f699a1ae49" }
 
 [lib]
 crate-type = ["rlib", "cdylib"]
