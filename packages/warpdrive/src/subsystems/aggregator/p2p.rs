@@ -1176,29 +1176,27 @@ fn handle_swarm_event(
             is_new_peer,
             addresses,
             ..
-        })) => {
-            if is_new_peer {
-                tracing::debug!(
-                    "Kademlia routing updated for peer: {} ({} addresses)",
-                    peer,
-                    addresses.len()
-                );
-                swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer);
+        })) if is_new_peer => {
+            tracing::debug!(
+                "Kademlia routing updated for peer: {} ({} addresses)",
+                peer,
+                addresses.len()
+            );
+            swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer);
 
-                // Dial the peer if not already connected
-                if !swarm.is_connected(&peer) {
-                    for addr in addresses.iter() {
-                        if let Err(e) = swarm.dial(addr.clone()) {
-                            tracing::debug!(
-                                "Could not dial Kademlia peer {} at {}: {:?}",
-                                peer,
-                                addr,
-                                e
-                            );
-                        } else {
-                            tracing::debug!("Dialing Kademlia peer {} at {}", peer, addr);
-                            break; // Only need to dial one address
-                        }
+            // Dial the peer if not already connected
+            if !swarm.is_connected(&peer) {
+                for addr in addresses.iter() {
+                    if let Err(e) = swarm.dial(addr.clone()) {
+                        tracing::debug!(
+                            "Could not dial Kademlia peer {} at {}: {:?}",
+                            peer,
+                            addr,
+                            e
+                        );
+                    } else {
+                        tracing::debug!("Dialing Kademlia peer {} at {}", peer, addr);
+                        break; // Only need to dial one address
                     }
                 }
             }
