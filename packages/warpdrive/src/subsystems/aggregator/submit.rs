@@ -424,7 +424,8 @@ impl Aggregator {
                     "Stellar: no pinned reference_block for submission {}; falling back to current ledger {current}. Receive-time validation should have pinned it — investigate.",
                     first.label(),
                 );
-                current
+
+                current.saturating_sub(1)
             }
         };
 

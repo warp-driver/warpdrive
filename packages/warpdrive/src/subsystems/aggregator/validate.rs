@@ -208,13 +208,16 @@ impl Aggregator {
                         detail: format!("stellar rpc client: {e:?}"),
                     }
                 })?;
-                rpc.get_latest_ledger()
+                let current = rpc
+                    .get_latest_ledger()
                     .await
                     .map_err(|e| AggregatorError::ReceiveValidationChainQuery {
                         chain: chain.clone(),
                         detail: format!("get_latest_ledger: {e:?}"),
                     })?
-                    .sequence as u64
+                    .sequence as u64;
+
+                current.saturating_sub(1)
             }
         };
 
@@ -331,14 +334,18 @@ impl Aggregator {
 
         let ref_block = match pinned {
             Some(b) => b,
-            None => query_client
-                .provider
-                .get_block_number()
-                .await
-                .map_err(|e| AggregatorError::ReceiveValidationChainQuery {
-                    chain: chain.clone(),
-                    detail: format!("eth_blockNumber: {e:?}"),
-                })?,
+            None => {
+                let current = query_client
+                    .provider
+                    .get_block_number()
+                    .await
+                    .map_err(|e| AggregatorError::ReceiveValidationChainQuery {
+                        chain: chain.clone(),
+                        detail: format!("eth_blockNumber: {e:?}"),
+                    })?;
+
+                current.saturating_sub(1)
+            }
         };
 
         // The one-liner historical-state win: alloy's
@@ -410,12 +417,16 @@ impl Aggregator {
         // The Stellar/EVM paths above don't have this race.
         let ref_block = match pinned {
             Some(b) => b,
-            None => query_client.block_height().await.map_err(|e| {
-                AggregatorError::ReceiveValidationChainQuery {
-                    chain: chain.clone(),
-                    detail: format!("block_height: {e:?}"),
-                }
-            })?,
+            None => {
+                let current = query_client.block_height().await.map_err(|e| {
+                    AggregatorError::ReceiveValidationChainQuery {
+                        chain: chain.clone(),
+                        detail: format!("block_height: {e:?}"),
+                    }
+                })?;
+
+                current.saturating_sub(1)
+            }
         };
 
         let weight: cosmwasm_std::Uint256 = query_client
