@@ -76,9 +76,7 @@ impl Aggregator {
         // missing (shouldn't happen — receive validation pins on the
         // first valid packet), fall back to current-block-minus-one
         // and warn.
-        let block_height_minus_one = match self
-            .get_pinned_reference_block(first.service_id(), &first.event_id)
-        {
+        let block_height_minus_one = match self.get_pinned_reference_block(&first.event_id) {
             Some(b) => b,
             None => {
                 let current = service_manager
@@ -199,9 +197,7 @@ impl Aggregator {
         // Pinned reference_block from receive-time validation, with
         // current-1 fallback. See the EVM path above for the same
         // pattern + rationale.
-        let block_height_minus_one = match self
-            .get_pinned_reference_block(first.service_id(), &first.event_id)
-        {
+        let block_height_minus_one = match self.get_pinned_reference_block(&first.event_id) {
             Some(b) => b,
             None => {
                 let current = client
@@ -408,9 +404,7 @@ impl Aggregator {
         // shouldn't normally fire — receive validation pins on the
         // first valid packet — but it keeps the submit path correct
         // if the pin is missing.
-        let reference_block: u32 = match self
-            .get_pinned_reference_block(first.service_id(), &first.event_id)
-        {
+        let reference_block: u32 = match self.get_pinned_reference_block(&first.event_id) {
             Some(b) => b as u32,
             None => {
                 let rpc = stellar_rpc_client::Client::new(&stellar_chain_config.rpc_url).map_err(

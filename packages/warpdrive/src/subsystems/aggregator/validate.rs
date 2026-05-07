@@ -45,8 +45,8 @@ use utils::{
 };
 use warpdrive_types::{
     contracts::cosmwasm::service_manager::ServiceManagerQueryMessages, AnyChainConfig, ChainKey,
-    EventId, IWarpDriveServiceManager::IWarpDriveServiceManagerInstance, Service, ServiceId,
-    ServiceManager, Submission, WavsSignable,
+    EventId, IWarpDriveServiceManager::IWarpDriveServiceManagerInstance, Service, ServiceManager,
+    Submission, WavsSignable,
 };
 
 use crate::subsystems::aggregator::{error::AggregatorError, Aggregator};
@@ -90,7 +90,7 @@ impl Aggregator {
         submission: &Submission,
         service: &Service,
     ) -> Result<u64, AggregatorError> {
-        let pinned = self.get_pinned_reference_block(&service.id(), &submission.event_id);
+        let pinned = self.get_pinned_reference_block(&submission.event_id);
 
         match &service.manager {
             ServiceManager::Stellar { chain, address } => {
@@ -111,17 +111,11 @@ impl Aggregator {
     /// Persist the pinned reference block for `(service_id, event_id)`.
     /// First-write wins; subsequent calls (from later valid packets in
     /// the same aggregation window) are no-ops.
-    pub fn pin_event_reference_block_if_unset(
-        &self,
-        service_id: &ServiceId,
-        event_id: &EventId,
-        block: u64,
-    ) {
-        let key = (service_id.clone(), event_id.clone());
+    pub fn pin_event_reference_block_if_unset(&self, event_id: &EventId, block: u64) {
         if self
             .storage
             .event_reference_blocks
-            .get_cloned(&key)
+            .get_cloned(event_id)
             .is_none()
         {
             // Best-effort insert. If two concurrent valid packets race
@@ -131,7 +125,11 @@ impl Aggregator {
             // the same value (same chain block ± 1). The serializer in
             // the dispatch path doesn't lock at receive granularity,
             // so we accept the harmless drift.
-            if let Err(err) = self.storage.event_reference_blocks.insert(key, block) {
+            if let Err(err) = self
+                .storage
+                .event_reference_blocks
+                .insert(event_id.clone(), block)
+            {
                 tracing::warn!(
                     "Aggregator: failed to pin event_reference_block: {err:?} (validation continues using the block we just queried; submit path will fall back to current chain state if the pin is missing)"
                 );
@@ -147,14 +145,8 @@ impl Aggregator {
     /// passed receive validation), but the submit path falls back to
     /// the chain's current block with a warn log so a missing pin
     /// degrades gracefully rather than panicking.
-    pub fn get_pinned_reference_block(
-        &self,
-        service_id: &ServiceId,
-        event_id: &EventId,
-    ) -> Option<u64> {
-        self.storage
-            .event_reference_blocks
-            .get_cloned(&(service_id.clone(), event_id.clone()))
+    pub fn get_pinned_reference_block(&self, event_id: &EventId) -> Option<u64> {
+        self.storage.event_reference_blocks.get_cloned(event_id)
     }
 
     // ── Stellar ──────────────────────────────────────────────────

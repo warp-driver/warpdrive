@@ -21,7 +21,7 @@ pub struct WavsDb {
     /// signers either pass for the whole aggregation window or never.
     /// See `aggregator/validate.rs` and the design discussion on
     /// issue #33.
-    pub event_reference_blocks: WavsDbTable<(ServiceId, EventId), u64>,
+    pub event_reference_blocks: WavsDbTable<EventId, u64>,
     pub kv_store: WavsDbTable<String, Vec<u8>>,
     pub kv_atomics_counter: WavsDbTable<String, i64>,
 }

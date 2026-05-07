@@ -561,11 +561,7 @@ impl Aggregator {
         // per-chain implementation.
         match self.validate_packet_at_receive(&submission, &service).await {
             Ok(validation_block) => {
-                self.pin_event_reference_block_if_unset(
-                    &service.id(),
-                    &submission.event_id,
-                    validation_block,
-                );
+                self.pin_event_reference_block_if_unset(&submission.event_id, validation_block);
             }
             Err(err) => {
                 let chain = service.manager.chain().clone();
