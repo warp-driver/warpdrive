@@ -27,8 +27,10 @@ impl Guest for Component {
     }
 }
 
-// #[tokio::main(flavor = "current_thread")]
-fn run_one(trigger_action: TriggerAction) -> std::result::Result<WasmResponse, anyhow::Error> {
+#[tokio::main(flavor = "current_thread")]
+async fn run_one(
+    trigger_action: TriggerAction,
+) -> std::result::Result<WasmResponse, anyhow::Error> {
     let (trigger_id, req) = decode_trigger_event(trigger_action.data)?;
     let req: StellarQueryRequest = serde_json::from_slice(&req)?;
 
