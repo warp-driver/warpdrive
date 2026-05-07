@@ -215,6 +215,21 @@ impl From<warpdrive_types::EvmChainConfig>
     }
 }
 
+impl From<warpdrive_types::StellarChainConfig>
+    for crate::bindings::operator::world::host::StellarChainConfig
+{
+    fn from(config: warpdrive_types::StellarChainConfig) -> Self {
+        // Operator-only fields (poll interval, friendbot URL) are
+        // intentionally not exposed to components — the WIT record
+        // only carries what's needed to spin up a Soroban RPC client.
+        Self {
+            chain_id: config.chain_id.as_str().to_string(),
+            rpc_url: config.rpc_url,
+            network_passphrase: config.network_passphrase,
+        }
+    }
+}
+
 impl From<warpdrive_types::Timestamp> for component_core::Timestamp {
     fn from(src: warpdrive_types::Timestamp) -> Self {
         component_core::Timestamp {
@@ -1157,6 +1172,16 @@ impl From<warpdrive_types::EvmChainConfig> for aggregator_chain::EvmChainConfig 
             chain_id: config.chain_id.to_string(),
             ws_endpoints: config.ws_endpoints,
             http_endpoint: config.http_endpoint,
+        }
+    }
+}
+
+impl From<warpdrive_types::StellarChainConfig> for aggregator_chain::StellarChainConfig {
+    fn from(config: warpdrive_types::StellarChainConfig) -> Self {
+        Self {
+            chain_id: config.chain_id.as_str().to_string(),
+            rpc_url: config.rpc_url,
+            network_passphrase: config.network_passphrase,
         }
     }
 }

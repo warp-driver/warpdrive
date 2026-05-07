@@ -9,6 +9,7 @@ members = [
     "packages/version-pins",
     "packages/warpdrive",
     "examples/components/cosmos-query",
+    "examples/components/stellar-query",
     "examples/components/chain-trigger-lookup",
     "examples/components/echo-data",
     "examples/components/square",

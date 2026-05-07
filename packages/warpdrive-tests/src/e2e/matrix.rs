@@ -74,6 +74,13 @@ pub enum StellarService {
     EchoData,
     BlockInterval,
     BlockIntervalStartStop,
+    /// Drives the `stellar-query` component. The component logs the
+    /// chain config returned by `host::get_stellar_chain_config` and
+    /// then `unimplemented!()`s — the test is expected to fail
+    /// locally until issue #5's follow-up wires up Soroban-from-
+    /// component RPC. CI configs deliberately don't include this so
+    /// CI stays green.
+    StellarQuery,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -268,6 +275,9 @@ impl From<StellarService> for Vec<ComponentName> {
             }
             StellarService::BlockIntervalStartStop => {
                 vec![ComponentName::Vector(VectorComponent::EchoBlockInterval)]
+            }
+            StellarService::StellarQuery => {
+                vec![ComponentName::Vector(VectorComponent::StellarQuery)]
             }
         }
     }

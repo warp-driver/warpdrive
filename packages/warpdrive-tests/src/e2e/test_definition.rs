@@ -5,7 +5,7 @@ use std::time::Duration;
 use anyhow::{anyhow, ensure};
 use example_types::{
     CosmosQueryRequest, CosmosQueryResponse, KvStoreRequest, KvStoreResponse, PermissionsRequest,
-    PermissionsResponse, SquareRequest, SquareResponse,
+    PermissionsResponse, SquareRequest, SquareResponse, StellarQueryRequest,
 };
 use regex::Regex;
 use warpdrive_types::{ChainKey, Trigger, WorkflowId};
@@ -217,6 +217,8 @@ pub enum InputData {
     KvStore(KvStoreRequest),
     /// Cosmos query
     CosmosQuery(CosmosQueryRequest),
+    /// Stellar (Soroban) query
+    StellarQuery(StellarQueryRequest),
     /// Permissions request
     Permissions(PermissionsRequest),
     /// No input data
@@ -233,6 +235,7 @@ impl InputData {
             InputData::Square(req) => Some(req.to_vec()),
             InputData::KvStore(req) => Some(req.to_vec()),
             InputData::CosmosQuery(req) => Some(req.to_vec()),
+            InputData::StellarQuery(req) => Some(req.to_vec()),
             InputData::Permissions(req) => Some(req.to_vec()),
             InputData::None => None,
         }

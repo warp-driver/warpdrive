@@ -67,6 +67,17 @@ interface chain {
         http-endpoint: option<string>,
     }
 
+    // Soroban (Stellar smart-contract) chain config exposed to WASI
+    // components for read-only queries. Mirrors the host-side
+    // `warpdrive_types::StellarChainConfig` minus operator-only
+    // fields (poll interval, friendbot URL) — components only need
+    // what's required to spin up a Soroban RPC client.
+    record stellar-chain-config {
+        chain-id: string,
+        rpc-url: string,
+        network-passphrase: string,
+    }
+
     type stellar-tx-hash = string;
 
     // This matches the data from the `stellar-rpc-client` crate

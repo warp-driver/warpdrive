@@ -1,11 +1,11 @@
-package warpdrive:aggregator@2.11.0;
+package warpdrive:aggregator@2.12.0;
 
-use warpdrive:types/core@2.11.0 as core-types;
-use warpdrive:types/service@2.11.0 as service-types;
-use warpdrive:types/chain@2.11.0 as chain-types;
-use warpdrive:types/events@2.11.0 as event-types;
-use warpdrive:vectr/input@2.11.0 as operator-input;
-use warpdrive:vectr/output@2.11.0 as operator-output;
+use warpdrive:types/core@2.12.0 as core-types;
+use warpdrive:types/service@2.12.0 as service-types;
+use warpdrive:types/chain@2.12.0 as chain-types;
+use warpdrive:types/events@2.12.0 as event-types;
+use warpdrive:vectr/input@2.12.0 as operator-input;
+use warpdrive:vectr/output@2.12.0 as operator-output;
 
 interface input {
     use operator-input.{trigger-action};
@@ -75,13 +75,17 @@ world aggregator-world {
     include wasi:tls/imports@0.2.0-draft;
 
     import host: interface {
-        use chain-types.{evm-chain-config, cosmos-chain-config};
+        use chain-types.{evm-chain-config, cosmos-chain-config, stellar-chain-config};
         use core-types.{log-level};
         use service-types.{service-and-workflow-id, workflow-and-workflow-id};
         use event-types.{event-id};
 
         get-evm-chain-config: func(chain-key: string) -> option<evm-chain-config>;
         get-cosmos-chain-config: func(chain-key: string) -> option<cosmos-chain-config>;
+        // Resolve a Stellar (Soroban) chain config for read-only
+        // queries from an aggregator component. See the matching
+        // function on the vectr world's host interface and issue #5.
+        get-stellar-chain-config: func(chain-key: string) -> option<stellar-chain-config>;
 
         config-var: func(key: string) -> option<string>;
 

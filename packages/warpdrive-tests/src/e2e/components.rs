@@ -21,6 +21,7 @@ pub struct ComponentSources {
 pub enum VectorComponent {
     ChainTriggerLookup,
     CosmosQuery,
+    StellarQuery,
     KvStore,
     EchoData,
     Permissions,
@@ -46,6 +47,7 @@ impl VectorComponent {
         match self {
             VectorComponent::ChainTriggerLookup => "chain_trigger_lookup",
             VectorComponent::CosmosQuery => "cosmos_query",
+            VectorComponent::StellarQuery => "stellar_query",
             VectorComponent::KvStore => "kv_store",
             VectorComponent::EchoData => "echo_data",
             VectorComponent::Permissions => "permissions",

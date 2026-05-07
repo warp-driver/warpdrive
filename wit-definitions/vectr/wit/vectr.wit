@@ -1,9 +1,9 @@
-package warpdrive:vectr@2.11.0;
+package warpdrive:vectr@2.12.0;
 
-use warpdrive:types/core@2.11.0 as core-types;
-use warpdrive:types/service@2.11.0 as service-types;
-use warpdrive:types/chain@2.11.0 as chain-types;
-use warpdrive:types/events@2.11.0 as event-types;
+use warpdrive:types/core@2.12.0 as core-types;
+use warpdrive:types/service@2.12.0 as service-types;
+use warpdrive:types/chain@2.12.0 as chain-types;
+use warpdrive:types/events@2.12.0 as event-types;
 
 interface input {
     use service-types.{service-id, workflow-id, trigger};
@@ -56,13 +56,20 @@ world warpdrive-world {
     include wasi:tls/imports@0.2.0-draft;
 
     import host: interface {
-        use chain-types.{evm-chain-config, cosmos-chain-config};
+        use chain-types.{evm-chain-config, cosmos-chain-config, stellar-chain-config};
         use service-types.{service-and-workflow-id, workflow-and-workflow-id};
         use core-types.{log-level};
         use event-types.{event-id};
 
         get-evm-chain-config: func(chain-key: string) -> option<evm-chain-config>;
         get-cosmos-chain-config: func(chain-key: string) -> option<cosmos-chain-config>;
+        // Resolve a Stellar (Soroban) chain config for read-only
+        // queries from a component. The returned `stellar-chain-config`
+        // exposes only what's needed to spin up a Soroban RPC client
+        // (rpc-url, network-passphrase) — operator-only fields like
+        // friendbot URL and poll interval are intentionally excluded.
+        // See issue #5.
+        get-stellar-chain-config: func(chain-key: string) -> option<stellar-chain-config>;
 
         config-var: func(key: string) -> option<string>;
 

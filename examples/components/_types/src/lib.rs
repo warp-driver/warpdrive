@@ -30,6 +30,31 @@ pub enum CosmosQueryResponse {
     Balance(String),
 }
 
+/// Stellar (Soroban) query request types. Mirrors the shape of
+/// `CosmosQueryRequest`. Only `LedgerSequence` is defined for now —
+/// the e2e test that drives the `stellar-query` component never
+/// reaches the response side because the component intentionally
+/// `unimplemented!()`s after fetching the chain config (see
+/// issue #5). New variants can be added when the Soroban-from-
+/// component path is wired up.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum StellarQueryRequest {
+    LedgerSequence { chain: String },
+}
+
+impl StellarQueryRequest {
+    pub fn to_vec(&self) -> Vec<u8> {
+        serde_json::to_vec(self).unwrap()
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum StellarQueryResponse {
+    LedgerSequence(u32),
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum KvStoreRequest {
