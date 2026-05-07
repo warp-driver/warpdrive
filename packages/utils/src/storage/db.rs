@@ -14,7 +14,7 @@ pub struct WavsDb {
     pub services_by_hash: WavsDbTable<[u8; 32], Service>,
     pub aggregator_services: WavsDbTable<ServiceId, ()>,
     pub quorum_queues: WavsDbTable<QuorumQueueId, QuorumQueue>,
-    /// Pinned reference block per (service, event), set by the
+    /// Pinned reference block per event, set by the
     /// aggregator's receive-time signer-validation path on the first
     /// valid packet for an event. Used by the submit path so all
     /// signer-set lookups happen against a single chain block —
