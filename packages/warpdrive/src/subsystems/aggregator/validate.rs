@@ -199,6 +199,9 @@ impl Aggregator {
         let ref_block = match pinned {
             Some(b) => b,
             None => {
+                // unlike in `handle_action_submit_stellar`, we don't necessarily have a pinned reference block
+                // since there may not have been a prior valid packet for this event
+                // so it's not a warning, just the expected path for the first valid packet of an event
                 let rpc = stellar_rpc_client::Client::new(&chain_cfg.rpc_url).map_err(|e| {
                     AggregatorError::ReceiveValidationChainQuery {
                         chain: chain.clone(),
