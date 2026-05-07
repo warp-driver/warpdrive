@@ -93,6 +93,7 @@ impl Aggregator {
             // Remove the expired entries
             for key in keys_to_remove {
                 storage.quorum_queues.remove(&key);
+                storage.event_reference_blocks.remove(&key.event_id);
                 removed_count += 1;
             }
 
