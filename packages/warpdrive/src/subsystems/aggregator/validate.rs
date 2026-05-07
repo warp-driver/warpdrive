@@ -42,6 +42,7 @@ use std::sync::Arc;
 use utils::{
     config::EvmChainConfigExt,
     evm_client::{EvmEndpoint, EvmQueryClient},
+    stellar_client::STELLAR_QUERY_KEY,
 };
 use warpdrive_types::{
     contracts::cosmwasm::service_manager::ServiceManagerQueryMessages, AnyChainConfig, ChainKey,
@@ -223,15 +224,9 @@ impl Aggregator {
 
         // We need a "source account" to build the simulation tx. The
         // signing key never gets used (simulation doesn't sign), so a
-        // throwaway account is fine. Reuse the aggregator's signing
-        // key if configured; otherwise mint an ephemeral one for the
-        // simulation. (The aggregator may have no Stellar credential
-        // and still be expected to validate Stellar packets — e.g. if
-        // it submits to a different chain.)
-        let signing_key = self
-            .get_stellar_signing_key(chain)
-            .unwrap_or_else(|_| ed25519_dalek::SigningKey::from_bytes(&[7u8; 32]));
-        let account = soroban_rs::Account::single(soroban_rs::Signer::new(signing_key));
+        // throwaway account is fine.
+        let account =
+            soroban_rs::Account::single(soroban_rs::Signer::new(STELLAR_QUERY_KEY.clone()));
 
         // Walk project_root → verification_contract.
         let project_root_client = ProjectRootClient::new(soroban_rs::ClientContractConfigs {

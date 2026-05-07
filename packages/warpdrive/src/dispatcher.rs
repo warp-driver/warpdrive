@@ -34,6 +34,7 @@ use thiserror::Error;
 use tracing::instrument;
 use utils::error::EvmClientError;
 use utils::service::fetch_service;
+use utils::stellar_client::STELLAR_QUERY_KEY;
 use utils::storage::fs::FileStorage;
 use utils::telemetry::{DispatcherMetrics, WarpdriveMetrics};
 use warpdrive_types::contracts::cosmwasm::service_manager::ServiceManagerQueryMessages;
@@ -929,8 +930,8 @@ async fn query_service_from_address(
         // Read-only Soroban simulations require a source account on the tx
         // body but the signature is never validated; any key works. See the
         // documented pattern at warpdrive-contracts `packages/client/README.md`.
-        let dummy_signing_key = ed25519_dalek::SigningKey::from_bytes(&[1u8; 32]);
-        let account = soroban_rs::Account::single(soroban_rs::Signer::new(dummy_signing_key));
+        let account =
+            soroban_rs::Account::single(soroban_rs::Signer::new(STELLAR_QUERY_KEY.clone()));
         let cfg = soroban_rs::ClientContractConfigs {
             contract_id: *project_root,
             env,
