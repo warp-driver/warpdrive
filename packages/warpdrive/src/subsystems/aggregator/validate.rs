@@ -90,8 +90,7 @@ impl Aggregator {
         submission: &Submission,
         service: &Service,
     ) -> Result<u64, AggregatorError> {
-        let key = (service.id().clone(), submission.event_id.clone());
-        let pinned = self.storage.event_reference_blocks.get_cloned(&key);
+        let pinned = self.get_pinned_reference_block(&service.id(), &submission.event_id);
 
         match &service.manager {
             ServiceManager::Stellar { chain, address } => {
