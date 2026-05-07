@@ -1050,7 +1050,10 @@ mod startup_credential_validation_tests {
         // through the parser is what we want validate_stellar_credential
         // to accept.
         let secret = stellar_strkey::ed25519::PrivateKey([7u8; 32]);
-        let cred = Credential::new(secret.to_string());
+        // `format!` instead of `.to_string()`: stellar-strkey 0.0.16
+        // added an inherent `to_string()` returning `heapless::String`
+        // for no_std consumers, which shadows the `ToString` trait impl.
+        let cred = Credential::new(format!("{secret}"));
         assert!(
             validate_stellar_credential(Some(&cred)).is_ok(),
             "round-tripped strkey {} failed validation",

@@ -184,7 +184,10 @@ impl TestMnemonics {
         }
         let mut bytes = [0u8; 32];
         rand::RngCore::fill_bytes(&mut rand::rng(), &mut bytes);
-        let secret = stellar_strkey::ed25519::PrivateKey(bytes).to_string();
+        // `format!` instead of `.to_string()`: stellar-strkey 0.0.16
+        // added an inherent `to_string()` returning `heapless::String`
+        // for no_std consumers, which shadows the `ToString` trait impl.
+        let secret = format!("{}", stellar_strkey::ed25519::PrivateKey(bytes));
         self.stellar_middleware = Some(Credential::new(secret));
     }
 }
