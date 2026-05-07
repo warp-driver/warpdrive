@@ -21,7 +21,7 @@ use utils::{
 };
 use warpdrive_engine::bindings::aggregator::world::AnyTxHash;
 use warpdrive_types::{
-    AggregatorAction, ChainKey, QuorumQueue, QuorumQueueId, Service, Submission, Submit,
+    AggregatorAction, ChainKey, EventId, QuorumQueue, QuorumQueueId, Service, Submission, Submit,
     SubmitAction, TimerAction,
 };
 
@@ -68,6 +68,8 @@ pub struct Aggregator {
     /// Tracks whether this is the primary instance (true) or a clone for async tasks (false).
     /// Only the primary instance logs a warning when dropped.
     is_primary: Arc<AtomicBool>,
+    /// Map of locks for each event ID to prevent concurrent processing of the same event across multiple submissions.
+    event_receive_locks: Arc<std::sync::Mutex<HashMap<EventId, Arc<tokio::sync::Mutex<()>>>>>,
 }
 
 #[derive(Debug)]
@@ -133,6 +135,7 @@ impl Aggregator {
             chain_transaction: AsyncTransaction::new(false),
             p2p_handle: Arc::new(std::sync::RwLock::new(None)), // Initialized in start() method
             is_primary: Arc::new(AtomicBool::new(true)),
+            event_receive_locks: Arc::new(std::sync::Mutex::new(HashMap::default())),
         })
     }
 
@@ -559,6 +562,22 @@ impl Aggregator {
         // against that pinned block so the operator set is frozen
         // for the aggregation window. See validate.rs for the
         // per-chain implementation.
+        //
+        // In order to prevent data races, we hold a lock over the event_id for the duration of this validation and pinning.
+
+        let guard = {
+            // it's own scope to be sure we aren't holding the outer lock
+            // we only care about the inner async lock
+            self.event_receive_locks
+                .lock()
+                .unwrap()
+                .entry(submission.event_id.clone())
+                .or_default()
+                .clone()
+        };
+
+        let guard = guard.lock().await;
+
         match self.validate_packet_at_receive(&submission, &service).await {
             Ok(validation_block) => {
                 self.pin_event_reference_block_if_unset(&submission.event_id, validation_block);
@@ -585,6 +604,8 @@ impl Aggregator {
                 kind: AggregatorExecuteKind::Standard,
             })
             .map_err(Box::new)?;
+
+        drop(guard);
 
         Ok(())
     }
@@ -940,6 +961,7 @@ impl Clone for Aggregator {
             queue_transaction: self.queue_transaction.clone(),
             chain_transaction: self.chain_transaction.clone(),
             p2p_handle: self.p2p_handle.clone(),
+            event_receive_locks: self.event_receive_locks.clone(),
             // Clones are not primary - only the original instance is
             is_primary: Arc::new(AtomicBool::new(false)),
         }

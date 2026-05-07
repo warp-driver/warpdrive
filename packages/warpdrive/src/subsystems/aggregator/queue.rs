@@ -71,6 +71,8 @@ impl Aggregator {
             .unwrap()
             .as_secs();
 
+        let event_receive_locks = self.event_receive_locks.clone();
+
         tokio::task::spawn_blocking(move || {
             let mut removed_count = 0;
             let cutoff_time = now.saturating_sub(ttl_secs);
@@ -94,6 +96,7 @@ impl Aggregator {
             for key in keys_to_remove {
                 storage.quorum_queues.remove(&key);
                 storage.event_reference_blocks.remove(&key.event_id);
+                event_receive_locks.lock().unwrap().remove(&key.event_id);
                 removed_count += 1;
             }
 
