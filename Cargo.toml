@@ -265,3 +265,10 @@ example-helpers = { path = "examples/components/_helpers" }
 example-types = { path = "examples/components/_types" }
 cw-warpdrive-mock-api = { path = "examples/contracts/cosmwasm/mock/api" }
 cw-warpdrive-trigger-api = { path = "examples/contracts/cosmwasm/trigger/api" }
+
+# These are needed for wasi-compatible soroban-rs
+# Technically only needed in the components, but it works in both (pure rust tls), and you can only patch top-level
+[patch.crates-io]
+jsonrpsee-core = { git = "https://github.com/warp-driver/jsonrpsee", rev = "30aad33af410f011f84d2413a334c438601ab041" }
+jsonrpsee-types = { git = "https://github.com/warp-driver/jsonrpsee", rev = "30aad33af410f011f84d2413a334c438601ab041" }
+jsonrpsee-http-client = { git = "https://github.com/warp-driver/jsonrpsee", rev = "30aad33af410f011f84d2413a334c438601ab041" }

@@ -12,7 +12,7 @@ anyhow = { workspace = true }
 example-helpers = { workspace = true }
 example-types = { workspace = true }
 tokio = { workspace = true, features = ["sync", "io-util", "macros", "rt", "time"] }
-soroban-rs = { git = "https://github.com/warp-driver/soroban-helpers", rev = "4aa7168a7321eee3e406937f214da0a42f4c9190" }
+soroban-rs = { git = "https://github.com/warp-driver/soroban-helpers", rev = "f1fd4f91b50b574be5e347aa27e9ec0c0781ae0c" }
 
 [lib]
 crate-type = ["rlib", "cdylib"]
