@@ -8,6 +8,9 @@ grouping = false
 evm_middleware_type = "poa"
 p2p = "mdns"
 mode = { "isolated" = [{ stellar = "echo_data" }, { stellar = "stellar_query" }] }
+# The port here must match the port set in `Taskfile.yml` for the `stellar_quickstart` task
+# Comment out if not running via quickstart
+stellar_quickstart_port = 9555
 
 # Run all tests
 # mode = "all"

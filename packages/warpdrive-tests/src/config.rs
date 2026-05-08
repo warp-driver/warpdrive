@@ -32,6 +32,7 @@ pub struct TestConfig {
     pub p2p: TestP2pMode,
     pub jaeger: Option<String>,
     pub prometheus: Option<String>,
+    pub stellar_quickstart_port: Option<u16>,
     _log_levels: Vec<String>,
     _data_dir: PathBuf,
 }
@@ -69,6 +70,7 @@ impl Default for TestConfig {
             p2p: TestP2pMode::default(),
             jaeger: None,
             prometheus: None,
+            stellar_quickstart_port: None,
             _data_dir: tempfile::tempdir().unwrap().keep(),
             mode: TestMode::default(),
         }

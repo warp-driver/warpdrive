@@ -103,17 +103,35 @@ tasks:
           fi
       - task: generate-checksums
 
-  quick-wasi-build:
-    desc: Fast version of wasi-build for local testing, not reproduceable build for publish / deploy
+  wasi-build-native:
+    desc: Build WASI components natively (no Docker)
     vars:
-      COMPONENT: '{{.COMPONENT | default "stellar-query"}}'
+      COMPONENT: '{{.COMPONENT | default "*"}}'
     cmds:
       - cmd: |
           set -euo pipefail
-          RUSTFLAGS='-C link-arg=-s --cfg tokio_unstable' cargo build --locked --release --target wasm32-wasip2 -p {{.COMPONENT}}
-          WASM=$(echo {{.COMPONENT}}.wasm | tr '-' '_')
-          echo $WASM
-          cp ./target/wasm32-wasip2/release/$WASM ./examples/build/components
+
+          if [ "{{.COMPONENT}}" = "*" ]; then
+            rm -f ./target/wasm32-wasip2/release/*.wasm
+            rm -rf {{.WASI_OUT_DIR}}
+          fi
+          mkdir -p {{.WASI_OUT_DIR}}
+
+          for CARGO_TOML in {{.COMPONENTS_DIR}}/{{.COMPONENT}}/Cargo.toml; do
+            if [ ! -f "$CARGO_TOML" ]; then
+              echo "Error: no Cargo.toml found at $CARGO_TOML"
+              exit 1
+            fi
+            COMPONENT_DIR="$(dirname "$CARGO_TOML")"
+            COMPONENT_NAME="$(basename "$COMPONENT_DIR")"
+            case "$COMPONENT_NAME" in
+              _helpers|_types) continue ;;
+            esac
+            echo "Building WASI component in $COMPONENT_DIR"
+            ( cd "$COMPONENT_DIR" && RUSTFLAGS='-C link-arg=-s --cfg tokio_unstable' cargo build --release --target wasm32-wasip2 )
+          done
+
+          cp ./target/wasm32-wasip2/release/*.wasm {{.WASI_OUT_DIR}}
       - task: generate-checksums
 
   generate-checksums:
@@ -244,6 +262,18 @@ tasks:
           cosmwasm/optimizer:{{.COSMWASM_OPTIMIZER_VERSION}} "{{.CONTRACT_PATH}}"
       fi
 
+  stellar-quickstart:
+    desc: "Start the local stellar chain"
+    # The ports here must match the port set in `stellar_quickstart_port` in the tests toml, e.g. `warpdrive-tests-default.toml`
+    vars:
+      STELLAR_RPC_PORT_LOCAL: '{{.STELLAR_RPC_PORT_LOCAL | default "9555"}}'
+      STELLAR_FRIENDBOT_URL: '{{.STELLAR_FRIENDBOT_URL | default "http://localhost:9555/friendbot"}}'
+    cmds:
+      - >
+        stellar container start local
+        -p {{.STELLAR_RPC_PORT_LOCAL}}:8000
+      - echo "Waiting for friendbot (this might take a while)..." && until [ "$(curl -s -o /dev/null -w '%{http_code}' {{.STELLAR_FRIENDBOT_URL}} 2>/dev/null)" = "400" ]; do sleep 1; done
+
   wit-deps-clean:
     desc: Remove fetched WIT dependency directories
     cmds:
@@ -370,13 +400,7 @@ tasks:
 
   test-warpdrive-e2e:
     desc: Run on-chain integration tests
-    deps: [wasi-build]
     cmd: RUST_LOG=info,alloy_rpc=off,alloy_provider=off,wasmtime=off,cranelift=off,hyper_util=off cargo test -p warpdrive-tests
-
-  debug-warpdrive-e2e:
-    desc: Run on-chain integration tests
-    deps: [quick-wasi-build]
-    cmd: RUST_BACKTRACE=1 RUST_LOG=info,alloy_rpc=off,alloy_provider=off,wasmtime=off,cranelift=off,hyper_util=off cargo test -p warpdrive-tests -- --nocapture
 
   cli-exec:
     desc: "Execute a WASI component via CLI (e.g. task cli-exec COMPONENT=./examples/build/components/echo_data.wasm INPUT='hello world')"

@@ -63,6 +63,11 @@ impl StellarMiddleware {
         let deployer_address =
             stellar_strkey::ed25519::PublicKey(signing_key.verifying_key().to_bytes()).to_string();
 
+        tracing::info!(
+            "Starting stellar middleware container with deployer address {} on RPC {}",
+            deployer_address,
+            chain_config.rpc_url
+        );
         let output = tokio::time::timeout(
             Self::STARTUP_TIMEOUT,
             Command::new("docker")
@@ -70,6 +75,8 @@ impl StellarMiddleware {
                     "run",
                     "-d",
                     "--rm",
+                    "--network",
+                    "host",
                     "-e",
                     &format!("RPC_URL={}", chain_config.rpc_url),
                     "-e",
