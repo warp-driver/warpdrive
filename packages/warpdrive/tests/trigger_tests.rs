@@ -219,7 +219,10 @@ async fn block_interval_trigger_is_removed_when_config_is_gone() {
             address: rand_address_evm(),
         },
     };
-    services.save(&service).unwrap();
+    services
+        .save(&service, config.chains.clone())
+        .await
+        .unwrap();
 
     let trigger = TriggerConfig::block_interval_event(
         service.id(),
@@ -255,7 +258,10 @@ async fn block_interval_trigger_is_removed_when_config_is_gone() {
         .add_trigger(trigger.clone(), &stellar_controllers)
         .unwrap();
 
-    services.save(&service_2).unwrap();
+    services
+        .save(&service_2, config.chains.clone())
+        .await
+        .unwrap();
 
     // Verify we have two scheduled triggers
     assert_eq!(

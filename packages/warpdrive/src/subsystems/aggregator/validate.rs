@@ -94,8 +94,8 @@ impl Aggregator {
         let pinned = self.get_pinned_reference_block(&submission.event_id);
 
         match &service.manager {
-            ServiceManager::Stellar { chain, address } => {
-                self.validate_packet_stellar(submission, *address, chain, pinned)
+            ServiceManager::Stellar { chain, address: _ } => {
+                self.validate_packet_stellar(submission, chain, pinned)
                     .await
             }
             ServiceManager::Evm { chain, address } => {
@@ -155,11 +155,9 @@ impl Aggregator {
     async fn validate_packet_stellar(
         &self,
         submission: &Submission,
-        manager_address: stellar_strkey::Contract,
         chain: &ChainKey,
         pinned: Option<u64>,
     ) -> Result<u64, AggregatorError> {
-        use warpdrive_client::project_root::ProjectRootClient;
         use warpdrive_client::secp256k1_verification::Secp256k1VerificationClient;
 
         let chain_cfg = self
@@ -228,24 +226,14 @@ impl Aggregator {
         let account =
             soroban_rs::Account::single(soroban_rs::Signer::new(STELLAR_QUERY_KEY.clone()));
 
-        // Walk project_root → verification_contract.
-        let project_root_client = ProjectRootClient::new(soroban_rs::ClientContractConfigs {
-            contract_id: manager_address,
-            env: env.clone(),
-            source_account: account.clone(),
-        });
-        let verification_contract =
-            project_root_client
-                .verification_contract()
-                .await
-                .map_err(|e| AggregatorError::ReceiveValidationChainQuery {
-                    chain: chain.clone(),
-                    detail: format!("project_root.verification_contract: {e:?}"),
-                })?;
+        let verification_contract = self
+            .services
+            .get_stellar_service_manager_contracts(submission.service_id())?
+            .verifier;
 
         let verification_client =
             Secp256k1VerificationClient::new(soroban_rs::ClientContractConfigs {
-                contract_id: verification_contract,
+                contract_id: stellar_strkey::Contract(verification_contract.0.into()),
                 env,
                 source_account: account,
             });

@@ -1,5 +1,8 @@
 #![cfg(feature = "dev")]
-use std::time::Duration;
+use std::{
+    sync::{Arc, RwLock},
+    time::Duration,
+};
 
 use warpdrive::subsystems::submission::SubmissionCommand;
 
@@ -7,6 +10,7 @@ use utils::{context::AppContext, telemetry::Metrics};
 
 mod warpdrive_systems;
 use warpdrive_systems::mock_submissions::wait_for_submission_messages;
+use warpdrive_types::ChainConfigs;
 
 use crate::warpdrive_systems::{
     channels::TestChannels,
@@ -23,7 +27,9 @@ fn collect_messages_with_wait() {
     let service = mock_service();
     let metrics = Metrics::new(opentelemetry::global::meter("wavs_metrics"));
 
-    services.save(&service).unwrap();
+    ctx.rt
+        .block_on(services.save(&service, Arc::new(RwLock::new(ChainConfigs::default()))))
+        .unwrap();
 
     let submission_manager =
         mock_submission_manager(ctx.clone(), &metrics, &mock_config(), &channels, services);
