@@ -15,7 +15,7 @@ use example_helpers::bindings::world::{host, Guest, TriggerAction, WasmResponse}
 use example_helpers::trigger::encode_trigger_output;
 use example_helpers::{export_layer_trigger_world, trigger::decode_trigger_event};
 use example_types::{StellarQueryRequest, StellarQueryResponse};
-use soroban_rs::{Env, EnvConfigs};
+use wasi_soroban_rs::{Env, EnvConfigs};
 
 struct Component;
 

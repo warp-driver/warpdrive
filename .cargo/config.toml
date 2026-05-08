@@ -1,6 +1,6 @@
 [target.wasm32-wasip2]
 # `--cfg tokio_unstable` unlocks tokio APIs (and feature gates) that the
-# warp-driver fork chain (jsonrpsee / rs-stellar-rpc-client / soroban-rs)
+# warp-driver fork chain (wasi-jsonrpsee / wasi-stellar-rpc-client / wasi-soroban-rs)
 # depends on when targeting wasip2. Lives at the workspace root so cargo
 # discovers it regardless of cwd — the docker wasi-builder runs cargo
 # from `/docker`, not from inside the package dir, so a per-package

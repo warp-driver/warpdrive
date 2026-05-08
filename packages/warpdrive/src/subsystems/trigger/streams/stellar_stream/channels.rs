@@ -1,4 +1,4 @@
-use stellar_rpc_client::Event;
+use wasi_stellar_rpc_client::Event;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 

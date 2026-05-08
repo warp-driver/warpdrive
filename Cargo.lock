@@ -5271,20 +5271,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "jsonrpsee-core"
-version = "0.26.1"
-dependencies = [
- "wasi-jsonrpsee-core",
-]
-
-[[package]]
-name = "jsonrpsee-http-client"
-version = "0.26.1"
-dependencies = [
- "wasi-jsonrpsee-http-client",
-]
-
-[[package]]
 name = "jwt"
 version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9195,44 +9181,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "soroban-rs"
-version = "0.2.6"
-source = "git+https://github.com/warp-driver/soroban-helpers?rev=f1fd4f91b50b574be5e347aa27e9ec0c0781ae0c#f1fd4f91b50b574be5e347aa27e9ec0c0781ae0c"
-dependencies = [
- "async-trait",
- "ed25519-dalek",
- "hex",
- "rand 0.9.2",
- "sha2 0.10.9",
- "soroban-rs-macros 0.2.4 (git+https://github.com/warp-driver/soroban-helpers?rev=f1fd4f91b50b574be5e347aa27e9ec0c0781ae0c)",
- "stellar-rpc-client",
- "stellar-strkey 0.0.16",
- "stellar-xdr",
- "tokio",
-]
-
-[[package]]
-name = "soroban-rs-macros"
-version = "0.2.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c807c0f5dace568082494bcb7a3bd2fbedc422991c1c86c32e40889f0bc7daf4"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.117",
-]
-
-[[package]]
-name = "soroban-rs-macros"
-version = "0.2.4"
-source = "git+https://github.com/warp-driver/soroban-helpers?rev=f1fd4f91b50b574be5e347aa27e9ec0c0781ae0c#f1fd4f91b50b574be5e347aa27e9ec0c0781ae0c"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.117",
-]
-
-[[package]]
 name = "spdx"
 version = "0.10.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9286,33 +9234,8 @@ dependencies = [
  "example-helpers",
  "example-types",
  "serde_json",
- "soroban-rs",
  "tokio",
-]
-
-[[package]]
-name = "stellar-rpc-client"
-version = "26.0.0-rc.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "552320c1293e7adf4a127fa0ec6b42c6acc0ca6405fc208012f0f2fc47a3ecf1"
-dependencies = [
- "clap 4.6.0",
- "hex",
- "http",
- "itertools 0.10.5",
- "jsonrpsee-core",
- "jsonrpsee-http-client",
- "serde",
- "serde-aux",
- "serde_json",
- "serde_with",
- "sha2 0.10.9",
- "stellar-strkey 0.0.15",
- "stellar-xdr",
- "termcolor",
- "termcolor_output",
- "thiserror 1.0.69",
- "tokio",
+ "wasi-soroban-rs",
 ]
 
 [[package]]
@@ -10597,8 +10520,6 @@ dependencies = [
  "serde",
  "serde_json",
  "shellexpand",
- "soroban-rs",
- "stellar-rpc-client",
  "stellar-strkey 0.0.16",
  "stellar-xdr",
  "subtle",
@@ -10618,6 +10539,8 @@ dependencies = [
  "walkdir",
  "warpdrive-client",
  "warpdrive-types",
+ "wasi-soroban-rs",
+ "wasi-stellar-rpc-client",
  "wasm-pkg-client",
 ]
 
@@ -10939,8 +10862,6 @@ dependencies = [
  "serde",
  "serde_json",
  "slotmap",
- "soroban-rs",
- "stellar-rpc-client",
  "stellar-strkey 0.0.16",
  "stellar-xdr",
  "tempfile",
@@ -10962,6 +10883,8 @@ dependencies = [
  "warpdrive-client",
  "warpdrive-engine",
  "warpdrive-types",
+ "wasi-soroban-rs",
+ "wasi-stellar-rpc-client",
  "wasm-pkg-common",
  "wildmatch",
 ]
@@ -11011,15 +10934,15 @@ dependencies = [
 
 [[package]]
 name = "warpdrive-client"
-version = "0.2.0"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ca7ac73f7eb6fb9229b188db0e2c70322b37863e0bb5769e9952b5552aee788"
+checksum = "dd49a92547c8a9bcc853f4987e01c7f4b666b68be5bf1a26a60ff0b2db3baacc"
 dependencies = [
  "ed25519-dalek",
- "soroban-rs",
- "soroban-rs-macros 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "stellar-strkey 0.0.16",
  "tokio",
+ "wasi-soroban-rs",
+ "wasi-soroban-rs-macros",
 ]
 
 [[package]]
@@ -11248,6 +11171,59 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.18",
+]
+
+[[package]]
+name = "wasi-soroban-rs"
+version = "0.2.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e951fa3e245d1cc8a5f289704b504a63c93684e1e2ebcac287e0c2066e674e1a"
+dependencies = [
+ "async-trait",
+ "ed25519-dalek",
+ "hex",
+ "rand 0.9.2",
+ "sha2 0.10.9",
+ "stellar-strkey 0.0.16",
+ "stellar-xdr",
+ "tokio",
+ "wasi-soroban-rs-macros",
+ "wasi-stellar-rpc-client",
+]
+
+[[package]]
+name = "wasi-soroban-rs-macros"
+version = "0.2.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8749f46bf5e7aa74652084b241ba0ceaafe05fd3058cc0767e44a5adabf27154"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "wasi-stellar-rpc-client"
+version = "26.0.0-rc.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "569b46e67678e046dbce17dcc215b08568e6a6d1ad1a9659d25e96d77c99fbf0"
+dependencies = [
+ "clap 4.6.0",
+ "hex",
+ "itertools 0.10.5",
+ "serde",
+ "serde-aux",
+ "serde_json",
+ "serde_with",
+ "sha2 0.10.9",
+ "stellar-strkey 0.0.15",
+ "stellar-xdr",
+ "termcolor",
+ "termcolor_output",
+ "thiserror 1.0.69",
+ "tokio",
+ "wasi-jsonrpsee-core",
+ "wasi-jsonrpsee-http-client",
 ]
 
 [[package]]
@@ -13339,7 +13315,3 @@ dependencies = [
  "quote",
  "syn 2.0.117",
 ]
-
-[[patch.unused]]
-name = "jsonrpsee-types"
-version = "0.26.1"

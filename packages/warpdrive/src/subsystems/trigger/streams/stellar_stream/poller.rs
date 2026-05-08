@@ -8,7 +8,7 @@ use crate::subsystems::trigger::streams::stellar_stream::{
 
 pub async fn start_stellar_event_poller(
     controller: StellarStreamController,
-    sender: tokio::sync::mpsc::UnboundedSender<(stellar_rpc_client::Event, Vec<StellarRpcId>)>,
+    sender: tokio::sync::mpsc::UnboundedSender<(wasi_stellar_rpc_client::Event, Vec<StellarRpcId>)>,
 ) {
     let interval = Duration::from_millis(controller.client.config.chain_poll_interval_ms);
 
@@ -64,7 +64,7 @@ pub async fn start_stellar_ledger_poller(
 
         // Sleep unconditionally so a flood of new ledgers or a stream of RPC
         // errors (e.g. rate limit) can't turn this loop into a tight spam loop.
-        // The stellar_rpc_client has no built-in backoff, so this is the only
+        // The wasi_stellar_rpc_client has no built-in backoff, so this is the only
         // throttle.
         tokio::time::sleep(interval).await;
     }

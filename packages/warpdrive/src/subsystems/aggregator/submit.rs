@@ -407,7 +407,7 @@ impl Aggregator {
         let reference_block: u32 = match self.get_pinned_reference_block(&first.event_id) {
             Some(b) => b as u32,
             None => {
-                let rpc = stellar_rpc_client::Client::new(&stellar_chain_config.rpc_url).map_err(
+                let rpc = wasi_stellar_rpc_client::Client::new(&stellar_chain_config.rpc_url).map_err(
                     |e| {
                         AggregatorError::Stellar(format!(
                             "failed to build stellar rpc client: {e:?}"
@@ -430,12 +430,12 @@ impl Aggregator {
         };
 
         // ── Build the soroban env + source account for the handler call.
-        let env = soroban_rs::Env::new(soroban_rs::EnvConfigs {
+        let env = wasi_soroban_rs::Env::new(wasi_soroban_rs::EnvConfigs {
             rpc_url: stellar_chain_config.rpc_url.clone(),
             network_passphrase: stellar_chain_config.network_passphrase.clone(),
         })
         .map_err(|e| AggregatorError::Stellar(format!("soroban env: {e:?}")))?;
-        let account = soroban_rs::Account::single(soroban_rs::Signer::new(signing_key));
+        let account = wasi_soroban_rs::Account::single(wasi_soroban_rs::Signer::new(signing_key));
 
         // ── Submit.
         //
@@ -455,7 +455,7 @@ impl Aggregator {
         // `AggregatorError::InsufficientQuorum` so the dispatch loop
         // saves the queue for retry.
         let contract_id = stellar_strkey::Contract(action.address);
-        let handler_cfg = soroban_rs::ClientContractConfigs {
+        let handler_cfg = wasi_soroban_rs::ClientContractConfigs {
             contract_id,
             env,
             source_account: account,
@@ -497,14 +497,14 @@ impl Aggregator {
 /// (insufficient quorum — wait for more vectors) get distinct handling
 /// in the dispatch loop today; the rest collapse into `Stellar(...)`.
 fn map_verify_eth_error(
-    err: soroban_rs::SorobanHelperError,
+    err: wasi_soroban_rs::SorobanHelperError,
     num_signers: usize,
 ) -> AggregatorError {
     // `SorobanHelperError::TransactionSimulationFailed(s)` carries the
     // simulation error string straight from the Soroban RPC node. For
     // contract panics that string contains `Error(Contract, #N)` where
     // N is the contract-defined error code. Substring-match is the
-    // pragmatic option here — soroban-rs doesn't expose a structured
+    // pragmatic option here — wasi-soroban-rs doesn't expose a structured
     // contract-error type today, and the format is stable on the RPC
     // wire.
     let err_str = format!("{err:?}");
@@ -536,7 +536,7 @@ fn map_verify_eth_error(
 #[cfg(test)]
 mod map_verify_eth_error_tests {
     use super::*;
-    use soroban_rs::SorobanHelperError;
+    use wasi_soroban_rs::SorobanHelperError;
 
     // The simulation error string from soroban-rpc embeds the contract
     // panic as `Error(Contract, #N)`. We feed a representative wrapper

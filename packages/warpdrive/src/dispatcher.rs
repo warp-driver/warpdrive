@@ -926,7 +926,7 @@ async fn query_service_from_address(
             .ok_or_else(|| {
                 DispatcherError::Config(format!("No stellar chain config for chain {chain}"))
             })?;
-        let env = soroban_rs::Env::new(soroban_rs::EnvConfigs {
+        let env = wasi_soroban_rs::Env::new(wasi_soroban_rs::EnvConfigs {
             rpc_url: stellar_config.rpc_url.clone(),
             network_passphrase: stellar_config.network_passphrase.clone(),
         })
@@ -935,8 +935,8 @@ async fn query_service_from_address(
         // body but the signature is never validated; any key works. See the
         // documented pattern at warpdrive-contracts `packages/client/README.md`.
         let account =
-            soroban_rs::Account::single(soroban_rs::Signer::new(STELLAR_QUERY_KEY.clone()));
-        let cfg = soroban_rs::ClientContractConfigs {
+            wasi_soroban_rs::Account::single(wasi_soroban_rs::Signer::new(STELLAR_QUERY_KEY.clone()));
+        let cfg = wasi_soroban_rs::ClientContractConfigs {
             contract_id: *project_root,
             env,
             source_account: account,
