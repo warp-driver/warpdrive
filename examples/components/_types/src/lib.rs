@@ -40,7 +40,8 @@ pub enum CosmosQueryResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum StellarQueryRequest {
-    Balance { chain: String, account_id: String },
+    Balance { account_id: String },
+    RequiredWeight { },
 }
 
 impl StellarQueryRequest {
@@ -53,6 +54,7 @@ impl StellarQueryRequest {
 #[serde(rename_all = "snake_case")]
 pub enum StellarQueryResponse {
     Balance(i64),
+    RequiredWeight(u64),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]

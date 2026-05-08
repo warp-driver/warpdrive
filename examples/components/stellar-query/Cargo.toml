@@ -13,6 +13,7 @@ example-helpers = { workspace = true }
 example-types = { workspace = true }
 tokio = { workspace = true, features = ["sync", "io-util", "macros", "rt", "time"] }
 wasi-soroban-rs = { workspace = true }
+warpdrive-client = { workspace = true }
 
 [lib]
 crate-type = ["rlib", "cdylib"]

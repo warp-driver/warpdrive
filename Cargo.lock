@@ -9235,6 +9235,7 @@ dependencies = [
  "example-types",
  "serde_json",
  "tokio",
+ "warpdrive-client",
  "wasi-soroban-rs",
 ]
 
