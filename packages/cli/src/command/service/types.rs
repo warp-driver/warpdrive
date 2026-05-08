@@ -232,6 +232,26 @@ impl std::fmt::Display for EvmManagerResult {
     }
 }
 
+/// Result of setting the Stellar manager
+#[derive(Debug, Clone, Serialize)]
+pub struct StellarManagerResult {
+    /// The Stellar chain key
+    pub chain: ChainKey,
+    /// The Stellar contract ID (C-address)
+    pub address: String,
+    /// The file path where the updated service JSON was saved
+    pub file_path: PathBuf,
+}
+
+impl std::fmt::Display for StellarManagerResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Stellar manager set successfully!")?;
+        writeln!(f, "  Address:      {}", self.address)?;
+        writeln!(f, "  Chain:        {}", self.chain)?;
+        writeln!(f, "  Updated:      {}", self.file_path.display())
+    }
+}
+
 /// Result of updating the service status
 #[derive(Debug, Clone, Serialize)]
 pub struct UpdateStatusResult {

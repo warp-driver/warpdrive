@@ -2026,7 +2026,7 @@ dependencies = [
 
 [[package]]
 name = "chain-trigger-lookup"
-version = "2.10.0"
+version = "2.12.0"
 dependencies = [
  "alloy-network",
  "alloy-primitives",
@@ -2402,7 +2402,7 @@ dependencies = [
 
 [[package]]
 name = "cosmos-query"
-version = "2.10.0"
+version = "2.12.0"
 dependencies = [
  "anyhow",
  "example-helpers",
@@ -3548,7 +3548,7 @@ dependencies = [
 
 [[package]]
 name = "echo-block-interval"
-version = "2.10.0"
+version = "2.12.0"
 dependencies = [
  "anyhow",
  "example-helpers",
@@ -3558,14 +3558,14 @@ dependencies = [
 
 [[package]]
 name = "echo-cron-interval"
-version = "2.10.0"
+version = "2.12.0"
 dependencies = [
  "example-helpers",
 ]
 
 [[package]]
 name = "echo-data"
-version = "2.10.0"
+version = "2.12.0"
 dependencies = [
  "anyhow",
  "example-helpers",
@@ -3821,7 +3821,7 @@ dependencies = [
 
 [[package]]
 name = "example-helpers"
-version = "2.10.0"
+version = "2.12.0"
 dependencies = [
  "alloy-contract",
  "alloy-primitives",
@@ -3844,7 +3844,7 @@ dependencies = [
 
 [[package]]
 name = "example-types"
-version = "2.10.0"
+version = "2.12.0"
 dependencies = [
  "layer-climb-address",
  "serde",
@@ -5362,7 +5362,7 @@ dependencies = [
 
 [[package]]
 name = "kv-store"
-version = "2.10.0"
+version = "2.12.0"
 dependencies = [
  "anyhow",
  "example-helpers",
@@ -7157,7 +7157,7 @@ checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
 
 [[package]]
 name = "permissions"
-version = "2.10.0"
+version = "2.12.0"
 dependencies = [
  "anyhow",
  "example-helpers",
@@ -9102,7 +9102,7 @@ checksum = "e320a6c5ad31d271ad523dcf3ad13e2767ad8b1cb8f047f75a8aeaf8da139da2"
 
 [[package]]
 name = "simple-aggregator"
-version = "2.10.0"
+version = "2.12.0"
 dependencies = [
  "alloy-primitives",
  "example-helpers",
@@ -9259,7 +9259,7 @@ dependencies = [
 
 [[package]]
 name = "square"
-version = "2.10.0"
+version = "2.12.0"
 dependencies = [
  "example-helpers",
  "example-types",
@@ -9280,7 +9280,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "stellar-query"
-version = "2.10.0"
+version = "2.12.0"
 dependencies = [
  "anyhow",
  "example-helpers",
@@ -9782,7 +9782,7 @@ dependencies = [
 
 [[package]]
 name = "timer-aggregator"
-version = "2.10.0"
+version = "2.12.0"
 dependencies = [
  "alloy-network",
  "alloy-primitives",
@@ -10557,7 +10557,7 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "utils"
-version = "2.10.0"
+version = "2.12.0"
 dependencies = [
  "alloy-contract",
  "alloy-network",
@@ -10695,7 +10695,7 @@ checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
 
 [[package]]
 name = "version-pins"
-version = "2.10.0"
+version = "2.12.0"
 dependencies = [
  "alloy-consensus",
  "alloy-consensus-any",
@@ -10898,7 +10898,7 @@ dependencies = [
 
 [[package]]
 name = "warpdrive"
-version = "2.10.0"
+version = "2.12.0"
 dependencies = [
  "alloy-contract",
  "alloy-node-bindings",
@@ -10968,7 +10968,7 @@ dependencies = [
 
 [[package]]
 name = "warpdrive-benchmark-common"
-version = "2.10.0"
+version = "2.12.0"
 dependencies = [
  "tempfile",
  "utils",
@@ -10979,7 +10979,7 @@ dependencies = [
 
 [[package]]
 name = "warpdrive-cli"
-version = "2.10.0"
+version = "2.12.0"
 dependencies = [
  "alloy-json-abi",
  "alloy-primitives",
@@ -10997,6 +10997,8 @@ dependencies = [
  "serde",
  "serde_json",
  "shellexpand",
+ "stellar-strkey 0.0.16",
+ "stellar-xdr",
  "tempfile",
  "tokio",
  "tracing",
@@ -11024,7 +11026,7 @@ dependencies = [
 
 [[package]]
 name = "warpdrive-dev-tools"
-version = "2.10.0"
+version = "2.12.0"
 dependencies = [
  "alloy-signer-local",
  "clap 4.6.0",
@@ -11038,7 +11040,7 @@ dependencies = [
 
 [[package]]
 name = "warpdrive-engine"
-version = "2.10.0"
+version = "2.12.0"
 dependencies = [
  "alloy-primitives",
  "alloy-sol-types",
@@ -11071,7 +11073,7 @@ dependencies = [
 
 [[package]]
 name = "warpdrive-tests"
-version = "2.10.0"
+version = "2.12.0"
 dependencies = [
  "alloy-contract",
  "alloy-network",
@@ -11124,7 +11126,7 @@ dependencies = [
 
 [[package]]
 name = "warpdrive-types"
-version = "2.10.0"
+version = "2.12.0"
 dependencies = [
  "alloy-contract",
  "alloy-primitives",
@@ -11164,7 +11166,7 @@ dependencies = [
 
 [[package]]
 name = "warpdrive-wasi-utils"
-version = "2.10.0"
+version = "2.12.0"
 dependencies = [
  "alloy-json-rpc",
  "alloy-primitives",

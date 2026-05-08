@@ -249,9 +249,9 @@ tasks:
     desc: Remove built WIT .wasm artifacts
     cmds:
       - rm -f wit-definitions/wasi-tls/*.wasm
-      - rm -f wit-definitions/types/warpdrive:types@*.wasm
-      - rm -f wit-definitions/vectr/warpdrive:vectr@*.wasm
-      - rm -f wit-definitions/aggregator/warpdrive:aggregator@*.wasm
+      - rm -f wit-definitions/types/*.wasm
+      - rm -f wit-definitions/vectr/*.wasm
+      - rm -f wit-definitions/aggregator/*.wasm
 
   wit-build:
     desc: Build WIT packages via wkg wit build

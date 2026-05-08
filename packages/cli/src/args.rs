@@ -317,6 +317,14 @@ pub enum ManagerCommand {
         #[clap(long)]
         address: alloy_primitives::Address,
     },
+    /// Sets a Stellar service manager
+    SetStellar {
+        #[clap(long)]
+        chain: ChainKey,
+        /// Stellar contract ID (C-address) of the deployed handler
+        #[clap(long)]
+        address: String,
+    },
 }
 
 #[derive(Debug, Subcommand, Clone, Serialize, Deserialize)]
@@ -362,6 +370,26 @@ pub enum TriggerCommand {
         /// The event hash as a hex string (32 bytes)
         #[clap(long)]
         event_hash: String,
+    },
+
+    /// Set a Stellar contract event trigger for a workflow
+    SetStellar {
+        /// The Stellar contract ID (C-address)
+        #[clap(long)]
+        contract_id: String,
+
+        /// The chain (e.g., "stellar:pubnet")
+        #[clap(long)]
+        chain: ChainKey,
+
+        /// Topic segment patterns, repeated. Each is one of:
+        ///   `string:<value>` — exact ScVal::String match
+        ///   `symbol:<value>` — exact ScVal::Symbol match
+        ///   `wildcard`       — single-position wildcard
+        ///   `rest-wildcard`  — remaining-positions wildcard (must be last)
+        /// Example: `--topic string:swap --topic wildcard`
+        #[clap(long = "topic")]
+        topics: Vec<String>,
     },
 
     /// Set a block interval trigger for a workflow
