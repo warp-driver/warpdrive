@@ -862,8 +862,13 @@ impl TriggerManager {
                                     continue;
                                 }
                             };
+                            // `format!` rather than `.to_string()`: in
+                            // stellar-strkey 0.0.16 `Contract` has an
+                            // inherent `to_string()` that returns
+                            // `heapless::String<56>` for no_std use; the
+                            // `Display` impl gives us a regular `String`.
                             let filter = match StellarEventFilter::new(
-                                project_root.to_string(),
+                                format!("{project_root}"),
                                 vec![StellarTopicSegment::Exact(topic)],
                             ) {
                                 Ok(f) => f,

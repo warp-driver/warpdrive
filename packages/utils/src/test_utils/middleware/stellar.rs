@@ -12,7 +12,7 @@ use crate::test_utils::middleware::evm::validate_docker_container_id;
 
 /// Pinned image tag for the Warpdrive Stellar middleware.
 /// Bump in lockstep with the warpdrive-contracts repo.
-pub const STELLAR_MIDDLEWARE_IMAGE: &str = "ghcr.io/warp-driver/warpdrive-stellar-middleware:0.2.2";
+pub const STELLAR_MIDDLEWARE_IMAGE: &str = "ghcr.io/warp-driver/warpdrive-stellar-middleware:0.2.3";
 
 /// Long-lived container that wraps the warpdrive-stellar-middleware image.
 /// One container per test run; each `deploy_service_manager` call shells in
@@ -38,8 +38,8 @@ pub struct StellarMiddleware {
 
 struct StellarMiddlewareInner {
     container_id: String,
-    /// Host tmpdir mounted into the container at `/out`. Each deploy writes
-    /// its manifest here so the host can read it back.
+    /// Host tmpdir bind-mounted into the container at `/out`. Each deploy
+    /// writes its manifest here so the host can read it back.
     out_dir: TempDir,
 }
 
@@ -50,6 +50,7 @@ impl StellarMiddleware {
 
     pub async fn new(chain_config: StellarChainConfig, deployer_secret: &str) -> Result<Self> {
         let out_dir = TempDir::new().context("creating stellar middleware out dir")?;
+        println!("Created {}", out_dir.path().display());
 
         // We pass the deployer secret straight to the container as BYOK env
         // vars; the container is the sole signer of admin txs (deploy,
@@ -225,6 +226,42 @@ impl StellarMiddleware {
             bail!("Stellar middleware deploy failed (exit {res})");
         }
 
+        // Image 0.2.3+ runs the deploy as root inside the container, so
+        // manifests land in `/out` owned by root and the host can't read
+        // them via the bind mount. Mirror the warpdrive-contracts
+        // Taskfile pattern — `chown -R` `/out` to the host UID/GID
+        // inside the container, then read normally. Use the tmpdir we
+        // own as the source of truth for the host UID/GID (it was
+        // created by this process, so its owner *is* the test user).
+        use std::os::unix::fs::MetadataExt;
+        let host_meta = tokio::fs::metadata(self.inner.out_dir.path())
+            .await
+            .context("stat stellar middleware host out dir")?;
+        let chown_arg = format!("{}:{}", host_meta.uid(), host_meta.gid());
+
+        let chown_res = tokio::time::timeout(
+            Self::RUNTIME_CALL_TIMEOUT,
+            Command::new("docker")
+                .args([
+                    "exec",
+                    &self.inner.container_id,
+                    "chown",
+                    "-R",
+                    &chown_arg,
+                    "/out",
+                ])
+                .stdout(Stdio::null())
+                .stderr(Stdio::inherit())
+                .spawn()?
+                .wait(),
+        )
+        .await
+        .context("timed out chown'ing /out in stellar middleware container")??;
+
+        if !chown_res.success() {
+            bail!("chown of /out in stellar middleware container failed (exit {chown_res})");
+        }
+
         let manifest_text = tokio::fs::read_to_string(&host_path)
             .await
             .with_context(|| format!("reading stellar deploy manifest {host_path:?}"))?;
@@ -232,7 +269,7 @@ impl StellarMiddleware {
             serde_json::from_str(&manifest_text).context("parsing stellar deploy manifest")?;
 
         Ok(StellarServiceManager {
-            project_root: manifest.contracts.project_root,
+            project_root: manifest.contracts.project_root(),
             contracts: manifest.contracts,
             deploy_file_path: in_container_path,
             admin: manifest.admin,
@@ -297,16 +334,119 @@ struct StellarDeployManifest {
     #[serde(default)]
     #[allow(dead_code)]
     network_passphrase: Option<String>,
+    #[serde(flatten)]
     contracts: StellarContracts,
 }
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct StellarContracts {
+#[serde(tag = "variant", content = "contracts")]
+pub enum StellarContracts {
+    #[serde(rename = "ethereum")]
+    SecpContracts(SecpContracts),
+    #[serde(rename = "stellar")]
+    EdContracts(EdContracts),
+}
+
+impl StellarContracts {
+    pub fn project_root(&self) -> stellar_strkey::Contract {
+        match self {
+            StellarContracts::SecpContracts(c) => c.project_root,
+            StellarContracts::EdContracts(c) => c.project_root,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct SecpContracts {
+    pub project_root: stellar_strkey::Contract,
     pub secp256k1_security: stellar_strkey::Contract,
     pub secp256k1_verification: stellar_strkey::Contract,
     pub ethereum_handler: stellar_strkey::Contract,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct EdContracts {
+    pub project_root: stellar_strkey::Contract,
     pub ed25519_security: stellar_strkey::Contract,
     pub ed25519_verification: stellar_strkey::Contract,
     pub stellar_handler: stellar_strkey::Contract,
-    pub project_root: stellar_strkey::Contract,
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    const STELLAR_MANIFEST: &str = r#"{
+  "admin": "GCW64HJIQNQAL5UICTGKLJS3K6ANFQDZEQ3GHLXHOC2MK3GTB2EKRNRC",
+  "rpc_url": "https://soroban-testnet.stellar.org",
+  "network_passphrase": "Test SDF Network ; September 2015",
+  "variant": "stellar",
+  "contracts": {
+    "ed25519_security": "CA3JNPPPWEC6XDRYHSFCJPK3F47H22TPHL6C5SZLEVSYMLDVEB2XNSRF",
+    "ed25519_verification": "CBWPVO6YUOTCIBCWOLSO2IJVASWVAVYG3JMTOVHMWX5EK42NGRCHFJFK",
+    "stellar_handler": "CASCX3I4IA5NSENBHPTNOMN7PTCNKUMFTFFRRWKEYOLED6MKNJ4KFRL2",
+    "project_root": "CAE4HP4DT5BJKYTHQ73O52G6LYQ2FNFASJ5EUGXO7TCA2ANGHX2FLKM4"
+  }
+}"#;
+
+    const ETHEREUM_MANIFEST: &str = r#"{
+  "admin": "GCW64HJIQNQAL5UICTGKLJS3K6ANFQDZEQ3GHLXHOC2MK3GTB2EKRNRC",
+  "rpc_url": "https://soroban-testnet.stellar.org",
+  "network_passphrase": "Test SDF Network ; September 2015",
+  "variant": "ethereum",
+  "contracts": {
+    "secp256k1_security": "CAT7FK2S4DEZYMPKRSXVYVSTRIYQQNST3ZYJBIPJPXOERAVJBRNBMRV2",
+    "secp256k1_verification": "CDT764X55DNVPYG6ICBFE2IJRXG4DYSNQN5NNQC3GXCO6Z4RJ6LCHHLW",
+    "ethereum_handler": "CCDYESRE7WDIJEC3WKJTSGHVMEZKU2GRVW3DTQQJKRHKTRBYQBOR2HAH",
+    "project_root": "CCREM2UGATC3XKUTW3JX5CTICSUP23RRKOZK7ODFWDFV2ZV5NVFYWOAU"
+  }
+}"#;
+
+    #[test]
+    fn parses_stellar() {
+        let manifest: StellarDeployManifest = serde_json::from_str(STELLAR_MANIFEST).unwrap();
+        assert_eq!(
+            manifest.admin,
+            "GCW64HJIQNQAL5UICTGKLJS3K6ANFQDZEQ3GHLXHOC2MK3GTB2EKRNRC"
+        );
+        match manifest.contracts {
+            StellarContracts::EdContracts(c) => {
+                assert_eq!(
+                    c.project_root.to_string(),
+                    "CAE4HP4DT5BJKYTHQ73O52G6LYQ2FNFASJ5EUGXO7TCA2ANGHX2FLKM4"
+                );
+                assert_eq!(
+                    c.ed25519_verification.to_string(),
+                    "CBWPVO6YUOTCIBCWOLSO2IJVASWVAVYG3JMTOVHMWX5EK42NGRCHFJFK"
+                );
+            }
+            StellarContracts::SecpContracts(_) => {
+                panic!("Ethereum contracts when expected stellar")
+            }
+        }
+    }
+
+    #[test]
+    fn parses_ethereum() {
+        let manifest: StellarDeployManifest = serde_json::from_str(ETHEREUM_MANIFEST).unwrap();
+        assert_eq!(
+            manifest.admin,
+            "GCW64HJIQNQAL5UICTGKLJS3K6ANFQDZEQ3GHLXHOC2MK3GTB2EKRNRC"
+        );
+        match manifest.contracts {
+            StellarContracts::EdContracts(_) => {
+                panic!("Stellar contracts when expected ethereum")
+            }
+            StellarContracts::SecpContracts(c) => {
+                assert_eq!(
+                    c.project_root.to_string(),
+                    "CCREM2UGATC3XKUTW3JX5CTICSUP23RRKOZK7ODFWDFV2ZV5NVFYWOAU"
+                );
+                assert_eq!(
+                    c.secp256k1_verification.to_string(),
+                    "CDT764X55DNVPYG6ICBFE2IJRXG4DYSNQN5NNQC3GXCO6Z4RJ6LCHHLW"
+                );
+            }
+        }
+    }
 }

@@ -1,0 +1,15 @@
+# Shim — see vendor/jsonrpsee-core/Cargo.toml for the rationale.
+[package]
+name = "jsonrpsee-types"
+version = "0.26.1"
+edition = "2021"
+publish = false
+
+[lib]
+path = "lib.rs"
+name = "jsonrpsee_types"
+
+[dependencies]
+wasi-jsonrpsee-types = "0.26.1"
+
+[workspace]

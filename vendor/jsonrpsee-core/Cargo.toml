@@ -1,0 +1,23 @@
+# Shim crate that re-exports `wasi-jsonrpsee-core` under the original
+# `jsonrpsee-core` name. Exists because `[patch.crates-io]` can't replace
+# a crates.io package with another crates.io package directly — cargo
+# requires the patch source to differ from the patched source. A `path =`
+# patch entry pointing here counts as a different source, so this lets
+# us pull the wasi-friendly fork from crates.io without git deps.
+[package]
+name = "jsonrpsee-core"
+version = "0.26.1"
+edition = "2021"
+publish = false
+
+[lib]
+path = "lib.rs"
+name = "jsonrpsee_core"
+
+[dependencies]
+wasi-jsonrpsee-core = "0.26.1"
+
+# Empty workspace block so cargo doesn't walk up into the warpdrive
+# workspace (which doesn't list this crate) — same trick the stellar
+# contracts under examples/contracts/stellar/ use.
+[workspace]

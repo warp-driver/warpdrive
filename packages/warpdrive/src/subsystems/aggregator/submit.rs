@@ -392,7 +392,7 @@ impl Aggregator {
         }
 
         // Verification contract expects signers in ascending pubkey order.
-        signers_and_sigs.sort_by(|a, b| a.0.cmp(&b.0));
+        signers_and_sigs.sort_by_key(|a| a.0);
         let (signers, signatures): (Vec<[u8; 33]>, Vec<[u8; 65]>) =
             signers_and_sigs.into_iter().unzip();
 

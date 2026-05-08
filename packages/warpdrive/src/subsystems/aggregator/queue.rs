@@ -113,14 +113,12 @@ pub fn append_submission_to_queue(
     submission: Submission,
 ) -> Result<(), AggregatorError> {
     match queue.first() {
-        None => {}
-        Some(prev) => {
+        Some(prev) if submission.envelope != prev.envelope => {
             // check if the submission is the same as the last one
             // TODO - let custom logic here? wasm component?
-            if submission.envelope != prev.envelope {
-                return Err(AggregatorError::EnvelopeDiff(queue_id.clone()));
-            }
+            return Err(AggregatorError::EnvelopeDiff(queue_id.clone()));
         }
+        _ => {}
     }
 
     // In addition to extracting for comparison, this also serves to validate the signature

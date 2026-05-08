@@ -7,6 +7,7 @@ use layer_climb::pool::SigningClientPoolManager;
 use layer_climb::prelude::CosmosAddr;
 use std::{collections::BTreeMap, num::NonZero, sync::Arc, time::Duration};
 use utils::evm_client::AnyNonceManager;
+use utils::test_utils::middleware::stellar::StellarContracts;
 use utils::{
     config::WARPDRIVE_ENV_PREFIX, evm_client::EvmSigningClient, filesystem::workspace_path,
 };
@@ -434,18 +435,32 @@ pub async fn deploy_submit_contract(
             let stellar_sm = stellar_service_manager.ok_or_else(|| {
                 anyhow!("StellarServiceManager required to deploy stellar submit contract")
             })?;
-            let verification_contract = format!("{}", stellar_sm.contracts.secp256k1_verification);
-            tracing::info!(
-                "Deploying Stellar mock submit handler on chain {} bound to verification {}",
-                chain,
-                verification_contract
-            );
-            let client = crate::example_stellar_client::SimpleStellarSubmitClient::new(chain);
-            let contract_id = client.deploy(&verification_contract).await?;
-            tracing::info!("Stellar mock submit handler deployed at {}", contract_id);
-            let parsed = stellar_strkey::Contract::from_string(&contract_id)
-                .map_err(|e| anyhow!("invalid stellar contract id from deploy: {e:?}"))?;
-            Ok(warpdrive_types::ChainAddress::Stellar(parsed))
+            match &stellar_sm.contracts {
+                StellarContracts::SecpContracts(c) => {
+                    let verification_contract = format!("{}", c.secp256k1_verification);
+                    tracing::info!(
+                        "Deploying Stellar mock submit handler on chain {} bound to verification {}",
+                        chain,
+                        verification_contract
+                    );
+                    let client =
+                        crate::example_stellar_client::SimpleStellarSubmitClient::new(chain);
+                    let contract_id = client.deploy(&verification_contract).await?;
+                    tracing::info!("Stellar mock submit handler deployed at {}", contract_id);
+                    let parsed = stellar_strkey::Contract::from_string(&contract_id)
+                        .map_err(|e| anyhow!("invalid stellar contract id from deploy: {e:?}"))?;
+                    Ok(warpdrive_types::ChainAddress::Stellar(parsed))
+                }
+                StellarContracts::EdContracts(c) => {
+                    let verification_contract = format!("{}", c.ed25519_verification);
+                    tracing::info!(
+                        "Deploying Stellar mock submit handler on chain {} bound to verification {}",
+                        chain,
+                        verification_contract
+                    );
+                    todo!("Implement the native stellar branch");
+                }
+            }
         }
     }
 }
