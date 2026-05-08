@@ -491,7 +491,7 @@ impl<S: CAStorage + 'static> Dispatcher<S> {
                 let already_in_memory = self.services.exists(&service.id()).unwrap_or(false);
 
                 // Always refresh the stored definition with the authoritative on-chain version
-                self.services.save(&service)?;
+                self.services.save(&service, self.chain_configs.clone()).await?;
 
                 // Store components
                 self.engine_manager
@@ -691,7 +691,9 @@ impl<S: CAStorage + 'static> Dispatcher<S> {
             .await?;
 
         // Store the service
-        self.services.save(&service)?;
+        self.services
+            .save(&service, self.chain_configs.clone())
+            .await?;
 
         // Set up triggers and submissions
         add_service_to_managers(
@@ -843,7 +845,9 @@ impl<S: CAStorage + 'static> Dispatcher<S> {
         // Store the service BEFORE setting up triggers/P2P subscription
         // This ensures the service is in the database before any triggers can fire
         // or P2P catch-up can deliver submissions for this service
-        self.services.save(&service)?;
+        self.services
+            .save(&service, self.chain_configs.clone())
+            .await?;
 
         // Set up triggers and submissions
         add_service_to_managers(

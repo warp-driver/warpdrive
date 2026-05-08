@@ -1,10 +1,18 @@
-use std::collections::BTreeMap;
 use std::ops::Bound;
+use std::sync::RwLock;
+use std::{collections::BTreeMap, sync::Arc};
 
 use thiserror::Error;
 use tracing::instrument;
-use utils::storage::db::{DBError, WavsDb};
-use warpdrive_types::{Service, ServiceId, ServiceStatus, Workflow, WorkflowId};
+use utils::{
+    stellar_client::STELLAR_QUERY_KEY,
+    storage::db::{DBError, WavsDb},
+};
+use warpdrive_client::project_root::ProjectRootClient;
+use warpdrive_types::{
+    contracts::stellar::StellarServiceManagerContracts, AnyChainConfig, ChainConfigs, ChainKey,
+    Service, ServiceId, ServiceManager, ServiceStatus, Workflow, WorkflowId,
+};
 
 type Result<T> = std::result::Result<T, ServicesError>;
 
@@ -50,6 +58,19 @@ impl Services {
     }
 
     #[instrument(skip(self), fields(subsys = "Services"))]
+    pub fn get_stellar_service_manager_contracts(
+        &self,
+        service_id: &ServiceId,
+    ) -> Result<StellarServiceManagerContracts> {
+        self.db_storage
+            .stellar_service_manager_contracts
+            .get_cloned(service_id)
+            .ok_or_else(|| {
+                ServicesError::UnknownServiceForStellarServiceManager(service_id.clone())
+            })
+    }
+
+    #[instrument(skip(self), fields(subsys = "Services"))]
     pub fn exists(&self, service_id: &ServiceId) -> Result<bool> {
         Ok(self.db_storage.services.contains_key(service_id))
     }
@@ -70,11 +91,88 @@ impl Services {
     }
 
     #[instrument(skip(self, service), fields(subsys = "Services"))]
-    pub fn save(&self, service: &Service) -> Result<()> {
+    pub async fn save(
+        &self,
+        service: &Service,
+        chain_configs: Arc<RwLock<ChainConfigs>>,
+    ) -> Result<()> {
         self.db_storage
             .services
             .insert(service.id(), service.clone())
-            .map_err(|e| e.into())
+            .map_err(ServicesError::from)?;
+
+        // In addition to populating the cache, this gives us an early sanity check that the service manager is valid
+        if let ServiceManager::Stellar { chain, address } = &service.manager {
+            let chain_cfg = {
+                chain_configs
+                    .read()
+                    .unwrap()
+                    .get_chain(chain)
+                    .and_then(|c| match c {
+                        AnyChainConfig::Stellar(cfg) => Some(cfg),
+                        _ => None,
+                    })
+                    .ok_or_else(|| ServicesError::MissingChainConfig(chain.clone()))?
+                    .clone()
+            };
+
+            // Build a fresh soroban env per call. Cheap (no network
+            // handshake until a query is actually fired) and sidesteps
+            // any caching invariants.
+            let env = soroban_rs::Env::new(soroban_rs::EnvConfigs {
+                rpc_url: chain_cfg.rpc_url.clone(),
+                network_passphrase: chain_cfg.network_passphrase.clone(),
+            })
+            .map_err(|e| ServicesError::StellarChainQuery {
+                chain: chain.clone(),
+                detail: format!("soroban env: {e:?}"),
+            })?;
+
+            // We need a "source account" to build the simulation tx. The
+            // signing key never gets used (simulation doesn't sign), so a
+            // throwaway account is fine.
+            let source_account =
+                soroban_rs::Account::single(soroban_rs::Signer::new(STELLAR_QUERY_KEY.clone()));
+
+            let project_root_client = ProjectRootClient::new(soroban_rs::ClientContractConfigs {
+                contract_id: *address,
+                env,
+                source_account,
+            });
+
+            let verifier = stellar_xdr::curr::ContractId(
+                project_root_client
+                    .verification_contract()
+                    .await
+                    .map_err(|e| ServicesError::StellarChainQuery {
+                        chain: chain.clone(),
+                        detail: format!("project_root.verification_contract: {e:?}"),
+                    })?
+                    .0
+                    .into(),
+            );
+
+            let security = stellar_xdr::curr::ContractId(
+                project_root_client
+                    .security_contract()
+                    .await
+                    .map_err(|e| ServicesError::StellarChainQuery {
+                        chain: chain.clone(),
+                        detail: format!("project_root.security: {e:?}"),
+                    })?
+                    .0
+                    .into(),
+            );
+
+            let contracts = StellarServiceManagerContracts { verifier, security };
+
+            self.db_storage
+                .stellar_service_manager_contracts
+                .insert(service.id(), contracts)
+                .map_err(ServicesError::from)?;
+        }
+
+        Ok(())
     }
 
     #[instrument(skip(self), fields(subsys = "Services"))]
@@ -122,6 +220,15 @@ pub enum ServicesError {
 
     #[error("Database error: {0}")]
     DBError(#[from] DBError),
+
+    #[error("Chain config not found for chain {0}")]
+    MissingChainConfig(ChainKey),
+
+    #[error("Stellar chain query failed for chain {chain}: {detail}")]
+    StellarChainQuery { chain: ChainKey, detail: String },
+
+    #[error("Unknown Service (for stellar service manager): {0}")]
+    UnknownServiceForStellarServiceManager(ServiceId),
 }
 
 #[macro_export]

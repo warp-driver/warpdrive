@@ -26,7 +26,9 @@ fn send_to_self() {
     let metrics = Metrics::new(opentelemetry::global::meter("wavs_metrics"));
     let config = mock_config();
 
-    services.save(&service).unwrap();
+    ctx.rt
+        .block_on(services.save(&service, config.chains.clone()))
+        .unwrap();
 
     let submission_manager =
         mock_submission_manager(ctx.clone(), &metrics, &config, &channels, services.clone());

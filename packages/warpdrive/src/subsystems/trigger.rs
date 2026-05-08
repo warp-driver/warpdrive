@@ -1658,12 +1658,16 @@ mod tests {
             .into_iter()
             .collect(),
         };
-        services.save(&service).unwrap();
+
+        let ctx = utils::context::AppContext::new();
+
+        ctx.rt
+            .block_on(services.save(&service, config.chains.clone()))
+            .unwrap();
 
         let trigger_manager =
             TriggerManager::new(&config, metrics, services, dispatcher_tx).unwrap();
 
-        let ctx = utils::context::AppContext::new();
         std::thread::spawn({
             let trigger_manager = trigger_manager.clone();
             let ctx = ctx.clone();

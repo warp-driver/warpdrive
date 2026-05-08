@@ -5,7 +5,10 @@ use warpdrive_types::{
     QuorumQueueId, ServiceManagerError, SigningError,
 };
 
-use crate::{dispatcher::DispatcherCommand, subsystems::aggregator::AggregatorCommand};
+use crate::{
+    dispatcher::DispatcherCommand, services::ServicesError,
+    subsystems::aggregator::AggregatorCommand,
+};
 
 #[derive(Error, Debug)]
 pub enum AggregatorError {
@@ -57,6 +60,9 @@ pub enum AggregatorError {
 
     #[error("Join: {0}")]
     JoinError(String),
+
+    #[error("Services: {0}")]
+    ServicesError(#[from] ServicesError),
 
     #[error("Queue is empty: {0:?}")]
     QueueIsEmpty(QuorumQueueId),
