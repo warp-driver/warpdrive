@@ -11,6 +11,7 @@ pub mod health;
 pub mod http;
 pub mod serde;
 pub mod service;
+pub mod stellar_client;
 pub mod storage;
 pub mod telemetry;
 #[cfg(any(test, feature = "test-utils"))]

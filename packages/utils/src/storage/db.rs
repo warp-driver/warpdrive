@@ -5,7 +5,7 @@ use dashmap::mapref::multiple::RefMulti;
 use dashmap::DashMap;
 use tracing::instrument;
 
-use warpdrive_types::{QuorumQueue, QuorumQueueId, Service, ServiceId};
+use warpdrive_types::{EventId, QuorumQueue, QuorumQueueId, Service, ServiceId};
 
 /// Main database struct with hardcoded tables for better type safety and performance
 #[derive(Clone)]
@@ -14,6 +14,14 @@ pub struct WavsDb {
     pub services_by_hash: WavsDbTable<[u8; 32], Service>,
     pub aggregator_services: WavsDbTable<ServiceId, ()>,
     pub quorum_queues: WavsDbTable<QuorumQueueId, QuorumQueue>,
+    /// Pinned reference block per event, set by the
+    /// aggregator's receive-time signer-validation path on the first
+    /// valid packet for an event. Used by the submit path so all
+    /// signer-set lookups happen against a single chain block —
+    /// signers either pass for the whole aggregation window or never.
+    /// See `aggregator/validate.rs` and the design discussion on
+    /// issue #33.
+    pub event_reference_blocks: WavsDbTable<EventId, u64>,
     pub kv_store: WavsDbTable<String, Vec<u8>>,
     pub kv_atomics_counter: WavsDbTable<String, i64>,
 }
@@ -28,6 +36,7 @@ impl WavsDb {
             services_by_hash: WavsDbTable::new()?,
             aggregator_services: WavsDbTable::new()?,
             quorum_queues: WavsDbTable::new()?,
+            event_reference_blocks: WavsDbTable::new()?,
             kv_store: WavsDbTable::new()?,
             kv_atomics_counter: WavsDbTable::new()?,
         })

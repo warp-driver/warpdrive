@@ -54,6 +54,7 @@ alloy-signer-local = { workspace = true, optional = true }
 cosmwasm-schema = { workspace = true, optional = true }
 stellar-xdr = { workspace = true }
 stellar-strkey = { workspace = true }
+k256 = { workspace = true }
 ts-rs = { version = "11.1", features = ["serde-compat"], optional = true }
 
 [dev-dependencies]
