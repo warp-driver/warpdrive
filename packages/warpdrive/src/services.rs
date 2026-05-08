@@ -131,14 +131,16 @@ impl Services {
             // We need a "source account" to build the simulation tx. The
             // signing key never gets used (simulation doesn't sign), so a
             // throwaway account is fine.
-            let source_account =
-                wasi_soroban_rs::Account::single(wasi_soroban_rs::Signer::new(STELLAR_QUERY_KEY.clone()));
+            let source_account = wasi_soroban_rs::Account::single(wasi_soroban_rs::Signer::new(
+                STELLAR_QUERY_KEY.clone(),
+            ));
 
-            let project_root_client = ProjectRootClient::new(wasi_soroban_rs::ClientContractConfigs {
-                contract_id: *address,
-                env,
-                source_account,
-            });
+            let project_root_client =
+                ProjectRootClient::new(wasi_soroban_rs::ClientContractConfigs {
+                    contract_id: *address,
+                    env,
+                    source_account,
+                });
 
             let verifier = stellar_xdr::curr::ContractId(
                 project_root_client

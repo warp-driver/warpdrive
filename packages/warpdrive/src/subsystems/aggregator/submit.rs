@@ -407,13 +407,12 @@ impl Aggregator {
         let reference_block: u32 = match self.get_pinned_reference_block(&first.event_id) {
             Some(b) => b as u32,
             None => {
-                let rpc = wasi_stellar_rpc_client::Client::new(&stellar_chain_config.rpc_url).map_err(
-                    |e| {
+                let rpc = wasi_stellar_rpc_client::Client::new(&stellar_chain_config.rpc_url)
+                    .map_err(|e| {
                         AggregatorError::Stellar(format!(
                             "failed to build stellar rpc client: {e:?}"
                         ))
-                    },
-                )?;
+                    })?;
                 let current = rpc
                     .get_latest_ledger()
                     .await

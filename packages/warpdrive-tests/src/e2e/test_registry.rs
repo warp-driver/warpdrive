@@ -335,9 +335,7 @@ impl TestRegistry {
 
         self.register(
             TestBuilder::new("stellar_balance_query")
-                .with_description(
-                    "Tests stellar queries"
-                )
+                .with_description("Tests stellar queries")
                 .add_workflow(
                     WorkflowId::new("stellar_query").unwrap(),
                     WorkflowBuilder::new()
@@ -363,33 +361,32 @@ impl TestRegistry {
         );
 
         self.register(
-        TestBuilder::new("stellar_project_client_query")
-            .with_description(
-                "Tests stellar uyse of warpdrive-client"
-            )
-            .add_workflow(
-                WorkflowId::new("stellar_query").unwrap(),
-                WorkflowBuilder::new()
-                    .with_operator_component(VectorComponent::StellarQuery)
-                    .with_aggregator_component(AggregatorComponent::SimpleAggregator)
-                    .with_trigger(TriggerDefinition::NewStellarContract(
-                        StellarTriggerDefinition::SimpleContractEvent {
-                            chain: chain.clone(),
-                        },
-                    ))
-                    .with_input_data(InputData::StellarQuery(StellarQueryRequest::RequiredWeight {  }))
-                    .with_submit(SubmitDefinition::Aggregator(Self::simple_aggregator(chain)))
-                    .with_expected_output(ExpectedOutput::Text(
-                        json!({"required_weight": TESTNET_WEIGHT}).to_string(),
-                    ))
-                    .with_timeout(Duration::from_secs(90))
-                    .build(),
-            )
-            .with_service_manager_chain(chain)
-            .build(),
+            TestBuilder::new("stellar_project_client_query")
+                .with_description("Tests stellar uyse of warpdrive-client")
+                .add_workflow(
+                    WorkflowId::new("stellar_query").unwrap(),
+                    WorkflowBuilder::new()
+                        .with_operator_component(VectorComponent::StellarQuery)
+                        .with_aggregator_component(AggregatorComponent::SimpleAggregator)
+                        .with_trigger(TriggerDefinition::NewStellarContract(
+                            StellarTriggerDefinition::SimpleContractEvent {
+                                chain: chain.clone(),
+                            },
+                        ))
+                        .with_input_data(InputData::StellarQuery(
+                            StellarQueryRequest::RequiredWeight {},
+                        ))
+                        .with_submit(SubmitDefinition::Aggregator(Self::simple_aggregator(chain)))
+                        .with_expected_output(ExpectedOutput::Text(
+                            json!({"required_weight": TESTNET_WEIGHT}).to_string(),
+                        ))
+                        .with_timeout(Duration::from_secs(90))
+                        .build(),
+                )
+                .with_service_manager_chain(chain)
+                .build(),
         )
     }
-
 
     fn register_evm_atproto_echo_data_test(&mut self, chain: &ChainKey) -> &mut Self {
         self.register(

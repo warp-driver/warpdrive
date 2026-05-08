@@ -201,12 +201,13 @@ impl Aggregator {
                 // unlike in `handle_action_submit_stellar`, we don't necessarily have a pinned reference block
                 // since there may not have been a prior valid packet for this event
                 // so it's not a warning, just the expected path for the first valid packet of an event
-                let rpc = wasi_stellar_rpc_client::Client::new(&chain_cfg.rpc_url).map_err(|e| {
-                    AggregatorError::ReceiveValidationChainQuery {
-                        chain: chain.clone(),
-                        detail: format!("stellar rpc client: {e:?}"),
-                    }
-                })?;
+                let rpc =
+                    wasi_stellar_rpc_client::Client::new(&chain_cfg.rpc_url).map_err(|e| {
+                        AggregatorError::ReceiveValidationChainQuery {
+                            chain: chain.clone(),
+                            detail: format!("stellar rpc client: {e:?}"),
+                        }
+                    })?;
                 let current = rpc
                     .get_latest_ledger()
                     .await
@@ -223,8 +224,9 @@ impl Aggregator {
         // We need a "source account" to build the simulation tx. The
         // signing key never gets used (simulation doesn't sign), so a
         // throwaway account is fine.
-        let account =
-            wasi_soroban_rs::Account::single(wasi_soroban_rs::Signer::new(STELLAR_QUERY_KEY.clone()));
+        let account = wasi_soroban_rs::Account::single(wasi_soroban_rs::Signer::new(
+            STELLAR_QUERY_KEY.clone(),
+        ));
 
         let verification_contract = self
             .services

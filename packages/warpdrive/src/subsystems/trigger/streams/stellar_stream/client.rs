@@ -8,9 +8,9 @@ use crate::subsystems::trigger::streams::stellar_stream::filters::{
 };
 
 use super::filters::EventFilters;
-use wasi_stellar_rpc_client::{Event, EventStart, EventType};
 use utils::error::{StellarClientError, StellarClientResult};
 use warpdrive_types::StellarChainConfig;
+use wasi_stellar_rpc_client::{Event, EventStart, EventType};
 
 #[derive(Clone)]
 pub struct StellarStreamClient {

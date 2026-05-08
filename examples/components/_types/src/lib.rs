@@ -41,7 +41,7 @@ pub enum CosmosQueryResponse {
 #[serde(rename_all = "snake_case")]
 pub enum StellarQueryRequest {
     Balance { account_id: String },
-    RequiredWeight { },
+    RequiredWeight {},
 }
 
 impl StellarQueryRequest {

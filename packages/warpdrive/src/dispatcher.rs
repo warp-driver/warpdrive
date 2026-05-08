@@ -934,8 +934,9 @@ async fn query_service_from_address(
         // Read-only Soroban simulations require a source account on the tx
         // body but the signature is never validated; any key works. See the
         // documented pattern at warpdrive-contracts `packages/client/README.md`.
-        let account =
-            wasi_soroban_rs::Account::single(wasi_soroban_rs::Signer::new(STELLAR_QUERY_KEY.clone()));
+        let account = wasi_soroban_rs::Account::single(wasi_soroban_rs::Signer::new(
+            STELLAR_QUERY_KEY.clone(),
+        ));
         let cfg = wasi_soroban_rs::ClientContractConfigs {
             contract_id: *project_root,
             env,
