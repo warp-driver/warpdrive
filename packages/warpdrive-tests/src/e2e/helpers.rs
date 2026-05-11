@@ -452,22 +452,44 @@ pub async fn deploy_submit_contract(
                     Ok(warpdrive_types::ChainAddress::Stellar(parsed))
                 }
                 StellarContracts::EdContracts(c) => {
+                    // ed25519 (stellar-handler) path. Deploys the
+                    // `mock_submit_xlm` contract — the ed25519-native
+                    // analogue of `mock_submit_eth` — bound to the test
+                    // stack's `ed25519_verification` contract.
+                    //
+                    // No e2e test exercises this path yet (every
+                    // `StellarService` variant returns
+                    // `SignerScheme::Secp256k1` from `scheme()` today). The
+                    // wiring exists so that flipping a test's
+                    // `stellar_scheme` to `Ed25519` "just works" up to the
+                    // handler deploy. The remaining work to actually run an
+                    // ed25519 test is to add a read-path equivalent to
+                    // `mock_submit_eth`'s `get_data` / `is_valid_trigger_id`
+                    // — the xlm handler stores `payload(event_id)` keyed by
+                    // 20-byte event_id, not by u64 trigger_id, so
+                    // `stellar_wait_for_task_to_land` needs a per-scheme
+                    // branch.
                     let verification_contract = format!("{}", c.ed25519_verification);
                     tracing::info!(
-                        "Deploying Stellar mock submit handler on chain {} bound to verification {}",
+                        "Deploying Stellar mock submit (xlm/ed25519) handler on chain {} \
+                         bound to verification {}",
                         chain,
                         verification_contract
                     );
-                    // TODO(ed25519): no Stellar test runs against the
-                    // ed25519 stack yet. When we add one, ship a
-                    // stellar-native `mock_submit` analogue that binds to
-                    // `ed25519_verification` and return its Stellar contract
-                    // id here. Until that arrives, mark such tests with
-                    // `StellarService::scheme() == SignerScheme::Ed25519` so
-                    // the shared-stack bootstrap deploys the ed25519
-                    // variant; this branch will then be the only thing
-                    // gating the test from running.
-                    todo!("Implement the native stellar (ed25519) mock_submit branch");
+                    let client = crate::example_stellar_client::SimpleStellarSubmitXlmClient::new(
+                        chain.clone(),
+                    );
+                    let admin = client
+                        .wallet_address()
+                        .context("failed to resolve mock_submit_xlm admin address")?;
+                    let contract_id = client.deploy(&admin, &verification_contract).await?;
+                    tracing::info!(
+                        "Stellar mock submit (xlm/ed25519) handler deployed at {}",
+                        contract_id
+                    );
+                    let parsed = stellar_strkey::Contract::from_string(&contract_id)
+                        .map_err(|e| anyhow!("invalid stellar contract id from deploy: {e:?}"))?;
+                    Ok(warpdrive_types::ChainAddress::Stellar(parsed))
                 }
             }
         }

@@ -241,9 +241,13 @@ tasks:
       - task: _stellar-build-inner
         vars:
           CONTRACT_PATH: examples/contracts/stellar/mock_submit_eth
+      - task: _stellar-build-inner
+        vars:
+          CONTRACT_PATH: examples/contracts/stellar/mock_submit_xlm
       # Stage the e2e-consumed artifacts under examples/build/contracts/stellar/
       # so the test runner doesn't have to invoke `stellar contract build` itself.
       - cp {{.REPO_ROOT}}/examples/contracts/stellar/mock_submit_eth/target/wasm32v1-none/release/warpdrive_stellar_mock_submit_eth.wasm {{.STELLAR_OUT_DIR}}/
+      - cp {{.REPO_ROOT}}/examples/contracts/stellar/mock_submit_xlm/target/wasm32v1-none/release/warpdrive_stellar_mock_submit_xlm.wasm {{.STELLAR_OUT_DIR}}/
 
   _stellar-build-inner:
     internal: true
