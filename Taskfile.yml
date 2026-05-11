@@ -103,6 +103,19 @@ tasks:
           fi
       - task: generate-checksums
 
+  quick-wasi-build:
+    desc: Fast version of wasi-build for local testing, not reproduceable build for publish / deploy
+    vars:
+      COMPONENT: '{{.COMPONENT | default "stellar-query"}}'
+    cmds:
+      - cmd: |
+          set -euo pipefail
+          RUSTFLAGS='-C link-arg=-s --cfg tokio_unstable' cargo build --locked --release --target wasm32-wasip2 -p {{.COMPONENT}}
+          WASM=$(echo {{.COMPONENT}}.wasm | tr '-' '_')
+          echo $WASM
+          cp ./target/wasm32-wasip2/release/$WASM ./examples/build/components
+      - task: generate-checksums
+
   generate-checksums:
     desc: Generate SHA256 checksums for built WASM files
     cmd: |
