@@ -11043,6 +11043,7 @@ dependencies = [
  "warpdrive-cli",
  "warpdrive-client",
  "warpdrive-types",
+ "wasi-stellar-rpc-client",
  "wasm-pkg-common",
 ]
 

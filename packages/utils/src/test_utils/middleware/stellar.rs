@@ -12,7 +12,7 @@ use crate::test_utils::middleware::evm::validate_docker_container_id;
 
 /// Pinned image tag for the Warpdrive Stellar middleware.
 /// Bump in lockstep with the warpdrive-contracts repo.
-pub const STELLAR_MIDDLEWARE_IMAGE: &str = "ghcr.io/warp-driver/warpdrive-stellar-middleware:0.2.3";
+pub const STELLAR_MIDDLEWARE_IMAGE: &str = "ghcr.io/warp-driver/warpdrive-stellar-middleware:0.2.5";
 
 /// Long-lived container that wraps the warpdrive-stellar-middleware image.
 /// One container per test run; each `deploy_service_manager` call shells in
@@ -203,7 +203,10 @@ impl StellarMiddleware {
         Ok(())
     }
 
-    pub async fn deploy_service_manager(&self) -> Result<StellarServiceManager> {
+    pub async fn deploy_service_manager(
+        &self,
+        scheme: SignerScheme,
+    ) -> Result<StellarServiceManager> {
         // Unique filename per deploy so concurrent deploys don't collide.
         let id = uuid::Uuid::now_v7();
         let filename = format!("deploy-{id}.json");
@@ -218,6 +221,8 @@ impl StellarMiddleware {
                     &self.inner.container_id,
                     "/warpdrive/cli.sh",
                     "deploy",
+                    "--variant",
+                    scheme.deploy_variant(),
                     "--output-path",
                     &in_container_path,
                 ])
@@ -303,8 +308,9 @@ impl Drop for StellarMiddlewareInner {
 }
 
 /// Signature scheme of a deployed security/verification contract pair on
-/// the warpdrive Stellar stack. Maps 1:1 to `cli.sh add-signer --scheme`.
-#[derive(Clone, Copy, Debug)]
+/// the warpdrive Stellar stack. Maps 1:1 to `cli.sh add-signer --scheme`,
+/// and 1:1 (via `deploy_variant`) to `cli.sh deploy --variant`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum SignerScheme {
     Secp256k1,
     Ed25519,
@@ -315,6 +321,17 @@ impl SignerScheme {
         match self {
             SignerScheme::Secp256k1 => "secp256k1",
             SignerScheme::Ed25519 => "ed25519",
+        }
+    }
+
+    /// `cli.sh deploy --variant` value. The middleware image names the
+    /// secp256k1 stack "ethereum" (after the handler) and the ed25519 stack
+    /// "stellar". `--variant ethereum` is the cli.sh default but we always
+    /// pass it explicitly so the call is unambiguous on either side.
+    pub fn deploy_variant(self) -> &'static str {
+        match self {
+            SignerScheme::Secp256k1 => "ethereum",
+            SignerScheme::Ed25519 => "stellar",
         }
     }
 }
@@ -368,7 +385,6 @@ pub struct SecpContracts {
     pub project_root: stellar_strkey::Contract,
     pub secp256k1_security: stellar_strkey::Contract,
     pub secp256k1_verification: stellar_strkey::Contract,
-    pub ethereum_handler: stellar_strkey::Contract,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -376,7 +392,6 @@ pub struct EdContracts {
     pub project_root: stellar_strkey::Contract,
     pub ed25519_security: stellar_strkey::Contract,
     pub ed25519_verification: stellar_strkey::Contract,
-    pub stellar_handler: stellar_strkey::Contract,
 }
 
 #[cfg(test)]
@@ -391,7 +406,6 @@ mod test {
   "contracts": {
     "ed25519_security": "CA3JNPPPWEC6XDRYHSFCJPK3F47H22TPHL6C5SZLEVSYMLDVEB2XNSRF",
     "ed25519_verification": "CBWPVO6YUOTCIBCWOLSO2IJVASWVAVYG3JMTOVHMWX5EK42NGRCHFJFK",
-    "stellar_handler": "CASCX3I4IA5NSENBHPTNOMN7PTCNKUMFTFFRRWKEYOLED6MKNJ4KFRL2",
     "project_root": "CAE4HP4DT5BJKYTHQ73O52G6LYQ2FNFASJ5EUGXO7TCA2ANGHX2FLKM4"
   }
 }"#;
@@ -404,7 +418,6 @@ mod test {
   "contracts": {
     "secp256k1_security": "CAT7FK2S4DEZYMPKRSXVYVSTRIYQQNST3ZYJBIPJPXOERAVJBRNBMRV2",
     "secp256k1_verification": "CDT764X55DNVPYG6ICBFE2IJRXG4DYSNQN5NNQC3GXCO6Z4RJ6LCHHLW",
-    "ethereum_handler": "CCDYESRE7WDIJEC3WKJTSGHVMEZKU2GRVW3DTQQJKRHKTRBYQBOR2HAH",
     "project_root": "CCREM2UGATC3XKUTW3JX5CTICSUP23RRKOZK7ODFWDFV2ZV5NVFYWOAU"
   }
 }"#;

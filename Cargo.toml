@@ -26,7 +26,11 @@ members = [
     "examples/contracts/cosmwasm/mock/api",
     "examples/contracts/cosmwasm/mock/service-handler",
 ]
-exclude = ["examples/contracts/stellar/trigger", "examples/contracts/stellar/mock_submit"]
+exclude = [
+    "examples/contracts/stellar/trigger",
+    "examples/contracts/stellar/mock_submit_eth",
+    "examples/contracts/stellar/mock_submit_xlm",
+]
 resolver = "2"
 
 [profile.dev]

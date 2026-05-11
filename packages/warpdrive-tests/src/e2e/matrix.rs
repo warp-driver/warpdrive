@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use derive_enum_all_values::AllValues;
 use serde::{Deserialize, Serialize};
+use utils::test_utils::middleware::stellar::SignerScheme;
 
 use super::components::{AggregatorComponent, ComponentName, VectorComponent};
 
@@ -81,6 +82,49 @@ pub enum StellarService {
     /// component RPC. CI configs deliberately don't include this so
     /// CI stays green.
     StellarQuery,
+}
+
+impl StellarService {
+    /// Which Stellar signing scheme this test runs against. All current
+    /// Stellar tests share the secp256k1 (`--variant ethereum`) stack.
+    ///
+    /// # Adding an ed25519 (`--variant stellar`) test
+    ///
+    /// The shared-stack bootstrap, signer registration, and submit-handler
+    /// deploy already understand both schemes — the only missing piece is
+    /// the test's *read path* (polling the deployed handler for the
+    /// trigger's payload after the aggregator submits).
+    ///
+    /// Concretely, to add the first ed25519 test:
+    ///
+    /// 1. Add a new `StellarService` variant (e.g. `EchoDataXlm`) and
+    ///    return `SignerScheme::Ed25519` from its arm here.
+    /// 2. If the test uses a new component, add a `VectorComponent`
+    ///    variant and map it in [`From<StellarService> for
+    ///    Vec<ComponentName>`] below.
+    /// 3. Register the test in `e2e/test_registry.rs` and call
+    ///    `.with_stellar_scheme(SignerScheme::Ed25519)` on the builder.
+    /// 4. Replace `stellar_wait_for_task_to_land` (in `e2e/helpers.rs`)
+    ///    with a per-scheme branch: secp256k1 keeps
+    ///    `SimpleStellarSubmitEthClient::{is_valid_trigger_id, get_data}`
+    ///    (keyed by u64 `trigger_id`); ed25519 needs to read from
+    ///    `mock_submit_xlm`'s `payload(event_id)` (keyed by 20-byte
+    ///    `event_id`). Add a `payload` method to
+    ///    `SimpleStellarSubmitXlmClient` mirroring `get_data`, and have
+    ///    the runner choose between them based on the test's scheme.
+    /// 5. Add the test to `warpdrive-tests-default.toml` to enable it.
+    ///
+    /// The bootstrap will then deploy a *second* shared stack alongside
+    /// the secp256k1 one (one `--variant stellar` deploy, ed25519 signers
+    /// registered once, per-test handlers via `mock_submit_xlm`).
+    pub fn scheme(self) -> SignerScheme {
+        match self {
+            StellarService::EchoData
+            | StellarService::BlockInterval
+            | StellarService::BlockIntervalStartStop
+            | StellarService::StellarQuery => SignerScheme::Secp256k1,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]

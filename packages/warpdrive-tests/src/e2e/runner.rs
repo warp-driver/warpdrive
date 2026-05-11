@@ -746,15 +746,32 @@ async fn run_test(
         }
     }
 
-    tracing::info!(
-        "Cleaning up service: {0:?}",
-        service_deployment.service.manager
-    );
-    // Delete service from all WarpDrive instances
-    for http_client in clients.http_clients.iter() {
-        http_client
-            .delete_service(vec![service_deployment.service.manager.clone()])
-            .await?;
+    // Skip delete for Stellar: every Stellar test resolves to the *same*
+    // shared `project_root`, so deleting the service from WarpDrive after
+    // one test leaves the next test with nothing to `change_service` from
+    // (the dispatcher's poller fires on URI change but `change_service`
+    // requires the service id to already be in the registry). Tests
+    // serialize per-stack via `uri_lock` and the test-suite teardown
+    // cleans up by dropping the stellar middleware container.
+    if matches!(
+        service_deployment.service.manager,
+        warpdrive_types::ServiceManager::Stellar { .. }
+    ) {
+        tracing::info!(
+            "Skipping delete for shared Stellar service: {:?}",
+            service_deployment.service.manager
+        );
+    } else {
+        tracing::info!(
+            "Cleaning up service: {0:?}",
+            service_deployment.service.manager
+        );
+        // Delete service from all WarpDrive instances
+        for http_client in clients.http_clients.iter() {
+            http_client
+                .delete_service(vec![service_deployment.service.manager.clone()])
+                .await?;
+        }
     }
 
     Ok(())
