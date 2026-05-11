@@ -8,6 +8,7 @@ vars:
   WASI_OUT_DIR: ./examples/build/components
   COMPONENTS_DIR: ./examples/components
   COSMWASM_OUT_DIR: ./examples/build/contracts
+  STELLAR_OUT_DIR: ./examples/build/contracts/stellar
   REPO_ROOT:
     sh: git rev-parse --show-toplevel
   ARCH:
@@ -231,11 +232,18 @@ tasks:
       - cp ./artifacts/*.wasm {{.COSMWASM_OUT_DIR}}
 
   stellar-build:
-    desc: Compile Stellar example contracts
+    desc: Compile Stellar example contracts and stage their wasm under {{.STELLAR_OUT_DIR}}
     cmds:
+      - mkdir -p {{.STELLAR_OUT_DIR}}
       - task: _stellar-build-inner
         vars:
           CONTRACT_PATH: examples/contracts/stellar/trigger
+      - task: _stellar-build-inner
+        vars:
+          CONTRACT_PATH: examples/contracts/stellar/mock_submit_eth
+      # Stage the e2e-consumed artifacts under examples/build/contracts/stellar/
+      # so the test runner doesn't have to invoke `stellar contract build` itself.
+      - cp {{.REPO_ROOT}}/examples/contracts/stellar/mock_submit_eth/target/wasm32v1-none/release/warpdrive_stellar_mock_submit_eth.wasm {{.STELLAR_OUT_DIR}}/
 
   _stellar-build-inner:
     internal: true
@@ -400,7 +408,13 @@ tasks:
 
   test-warpdrive-e2e:
     desc: Run on-chain integration tests
+    deps: [stellar-build]
     cmd: RUST_LOG=info,alloy_rpc=off,alloy_provider=off,wasmtime=off,cranelift=off,hyper_util=off cargo test -p warpdrive-tests
+
+  debug-warpdrive-e2e:
+    desc: Run on-chain integration tests
+    deps: [stellar-build]
+    cmd: RUST_BACKTRACE=1 RUST_LOG=info,alloy_rpc=off,alloy_provider=off,wasmtime=off,cranelift=off,hyper_util=off cargo test -p warpdrive-tests -- --nocapture
 
   cli-exec:
     desc: "Execute a WASI component via CLI (e.g. task cli-exec COMPONENT=./examples/build/components/echo_data.wasm INPUT='hello world')"

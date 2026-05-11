@@ -4,9 +4,18 @@ use std::process::Command;
 use anyhow::{anyhow, bail, Context, Result};
 use rand::RngCore;
 use utils::filesystem::workspace_path;
-use warpdrive_types::ChainKey;
 
 use crate::example_evm_client::TriggerId;
+
+/// Path (relative to the workspace root) of the staged `mock_submit_eth`
+/// WASM that `task stellar-build` produces. Both `test-warpdrive-e2e` and
+/// `debug-warpdrive-e2e` depend on `stellar-build`, so this file is
+/// guaranteed to exist when the e2e suite runs. We deliberately consume
+/// the staged copy rather than the per-crate `target/` artifact so the
+/// test process doesn't need to shell out to `stellar contract build`
+/// (and doesn't need the soroban toolchain on PATH at test time).
+const STAGED_MOCK_SUBMIT_ETH_WASM: &str =
+    "examples/build/contracts/stellar/warpdrive_stellar_mock_submit_eth.wasm";
 
 const STELLAR_RPC_URL_TESTNET: &str = "https://soroban-testnet.stellar.org";
 const STELLAR_NETWORK_PASSPHRASE_TESTNET: &str = "Test SDF Network ; September 2015";
@@ -27,14 +36,17 @@ const STELLAR_WALLET_ALIAS: &str = "warpdrive-e2e-testnet";
 /// EVM/Cosmos give us via `SimpleSubmit` / `MockServiceHandler`.
 #[derive(Clone, Debug)]
 pub struct SimpleStellarSubmitEthClient {
-    chain: ChainKey,
     config_dir: PathBuf,
 }
 
 impl SimpleStellarSubmitEthClient {
-    pub fn new(chain: ChainKey) -> Self {
+    pub fn new(_chain: warpdrive_types::ChainKey) -> Self {
+        // `chain` is accepted for symmetry with `SimpleStellarTriggerClient`
+        // and so callers can stay chain-aware, but the staged WASM model
+        // means we don't need it: the stellar CLI is configured with a
+        // hard-coded testnet rpc + passphrase below, the staged artifact
+        // lives at a fixed workspace path, and deploys use a random salt.
         Self {
-            chain,
             // Reuse the same shared wallet config dir as the trigger client;
             // it manages the funded testnet identity that's used for both
             // build/deploy operations.
@@ -42,14 +54,28 @@ impl SimpleStellarSubmitEthClient {
         }
     }
 
-    /// Build (idempotent) the mock_submit_eth contract WASM and deploy a
-    /// fresh instance bound to `verification_contract` (the test stack's
-    /// `secp256k1_verification`). Returns the deployed contract id.
+    /// Deploy a fresh `mock_submit_eth` instance bound to
+    /// `verification_contract` (the test stack's `secp256k1_verification`).
+    /// Returns the deployed contract id.
+    ///
+    /// The WASM is built ahead of time by `task stellar-build` and staged
+    /// at [`STAGED_MOCK_SUBMIT_ETH_WASM`]; we just point `stellar contract
+    /// deploy` at the staged copy. Errors fast with a clear message if the
+    /// artifact isn't present — that almost always means the test was
+    /// invoked via `cargo test -p warpdrive-tests` directly without the
+    /// task wrapper.
     pub async fn deploy(&self, verification_contract: &str) -> Result<String> {
         self.ensure_wallet()?;
-        self.build_contract()?;
 
         let wasm_path = self.contract_artifact_path();
+        if !wasm_path.exists() {
+            bail!(
+                "staged mock_submit_eth wasm not found at {}; run `task stellar-build` \
+                 (or invoke the e2e suite via `task test-warpdrive-e2e` / \
+                 `task debug-warpdrive-e2e`, which both depend on it)",
+                wasm_path.display()
+            );
+        }
         let wasm_path = wasm_path
             .to_str()
             .ok_or_else(|| anyhow!("invalid wasm path: {}", wasm_path.display()))?;
@@ -165,34 +191,8 @@ impl SimpleStellarSubmitEthClient {
         Ok(())
     }
 
-    fn build_contract(&self) -> Result<()> {
-        let contract_dir = workspace_path().join("examples/contracts/stellar/mock_submit_eth");
-
-        let output = Command::new("stellar")
-            .arg("--config-dir")
-            .arg(&self.config_dir)
-            .current_dir(&contract_dir)
-            .arg("contract")
-            .arg("build")
-            .arg("--optimize")
-            .output()
-            .with_context(|| format!("failed to run stellar build for {}", self.chain))?;
-
-        if output.status.success() {
-            return Ok(());
-        }
-
-        bail!(
-            "stellar contract build failed:\nstdout:\n{}\nstderr:\n{}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-
     fn contract_artifact_path(&self) -> PathBuf {
-        workspace_path().join(
-            "examples/contracts/stellar/mock_submit_eth/target/wasm32v1-none/release/warpdrive_stellar_mock_submit_eth.wasm",
-        )
+        workspace_path().join(STAGED_MOCK_SUBMIT_ETH_WASM)
     }
 
     fn run_stellar(&self, args: &[&str]) -> Result<String> {
