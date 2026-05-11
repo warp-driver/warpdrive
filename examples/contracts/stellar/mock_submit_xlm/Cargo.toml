@@ -11,22 +11,17 @@
 [workspace]
 
 [package]
-name = "warpdrive-stellar-mock-submit"
+name = "warpdrive-stellar-mock-submit-xlm"
 version = "0.0.0"
 edition = "2021"
 publish = false
 
 [lib]
-crate-type = ["lib", "cdylib"]
-doctest = false
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 soroban-sdk = { version = "26", features = ["alloc"] }
-alloy-sol-types = { version = "1", default-features = false }
-alloy-primitives = { version = "1", default-features = false }
+warpdrive-shared = { version = "0.2.4" }
 
 [dev-dependencies]
 soroban-sdk = { version = "26", features = ["testutils"] }
-
-[profile.release]
-overflow-checks = true
