@@ -1,4 +1,4 @@
-use soroban_sdk::{Address, Bytes, BytesN, Env, String, contract, contractimpl, xdr::FromXdr};
+use soroban_sdk::{contract, contractimpl, xdr::FromXdr, Address, Bytes, BytesN, Env, String};
 
 use warpdrive_shared::interfaces::{
     handler::{Ed25519SignatureData, HandlerError, StellarHandlerInterface, Verified, XlmEnvelope},

@@ -1,4 +1,4 @@
-use soroban_sdk::{contractclient, contracterror, contracttype, Address, Bytes, BytesN, Env, Vec};
+use soroban_sdk::{contractclient, contracterror, contracttype, Bytes, BytesN, Env, Vec};
 
 // Mirrors `warpdrive_shared::interfaces::handler::SignatureData`. We
 // re-declare it here because `warpdrive-shared` is part of the contracts

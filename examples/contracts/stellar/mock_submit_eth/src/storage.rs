@@ -6,6 +6,7 @@ pub enum DataKey {
     Admin,
     Version,
     VerificationContract,
+    // Use unique keys like this, not Map, as Map requires loading all data into memory on load, and these are potentially unbounded.
     EventSeen(BytesN<20>),
     Payload(BytesN<20>),
 }

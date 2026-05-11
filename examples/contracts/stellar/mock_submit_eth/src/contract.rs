@@ -1,118 +1,144 @@
-use soroban_sdk::{
-    contract, contractimpl, contracttype, symbol_short, Address, Bytes, Env, Symbol,
+use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String};
+
+use warpdrive_shared::interfaces::{
+    handler::{EthereumHandlerInterface, HandlerError, SignatureData, Verified},
+    verification::{Secp256k1VerificationClient, VerifyError},
+    warpdrive::{ContractUpgraded, WarpDriveInterface},
 };
 
-use crate::envelope::{DataWithId, Envelope as EthEnvelope};
-use crate::handler::{HandlerError, Secp256k1VerificationClient, SignatureData};
+use crate::envelope::Envelope as EthEnvelope;
+use crate::storage;
 
-const VERIFICATION_KEY: Symbol = symbol_short!("verif");
-const SUBMITTED_TOPIC: Symbol = symbol_short!("submit");
+/// Maximum age (in ledgers) allowed for a reference block.
+/// Note: 200 blocks is around 20 minutes with 5-6 second blocks
+const MAX_REFERENCE_BLOCK_AGE: u32 = 200;
 
-#[contracttype]
-enum DataKey {
-    Validated(u64),
-    Data(u64),
+/// Validates that `reference_block` is strictly in the past and within the allowed age window.
+fn validate_reference_block(env: &Env, reference_block: u32) -> Result<(), HandlerError> {
+    let current = env.ledger().sequence();
+    if reference_block >= current {
+        return Err(HandlerError::InvalidReferenceBlock);
+    }
+    if current - reference_block > MAX_REFERENCE_BLOCK_AGE {
+        return Err(HandlerError::InvalidReferenceBlock);
+    }
+    Ok(())
 }
 
-/// Test-only Soroban submission destination for the warpdrive e2e tests.
-///
-/// **This contract IS the service handler** for the test, mirroring the
-/// role of the EVM `SimpleSubmit` mock and the real
-/// `warpdrive_ethereum_handler` contract. The aggregator targets this
-/// contract directly (its address is what gets written into the service
-/// definition's `service_handler` config).
-///
-/// Exposes `verify_eth(envelope_bytes, sig_data)` so it's drop-in
-/// compatible with `warpdrive_client::EthereumHandlerClient` — the real
-/// aggregator dispatches to either `EthereumHandlerClient` or
-/// `StellarHandlerClient` based on `project_root.verification_type()`, and
-/// for the secp256k1 (Ethereum-shaped) path our mock IS that handler.
-///
-/// What it does on `verify_eth`:
-///   1. Delegates signature validation to the test's deployed
-///      `secp256k1_verification` contract (the address stored at
-///      construction). Reverts on validation failure.
-///   2. Decodes the envelope's `payload` as ABI-encoded
-///      `DataWithId { triggerId: u64, data: bytes }`.
-///   3. Stores `(trigger_id → data, trigger_id → validated)` so the test
-///      runner can read back via `get_data` / `is_valid_trigger_id`.
-///
-/// Skipped vs. the real `EthereumHandler` (intentionally — these are
-/// handler-level concerns the test doesn't need):
-///   - `reference_block` age check (per-test contract is short-lived).
-///   - Replay protection / `event_seen` tracking (each test deploys fresh).
+/// Maps a `try_verify` result from the verification contract into a `HandlerError`.
+fn map_verify_result(
+    res: Result<
+        Result<(), soroban_sdk::ConversionError>,
+        Result<VerifyError, soroban_sdk::InvokeError>,
+    >,
+) -> Result<(), HandlerError> {
+    match res {
+        Ok(Ok(())) => Ok(()),
+        Ok(Err(_conversion)) => Err(HandlerError::UnknownVerificationError),
+        Err(Ok(e)) => Err(HandlerError::from(e)),
+        Err(Err(_invoke_err)) => Err(HandlerError::OtherInvocationError),
+    }
+}
+
 #[contract]
-pub struct Contract;
+pub struct EthereumHandler;
 
 #[contractimpl]
-impl Contract {
-    pub fn __constructor(env: Env, verification_contract: Address) {
-        env.storage()
-            .instance()
-            .set(&VERIFICATION_KEY, &verification_contract);
+impl EthereumHandler {
+    pub fn __constructor(env: Env, admin: Address, verification_contract: Address) {
+        storage::set_admin(&env, &admin);
+        storage::set_version(&env, &String::from_str(&env, env!("CARGO_PKG_VERSION")));
+        storage::set_verification_contract(&env, &verification_contract);
+        storage::extend_instance_ttl(&env);
+    }
+}
+
+#[contractimpl]
+impl WarpDriveInterface for EthereumHandler {
+    fn upgrade(env: Env, new_wasm_hash: BytesN<32>, new_version: String) {
+        let admin = storage::get_admin(&env);
+        admin.require_auth();
+
+        storage::set_version(&env, &new_version);
+        storage::extend_instance_ttl(&env);
+        env.deployer().update_current_contract_wasm(new_wasm_hash);
+        ContractUpgraded::new(new_version).publish(&env);
     }
 
-    /// Returns the verification contract address (the aggregator's
-    /// pre-validation step calls this to discover which secp256k1
-    /// verification contract to query for `check_one`/`required_weight`).
-    pub fn verification_contract(env: Env) -> Address {
-        env.storage()
-            .instance()
-            .get(&VERIFICATION_KEY)
-            .expect("verification contract not set in constructor")
+    fn admin(env: Env) -> Address {
+        storage::get_admin(&env)
     }
 
-    pub fn verify_eth(
+    fn pending_admin(env: Env) -> Option<Address> {
+        warpdrive_shared::admin::pending(&env)
+    }
+
+    fn propose_admin(env: Env, new_admin: Address) {
+        warpdrive_shared::admin::propose(&env, &storage::get_admin(&env), new_admin);
+    }
+
+    fn accept_admin(env: Env) {
+        let new_admin = warpdrive_shared::admin::accept(&env);
+        storage::set_admin(&env, &new_admin);
+    }
+
+    fn version(env: Env) -> String {
+        storage::get_version(&env)
+    }
+}
+
+#[contractimpl]
+impl EthereumHandlerInterface for EthereumHandler {
+    fn verification_contract(env: Env) -> Address {
+        storage::get_verification_contract(&env)
+    }
+
+    fn payload(env: Env, event_id: BytesN<20>) -> Option<Bytes> {
+        storage::get_payload(&env, event_id)
+    }
+
+    /// Verifies the packet, assuming the envelope is ABI-encoded (Ethereum format).
+    ///
+    /// No caller authorization is required — this is intentional. Security is enforced entirely
+    /// through cryptographic signature verification of the envelope contents.
+    fn verify_eth(
         env: Env,
         envelope_bytes: Bytes,
         sig_data: SignatureData,
-    ) -> Result<u64, HandlerError> {
-        // Delegate signature validation to the secp256k1 verification
-        // contract. Panics (and reverts the whole tx) on bad signatures,
-        // unregistered signer, insufficient weight, etc.
-        let verification_addr: Address = env
-            .storage()
-            .instance()
-            .get(&VERIFICATION_KEY)
-            .expect("verification contract not set in constructor");
+    ) -> Result<(), HandlerError> {
+        storage::extend_instance_ttl(&env);
+        validate_reference_block(&env, sig_data.reference_block)?;
+
+        // Parse the ABI-encoded envelope
+        let envelope =
+            EthEnvelope::abi_decode_from(&envelope_bytes).ok_or(HandlerError::InvalidEnvelope)?;
+        let event_id = BytesN::from_array(&env, &envelope.eventId.0);
+
+        // Check for duplicate event
+        if storage::is_event_seen(&env, &event_id) {
+            return Err(HandlerError::EventAlreadySeen);
+        }
+
+        // Verify signatures via the verification contract
+        let verification_addr = storage::get_verification_contract(&env);
         let verification = Secp256k1VerificationClient::new(&env, &verification_addr);
-        verification.verify(
+        let res = verification.try_verify(
             &envelope_bytes,
             &sig_data.signatures,
             &sig_data.signers,
             &sig_data.reference_block,
         );
+        map_verify_result(res)?;
 
-        // Decode the envelope to pull out the payload.
-        let envelope = EthEnvelope::abi_decode_from(&envelope_bytes)
-            .ok_or(HandlerError::InvalidEnvelope)?;
+        // Mark event as seen
+        storage::mark_event_seen(&env, &event_id);
 
-        // Payload is itself ABI-encoded `DataWithId { triggerId, data }`.
-        let payload_bytes: &[u8] = envelope.payload.as_ref();
-        let data_with_id = DataWithId::abi_decode_from_slice(payload_bytes)
-            .ok_or(HandlerError::InvalidEnvelope)?;
-        let trigger_id: u64 = data_with_id.triggerId;
-        let data = Bytes::from_slice(&env, data_with_id.data.as_ref());
+        // Save payload
+        let payload = Bytes::from_slice(&env, envelope.payload.as_ref());
+        storage::save_payload(&env, event_id.clone(), payload);
 
-        env.storage()
-            .persistent()
-            .set(&DataKey::Data(trigger_id), &data);
-        env.storage()
-            .persistent()
-            .set(&DataKey::Validated(trigger_id), &true);
+        Verified::new(event_id).publish(&env);
 
-        env.events().publish((SUBMITTED_TOPIC, trigger_id), data);
-        Ok(trigger_id)
-    }
-
-    pub fn is_valid_trigger_id(env: Env, trigger_id: u64) -> bool {
-        env.storage()
-            .persistent()
-            .get(&DataKey::Validated(trigger_id))
-            .unwrap_or(false)
-    }
-
-    pub fn get_data(env: Env, trigger_id: u64) -> Option<Bytes> {
-        env.storage().persistent().get(&DataKey::Data(trigger_id))
+        Ok(())
     }
 }

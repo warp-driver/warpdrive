@@ -1955,12 +1955,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "warpdrive-shared"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ada821149c2c524f4405c5e992b9a869bf09a45f77199e5a6c12ad6fe575abed"
+dependencies = [
+ "soroban-sdk",
+]
+
+[[package]]
 name = "warpdrive-stellar-mock-submit-eth"
 version = "0.0.0"
 dependencies = [
  "alloy-primitives",
  "alloy-sol-types",
  "soroban-sdk",
+ "warpdrive-shared",
 ]
 
 [[package]]
