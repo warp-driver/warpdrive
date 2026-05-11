@@ -261,7 +261,7 @@ impl SubmissionManager {
             }),
             Err(_) => None,
         }
-        .unwrap_or_else(|| SignatureKind::evm_default()); // if we have no signer, default to evm... won't be used, but better safe than sorry
+        .unwrap_or_else(SignatureKind::evm_default); // if we have no signer, default to evm... won't be used, but better safe than sorry
 
         let signer = match signature_kind.algorithm {
             SignatureAlgorithm::Secp256k1 => {

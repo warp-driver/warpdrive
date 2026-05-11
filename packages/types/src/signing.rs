@@ -58,12 +58,7 @@ pub trait WavsSignable {
         payload.extend_from_slice(b"Stellar Signed Message:\n");
         payload.extend_from_slice(self.encode_data()?.as_slice());
 
-        let hash: [u8; 32] = Sha256::digest(&payload)
-            .as_array()
-            .ok_or(anyhow::anyhow!(
-                "Failed to compute SEP-53 hash: invalid hash length"
-            ))?
-            .clone();
+        let hash: [u8; 32] = Sha256::digest(&payload).into();
 
         Ok(hash.into())
     }
