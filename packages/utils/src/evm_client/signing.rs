@@ -195,6 +195,8 @@ mod test {
 
     #[tokio::test]
     async fn signature_validation() {
+        use warpdrive_types::WavsSignature;
+
         let mut signer = mock_signer();
         let mut signer_no_prefix = mock_signer_no_prefix();
         let envelope = mock_envelope();
@@ -202,7 +204,11 @@ mod test {
         let signature = signer.sign_envelope(&envelope).await.unwrap();
 
         assert_eq!(
-            signature.evm_signer_address(&envelope).unwrap(),
+            signature
+                .signer_address(&envelope)
+                .unwrap()
+                .try_as_evm()
+                .unwrap(),
             signer.address().try_as_evm().unwrap()
         );
 
@@ -210,27 +216,46 @@ mod test {
         let signature = signer_no_prefix.sign_envelope(&envelope).await.unwrap();
 
         assert_eq!(
-            signature.evm_signer_address(&envelope).unwrap(),
+            signature
+                .signer_address(&envelope)
+                .unwrap()
+                .try_as_evm()
+                .unwrap(),
             signer_no_prefix.address().try_as_evm().unwrap()
         );
 
         // and that it fails if we try the wrong prefix
-        let mut signature = signer.sign_envelope(&envelope).await.unwrap();
-
-        signature.kind.prefix = None;
+        let signature = signer.sign_envelope(&envelope).await.unwrap();
+        let tampered = match signature {
+            WavsSignature::Secp256k1 { sig, .. } => WavsSignature::Secp256k1 { sig, prefix: None },
+            other => panic!("expected Secp256k1 variant, got {other:?}"),
+        };
 
         assert_ne!(
-            signature.evm_signer_address(&envelope).unwrap(),
+            tampered
+                .signer_address(&envelope)
+                .unwrap()
+                .try_as_evm()
+                .unwrap(),
             signer.address().try_as_evm().unwrap()
         );
 
         // in both directions
-        let mut signature = signer_no_prefix.sign_envelope(&envelope).await.unwrap();
-
-        signature.kind.prefix = Some(warpdrive_types::SignaturePrefix::Eip191);
+        let signature = signer_no_prefix.sign_envelope(&envelope).await.unwrap();
+        let tampered = match signature {
+            WavsSignature::Secp256k1 { sig, .. } => WavsSignature::Secp256k1 {
+                sig,
+                prefix: Some(warpdrive_types::SignaturePrefix::Eip191),
+            },
+            other => panic!("expected Secp256k1 variant, got {other:?}"),
+        };
 
         assert_ne!(
-            signature.evm_signer_address(&envelope).unwrap(),
+            tampered
+                .signer_address(&envelope)
+                .unwrap()
+                .try_as_evm()
+                .unwrap(),
             signer_no_prefix.address().try_as_evm().unwrap()
         );
     }

@@ -54,6 +54,8 @@ pub enum SubmissionError {
     MissingEvmSigner(ServiceId),
     #[error("failed to create EVM signer for service {0}: {1:?}")]
     FailedToCreateEvmSigner(ServiceId, anyhow::Error),
+    #[error("failed to create Stellar signer for service {0}: {1:?}")]
+    FailedToCreateStellarSigner(ServiceId, anyhow::Error),
     #[error("missing EVM signing client for chain {0}")]
     MissingEvmSendingClient(ChainKey),
     #[error("signing {0:?}")]

@@ -124,12 +124,12 @@ pub fn append_submission_to_queue(
     // In addition to extracting for comparison, this also serves to validate the signature
     let submission_signer_address = submission
         .envelope_signature
-        .evm_signer_address(&submission.envelope)?;
+        .signer_address(&submission.envelope)?;
 
     for queued_submission in queue.iter_mut() {
         let queued_submission_signer_address = queued_submission
             .envelope_signature
-            .evm_signer_address(&queued_submission.envelope)?;
+            .signer_address(&queued_submission.envelope)?;
 
         // if the signer is the same as the one in the queue, we can just update it
         // this effectively allows re-trying failed aggregation

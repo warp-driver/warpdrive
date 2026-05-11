@@ -7,9 +7,9 @@ cfg_if::cfg_if! {
 
 pub use crate::solidity_types::Envelope;
 use crate::{
-    ServiceId, ServiceManagerEnvelope, ServiceManagerSignatureData, SignatureAlgorithm,
-    SignatureData, SignatureKind, SubmitAction, TriggerAction, TriggerData, WasmResponse,
-    WorkflowId,
+    ByteArray, ServiceId, ServiceManagerEnvelope, ServiceManagerSignatureData, SignatureAlgorithm,
+    SignatureData, SignatureKind, SignaturePrefix, SubmitAction, TriggerAction, TriggerData,
+    WasmResponse, WorkflowId,
 };
 use alloy_primitives::{eip191_hash_message, keccak256, FixedBytes, SignatureError};
 use alloy_sol_types::SolValue;
@@ -109,11 +109,41 @@ impl From<SignatureData> for ServiceManagerSignatureData {
     }
 }
 
+/// A signature produced by an operator. The algorithm tag is intrinsic
+/// to the variant: secp256k1 signatures are recoverable (the pubkey is
+/// derivable from sig + message), so they carry only the raw bytes plus
+/// an optional message-prefix scheme; Ed25519 signatures are *not*
+/// recoverable, so the pubkey is bundled with the signature on the wire.
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema, PartialEq, Eq, Hash)]
-#[serde(rename_all = "snake_case")]
-pub struct WavsSignature {
-    pub data: Vec<u8>,
-    pub kind: SignatureKind,
+#[serde(rename_all = "snake_case", tag = "algorithm")]
+pub enum WavsSignature {
+    Secp256k1 {
+        #[serde(with = "const_hex")]
+        sig: Vec<u8>,
+        prefix: Option<SignaturePrefix>,
+    },
+    Ed25519 {
+        sig: ByteArray<64>,
+        pubkey: ByteArray<32>,
+    },
+}
+
+impl WavsSignature {
+    pub fn kind(&self) -> SignatureKind {
+        match self {
+            WavsSignature::Secp256k1 { prefix, .. } => SignatureKind {
+                algorithm: SignatureAlgorithm::Secp256k1,
+                prefix: prefix.clone(),
+            },
+            WavsSignature::Ed25519 { .. } => SignatureKind {
+                algorithm: SignatureAlgorithm::Ed25519,
+                // Ed25519 is currently always Stellar / Sep53. If we ever
+                // need an unprefixed Ed25519 path, lift `prefix` into the
+                // variant.
+                prefix: Some(SignaturePrefix::Sep53),
+            },
+        }
+    }
 }
 
 #[derive(
@@ -269,6 +299,9 @@ pub enum SigningError {
         expected: SignatureAlgorithm,
         actual: SignatureAlgorithm,
     },
+
+    #[error("Ed25519 signature failed to verify against the bundled pubkey")]
+    Ed25519Verify,
 }
 
 #[cfg(test)]

@@ -245,14 +245,22 @@ impl Aggregator {
         let envelope_bytes = submission.envelope.encode_data().map_err(|e| {
             AggregatorError::InvalidPacketSignature(format!("abi-encode envelope: {e:?}"))
         })?;
-        let mut sig_arr = [0u8; 65];
-        if submission.envelope_signature.data.len() != 65 {
+        let sig_slice: &[u8] = match &submission.envelope_signature {
+            warpdrive_types::WavsSignature::Secp256k1 { sig, .. } => sig,
+            warpdrive_types::WavsSignature::Ed25519 { .. } => {
+                return Err(AggregatorError::InvalidPacketSignature(
+                    "Stellar secp256k1 verifier requires a secp256k1 signature".to_string(),
+                ));
+            }
+        };
+        if sig_slice.len() != 65 {
             return Err(AggregatorError::InvalidPacketSignature(format!(
                 "expected 65-byte secp256k1 signature, got {}",
-                submission.envelope_signature.data.len()
+                sig_slice.len()
             )));
         }
-        sig_arr.copy_from_slice(&submission.envelope_signature.data);
+        let mut sig_arr = [0u8; 65];
+        sig_arr.copy_from_slice(sig_slice);
 
         // `check_one` returns the signer's weight at `reference_block`,
         // or a contract-error string on rejection. Treat
@@ -306,8 +314,14 @@ impl Aggregator {
         // before any RPC.
         let signer_addr = submission
             .envelope_signature
-            .evm_signer_address(&submission.envelope)
-            .map_err(|e| AggregatorError::InvalidPacketSignature(format!("{e:?}")))?;
+            .signer_address(&submission.envelope)
+            .map_err(|e| AggregatorError::InvalidPacketSignature(format!("{e:?}")))?
+            .try_as_evm()
+            .ok_or_else(|| {
+                AggregatorError::InvalidPacketSignature(
+                    "EVM service-manager validation requires a secp256k1 signature".to_string(),
+                )
+            })?;
 
         let query_client = self
             .get_or_create_evm_query_client(chain)
@@ -376,8 +390,14 @@ impl Aggregator {
         // because the same secp256k1 keypair signs across all chains.
         let signer_addr = submission
             .envelope_signature
-            .evm_signer_address(&submission.envelope)
-            .map_err(|e| AggregatorError::InvalidPacketSignature(format!("{e:?}")))?;
+            .signer_address(&submission.envelope)
+            .map_err(|e| AggregatorError::InvalidPacketSignature(format!("{e:?}")))?
+            .try_as_evm()
+            .ok_or_else(|| {
+                AggregatorError::InvalidPacketSignature(
+                    "Cosmos service-manager validation requires a secp256k1 signature".to_string(),
+                )
+            })?;
         // Re-encode into layer-climb's `EvmAddr` shape (it has a
         // `From<alloy_primitives::Address>` impl).
         let climb_signer_addr: ClimbEvmAddr = signer_addr.into();

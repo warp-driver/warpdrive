@@ -589,7 +589,10 @@ impl ServiceManagers {
                 } = http_client
                     .get_service_signer(service_manager.clone())
                     .await
-                    .unwrap();
+                    .unwrap()
+                else {
+                    panic!("e2e tests assume secp256k1 service signers");
+                };
 
                 // unique HD index per test and vector to avoid nonce collisions
                 let operator_hd_index = (test_index * MULTI_VECTOR_COUNT + operator_offset) as u32;

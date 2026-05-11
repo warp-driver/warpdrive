@@ -35,7 +35,11 @@ async fn client_sign_message() {
         .await
         .unwrap();
 
-    let recovered_address = signature.evm_signer_address(&envelope).unwrap();
+    let recovered_address = signature
+        .signer_address(&envelope)
+        .unwrap()
+        .try_as_evm()
+        .expect("evm signer returns an evm address");
 
     // check that the wallet's default signer is the same as the recovered address
     assert_eq!(recovered_address, client.wallet.default_signer().address());
