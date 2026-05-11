@@ -44,9 +44,9 @@ struct StellarMiddlewareInner {
 }
 
 impl StellarMiddleware {
-    const STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
-    const DEPLOY_TIMEOUT: Duration = Duration::from_secs(180);
-    const RUNTIME_CALL_TIMEOUT: Duration = Duration::from_secs(60);
+    const STARTUP_TIMEOUT: Duration = Duration::from_secs(60);
+    const DEPLOY_TIMEOUT: Duration = Duration::from_secs(360);
+    const RUNTIME_CALL_TIMEOUT: Duration = Duration::from_secs(120);
 
     pub async fn new(chain_config: StellarChainConfig, deployer_secret: &str) -> Result<Self> {
         let out_dir = TempDir::new().context("creating stellar middleware out dir")?;

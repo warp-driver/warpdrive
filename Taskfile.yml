@@ -371,7 +371,12 @@ tasks:
   test-warpdrive-e2e:
     desc: Run on-chain integration tests
     deps: [wasi-build]
-    cmd: ulimit -n 65536 && RUST_LOG=info,alloy_rpc=off,alloy_provider=off,wasmtime=off,cranelift=off,hyper_util=off cargo test -p warpdrive-tests
+    cmd: RUST_LOG=info,alloy_rpc=off,alloy_provider=off,wasmtime=off,cranelift=off,hyper_util=off cargo test -p warpdrive-tests
+
+  debug-warpdrive-e2e:
+    desc: Run on-chain integration tests
+    deps: [quick-wasi-build]
+    cmd: RUST_BACKTRACE=1 RUST_LOG=info,alloy_rpc=off,alloy_provider=off,wasmtime=off,cranelift=off,hyper_util=off cargo test -p warpdrive-tests -- --nocapture
 
   cli-exec:
     desc: "Execute a WASI component via CLI (e.g. task cli-exec COMPONENT=./examples/build/components/echo_data.wasm INPUT='hello world')"

@@ -8,15 +8,15 @@ use crate::subsystems::trigger::streams::stellar_stream::filters::{
 };
 
 use super::filters::EventFilters;
-use stellar_rpc_client::{Event, EventStart, EventType};
 use utils::error::{StellarClientError, StellarClientResult};
 use warpdrive_types::StellarChainConfig;
+use wasi_stellar_rpc_client::{Event, EventStart, EventType};
 
 #[derive(Clone)]
 pub struct StellarStreamClient {
     pub config: StellarChainConfig,
     event_filters: Arc<std::sync::RwLock<EventFilters>>,
-    inner: stellar_rpc_client::Client,
+    inner: wasi_stellar_rpc_client::Client,
     http_client: reqwest::Client,
     event_last_ledger: Arc<AtomicU32>,
     event_ledger_once: Arc<AtomicBool>,
@@ -25,7 +25,7 @@ pub struct StellarStreamClient {
 
 impl StellarStreamClient {
     pub fn new(config: StellarChainConfig) -> StellarClientResult<Self> {
-        let inner = stellar_rpc_client::Client::new(&config.rpc_url)?;
+        let inner = wasi_stellar_rpc_client::Client::new(&config.rpc_url)?;
         let event_last_ledger = Arc::new(AtomicU32::new(0));
         let event_ledger_once = Arc::new(AtomicBool::new(false));
         let friendbot_url = config.friendbot_url.clone();

@@ -14,7 +14,10 @@ use crate::subsystems::trigger::{error::TriggerError, streams::StreamTriggers};
 
 pub async fn start_stellar_event_stream(
     chain: ChainKey,
-    event_stream: UnboundedReceiverStream<(stellar_rpc_client::Event, Vec<filters::StellarRpcId>)>,
+    event_stream: UnboundedReceiverStream<(
+        wasi_stellar_rpc_client::Event,
+        Vec<filters::StellarRpcId>,
+    )>,
     _metrics: TriggerMetrics,
 ) -> Result<Pin<Box<dyn Stream<Item = Result<StreamTriggers, TriggerError>> + Send>>, TriggerError>
 {
@@ -25,7 +28,7 @@ pub async fn start_stellar_event_stream(
         async move {
             match event.tx_hash {
                 Some(tx_hash) => {
-                    let stellar_rpc_client::Event {
+                    let wasi_stellar_rpc_client::Event {
                         contract_id,
                         event_type,
                         ledger,

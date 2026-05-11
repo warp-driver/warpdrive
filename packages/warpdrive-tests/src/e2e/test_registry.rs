@@ -330,14 +330,12 @@ impl TestRegistry {
         // ACCOUNT=$(stellar keys address query-test)
         // BALANCE=$(stellar contract invoke --id $XLM --source-account $ACCOUNT -- balance --id $ACCOUNT)
         const TESTNET_ACCOUNT: &str = "GBQFSBD5IXIYE2E74SQVZR4KKHDR66YH62FCNEK3ZBFJHZVNNB6ZLCXT";
-        const TESTNET_BALANCE: i64 = 100000000000;
+        const TESTNET_BALANCE: i64 = 100_000_000_000;
+        const TESTNET_WEIGHT: u64 = 10_000;
 
         self.register(
-            TestBuilder::new("stellar_stellar_query")
-                .with_description(
-                    "Drives the StellarQuery component; expected to fail at unimplemented!() \
-                     until Soroban-from-component RPC is wired up (issue #5).",
-                )
+            TestBuilder::new("stellar_balance_query")
+                .with_description("Tests stellar queries")
                 .add_workflow(
                     WorkflowId::new("stellar_query").unwrap(),
                     WorkflowBuilder::new()
@@ -349,12 +347,38 @@ impl TestRegistry {
                             },
                         ))
                         .with_input_data(InputData::StellarQuery(StellarQueryRequest::Balance {
-                            chain: chain.to_string(),
                             account_id: TESTNET_ACCOUNT.to_string(),
                         }))
                         .with_submit(SubmitDefinition::Aggregator(Self::simple_aggregator(chain)))
                         .with_expected_output(ExpectedOutput::Text(
                             json!({"balance": TESTNET_BALANCE}).to_string(),
+                        ))
+                        .with_timeout(Duration::from_secs(90))
+                        .build(),
+                )
+                .with_service_manager_chain(chain)
+                .build(),
+        );
+
+        self.register(
+            TestBuilder::new("stellar_project_client_query")
+                .with_description("Tests stellar uyse of warpdrive-client")
+                .add_workflow(
+                    WorkflowId::new("stellar_query").unwrap(),
+                    WorkflowBuilder::new()
+                        .with_operator_component(VectorComponent::StellarQuery)
+                        .with_aggregator_component(AggregatorComponent::SimpleAggregator)
+                        .with_trigger(TriggerDefinition::NewStellarContract(
+                            StellarTriggerDefinition::SimpleContractEvent {
+                                chain: chain.clone(),
+                            },
+                        ))
+                        .with_input_data(InputData::StellarQuery(
+                            StellarQueryRequest::RequiredWeight {},
+                        ))
+                        .with_submit(SubmitDefinition::Aggregator(Self::simple_aggregator(chain)))
+                        .with_expected_output(ExpectedOutput::Text(
+                            json!({"required_weight": TESTNET_WEIGHT}).to_string(),
                         ))
                         .with_timeout(Duration::from_secs(90))
                         .build(),

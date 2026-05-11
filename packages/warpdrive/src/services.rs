@@ -119,7 +119,7 @@ impl Services {
             // Build a fresh soroban env per call. Cheap (no network
             // handshake until a query is actually fired) and sidesteps
             // any caching invariants.
-            let env = soroban_rs::Env::new(soroban_rs::EnvConfigs {
+            let env = wasi_soroban_rs::Env::new(wasi_soroban_rs::EnvConfigs {
                 rpc_url: chain_cfg.rpc_url.clone(),
                 network_passphrase: chain_cfg.network_passphrase.clone(),
             })
@@ -131,14 +131,16 @@ impl Services {
             // We need a "source account" to build the simulation tx. The
             // signing key never gets used (simulation doesn't sign), so a
             // throwaway account is fine.
-            let source_account =
-                soroban_rs::Account::single(soroban_rs::Signer::new(STELLAR_QUERY_KEY.clone()));
+            let source_account = wasi_soroban_rs::Account::single(wasi_soroban_rs::Signer::new(
+                STELLAR_QUERY_KEY.clone(),
+            ));
 
-            let project_root_client = ProjectRootClient::new(soroban_rs::ClientContractConfigs {
-                contract_id: *address,
-                env,
-                source_account,
-            });
+            let project_root_client =
+                ProjectRootClient::new(wasi_soroban_rs::ClientContractConfigs {
+                    contract_id: *address,
+                    env,
+                    source_account,
+                });
 
             let verifier = stellar_xdr::curr::ContractId(
                 project_root_client

@@ -175,7 +175,7 @@ impl Aggregator {
         // Build a fresh soroban env per call. Cheap (no network
         // handshake until a query is actually fired) and sidesteps
         // any caching invariants.
-        let env = soroban_rs::Env::new(soroban_rs::EnvConfigs {
+        let env = wasi_soroban_rs::Env::new(wasi_soroban_rs::EnvConfigs {
             rpc_url: chain_cfg.rpc_url.clone(),
             network_passphrase: chain_cfg.network_passphrase.clone(),
         })
@@ -201,12 +201,13 @@ impl Aggregator {
                 // unlike in `handle_action_submit_stellar`, we don't necessarily have a pinned reference block
                 // since there may not have been a prior valid packet for this event
                 // so it's not a warning, just the expected path for the first valid packet of an event
-                let rpc = stellar_rpc_client::Client::new(&chain_cfg.rpc_url).map_err(|e| {
-                    AggregatorError::ReceiveValidationChainQuery {
-                        chain: chain.clone(),
-                        detail: format!("stellar rpc client: {e:?}"),
-                    }
-                })?;
+                let rpc =
+                    wasi_stellar_rpc_client::Client::new(&chain_cfg.rpc_url).map_err(|e| {
+                        AggregatorError::ReceiveValidationChainQuery {
+                            chain: chain.clone(),
+                            detail: format!("stellar rpc client: {e:?}"),
+                        }
+                    })?;
                 let current = rpc
                     .get_latest_ledger()
                     .await
@@ -223,8 +224,9 @@ impl Aggregator {
         // We need a "source account" to build the simulation tx. The
         // signing key never gets used (simulation doesn't sign), so a
         // throwaway account is fine.
-        let account =
-            soroban_rs::Account::single(soroban_rs::Signer::new(STELLAR_QUERY_KEY.clone()));
+        let account = wasi_soroban_rs::Account::single(wasi_soroban_rs::Signer::new(
+            STELLAR_QUERY_KEY.clone(),
+        ));
 
         let verification_contract = self
             .services
@@ -232,7 +234,7 @@ impl Aggregator {
             .verifier;
 
         let verification_client =
-            Secp256k1VerificationClient::new(soroban_rs::ClientContractConfigs {
+            Secp256k1VerificationClient::new(wasi_soroban_rs::ClientContractConfigs {
                 contract_id: stellar_strkey::Contract(verification_contract.0.into()),
                 env,
                 source_account: account,

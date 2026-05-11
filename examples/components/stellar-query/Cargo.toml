@@ -12,7 +12,8 @@ anyhow = { workspace = true }
 example-helpers = { workspace = true }
 example-types = { workspace = true }
 tokio = { workspace = true, features = ["sync", "io-util", "macros", "rt", "time"] }
-soroban-rs = { workspace = true }
+wasi-soroban-rs = { workspace = true }
+warpdrive-client = { workspace = true }
 
 [lib]
 crate-type = ["rlib", "cdylib"]

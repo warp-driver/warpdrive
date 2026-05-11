@@ -1,6 +1,6 @@
-use stellar_rpc_client::Event;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio_stream::wrappers::UnboundedReceiverStream;
+use wasi_stellar_rpc_client::Event;
 
 use crate::subsystems::trigger::streams::stellar_stream::filters::StellarRpcId;
 

@@ -54,7 +54,7 @@ pub enum StellarClientError {
     NotImplemented,
 
     #[error("RPC error: {0}")]
-    Rpc(#[from] stellar_rpc_client::Error),
+    Rpc(#[from] wasi_stellar_rpc_client::Error),
 
     #[error("Invalid ledger range, start: {start} end: {end}")]
     InvalidLedgerRange { start: u32, end: u32 },

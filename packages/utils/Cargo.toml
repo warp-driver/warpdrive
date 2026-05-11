@@ -55,10 +55,10 @@ iri-string = { workspace = true }
 axum = { workspace = true }
 axum-extra = { workspace = true }
 tempfile = { workspace = true }
-stellar-rpc-client = { workspace = true }
+wasi-stellar-rpc-client = { workspace = true }
 stellar-xdr = { workspace = true }
 stellar-strkey = { workspace = true }
-soroban-rs = { workspace = true }
+wasi-soroban-rs = { workspace = true }
 ed25519-dalek = { workspace = true }
 k256 = { workspace = true }
 warpdrive-client = { workspace = true }
