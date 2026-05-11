@@ -117,6 +117,7 @@ impl TestMnemonics {
         // Friendbot-fund the stellar deployer if a stellar chain is enabled
         // and a deployer key was generated.
         if let Some(deployer_secret) = &self.stellar_middleware {
+            tracing::info!("Stellar deployer secret configured, funding via friendbot");
             for chain_config in chain_configs.stellar_iter() {
                 let Some(friendbot_url) = chain_config.friendbot_url.as_ref() else {
                     continue;
@@ -137,6 +138,9 @@ impl TestMnemonics {
                     panic!("friendbot funding failed ({status}): {body}");
                 }
             }
+            tracing::info!("Successfully funded via friendbot");
+        } else {
+            tracing::warn!("No stellar deployer secret configured, skipping friendbot funding");
         }
 
         for chain_config in chain_configs.evm_iter() {
@@ -277,15 +281,32 @@ impl From<TestConfig> for Configs {
         }
 
         if !matrix.stellar.is_empty() {
-            chain_configs.write().unwrap().stellar.insert(
-                "testnet".parse().unwrap(),
-                StellarChainConfigBuilder {
-                    chain_poll_interval_ms: 1_000,
-                    rpc_url: "https://soroban-testnet.stellar.org".to_string(),
-                    network_passphrase: "Test SDF Network ; September 2015".to_string(),
-                    friendbot_url: Some("https://friendbot-testnet.stellar.org/".to_string()),
-                },
-            );
+            match test_config.stellar_quickstart_port {
+                Some(port) => {
+                    chain_configs.write().unwrap().stellar.insert(
+                        "testnet".parse().unwrap(),
+                        StellarChainConfigBuilder {
+                            chain_poll_interval_ms: 1_000,
+                            rpc_url: format!("http://127.0.0.1:{}", port),
+                            network_passphrase: "Test SDF Network ; September 2015".to_string(),
+                            friendbot_url: Some(format!("http://127.0.0.1:{}/friendbot", port)),
+                        },
+                    );
+                }
+                None => {
+                    chain_configs.write().unwrap().stellar.insert(
+                        "testnet".parse().unwrap(),
+                        StellarChainConfigBuilder {
+                            chain_poll_interval_ms: 1_000,
+                            rpc_url: "https://soroban-testnet.stellar.org".to_string(),
+                            network_passphrase: "Test SDF Network ; September 2015".to_string(),
+                            friendbot_url: Some(
+                                "https://friendbot-testnet.stellar.org/".to_string(),
+                            ),
+                        },
+                    );
+                }
+            }
             mnemonics.ensure_stellar_middleware();
         }
 

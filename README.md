@@ -119,12 +119,34 @@ task ts-bindings             # Generate TypeScript bindings
 task start-dev               # Start warpdrive with telemetry (Jaeger + Prometheus)
 task start-warpdrive-dev     # Run warpdrive in dev mode
 task start-anvil             # Start local EVM testnet
-task app-dev                 # Start Tauri desktop app with hot reload
+task test-warpdrive-e2e      # Run integration tests
 ```
 
 See [`Taskfile.yml`](Taskfile.yml) for the full list.
 
+## End-to-end Testing
+
+Run end-to-end tests with:
+
+```bash
+task test-warpdrive-e2e
+```
+
+Please see comments on [warpdrive-tests-default.toml](packages/warpdrive-tests/warpdrive-tests-default.toml) for more details on the test configuration options.
+
+There are different test configuration files for different testing scenarios:
+
+* [warpdrive-tests-ci-basic.toml](packages/warpdrive-tests/warpdrive-tests-ci-basic.toml): runs a basic test, intended for CI smoke testing and quick local sanity checks - runs on PR branches
+* [warpdrive-tests-ci-complete.toml](packages/warpdrive-tests/warpdrive-tests-ci-complete.toml): runs the full test suite, intended for CI regression testing - only runs on main branch
+* [warpdrive-tests-default.toml](packages/warpdrive-tests/warpdrive-tests-default.toml): the default tests so developers can communicate about the current test suite without needing to specify a config file
+
+If you want to change the test config without editing the toml files directly, you can set your `WARPDRIVE_TESTS_CONFIG_FILENAME` environment variable to point to the desired config file on your machine.
+
+
+```bash
+
 ---
+
 
 ## Release Workflow
 
