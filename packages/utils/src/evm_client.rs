@@ -127,7 +127,7 @@ pub struct EvmSigningClient {
     /// due to type system limitations, we need to store it separately
     /// since the signer in `EthereumWallet` implements only `TxSigner`
     /// and there is not a direct way convert it into `Signer`
-    pub signer: Arc<VectrSigner>,
+    pub signer: Arc<tokio::sync::RwLock<VectrSigner>>,
     pub nonce_manager: AnyNonceManager,
 }
 
@@ -260,7 +260,7 @@ impl EvmSigningClient {
             provider,
             nonce_manager,
             wallet: Arc::new(wallet),
-            signer: Arc::new(VectrSigner::Evm(signer)),
+            signer: Arc::new(tokio::sync::RwLock::new(VectrSigner::Evm(signer))),
         })
     }
 
@@ -287,6 +287,7 @@ impl std::fmt::Debug for EvmSigningClient {
 impl EvmSigningClient {
     pub fn address(&self) -> Address {
         self.signer
+            .blocking_read()
             .address()
             .try_as_evm()
             .expect("EVM signer should always have an EVM address")

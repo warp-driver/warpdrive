@@ -15,7 +15,7 @@ use error::SubmissionError;
 use tracing::instrument;
 use utils::{evm_client::signing::make_signer, telemetry::SubmissionMetrics};
 use warpdrive_types::{
-    Credential, Envelope, EventOrder, ServiceId, SignatureKind, SignerResponse, Submit, WavsSigner,
+    Credential, Envelope, EventOrder, ServiceId, SignatureKind, SignerResponse, Submit,
 };
 use warpdrive_types::{Submission, VectrSigner};
 
@@ -43,7 +43,7 @@ pub struct SubmissionManager {
 }
 
 struct SignerInfo {
-    signer: VectrSigner,
+    signer: Arc<tokio::sync::RwLock<VectrSigner>>,
     hd_index: u32,
 }
 
@@ -164,8 +164,10 @@ impl SubmissionManager {
                 .clone()
         };
 
-        let envelope_signature = envelope
-            .sign(&signer)
+        let envelope_signature = signer
+            .write()
+            .await
+            .sign_envelope(&envelope)
             .await
             .map_err(SubmissionError::FailedToSignEnvelope)?;
 
@@ -268,10 +270,13 @@ impl SubmissionManager {
             signer.address()
         );
 
-        self.signers
-            .write()
-            .unwrap()
-            .insert(service_id, SignerInfo { signer, hd_index });
+        self.signers.write().unwrap().insert(
+            service_id,
+            SignerInfo {
+                signer: Arc::new(tokio::sync::RwLock::new(signer)),
+                hd_index,
+            },
+        );
 
         Ok(())
     }
@@ -297,7 +302,7 @@ impl SubmissionManager {
             .map(
                 |SignerInfo { signer, hd_index }| SignerResponse::Secp256k1 {
                     hd_index: *hd_index,
-                    evm_address: signer.address().to_string(),
+                    evm_address: signer.blocking_read().address().to_string(),
                 },
             )?;
 

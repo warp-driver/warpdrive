@@ -1,10 +1,10 @@
-use alloy_signer::Signer;
+use alloy_primitives::FixedBytes;
 use utils::{
     evm_client::{EvmSigningClient, EvmSigningClientConfig},
     init_tracing_tests,
     test_utils::anvil::safe_spawn_anvil,
 };
-use warpdrive_types::Credential;
+use warpdrive_types::{Credential, Envelope};
 
 #[tokio::test]
 async fn client_sign_message() {
@@ -20,18 +20,22 @@ async fn client_sign_message() {
     );
     let client = EvmSigningClient::new(config).await.unwrap();
 
-    let message = b"hello world";
+    let envelope = Envelope {
+        eventId: FixedBytes::new([0u8; 20]),
+        ordering: FixedBytes::new([0u8; 12]),
+        payload: b"hello world".to_vec().into(),
+    };
 
     // client.wallet doesn't itself allow signing messages, but we created the wallet from the signer
     let signature = client
         .signer
-        .as_evm_signer()
-        .unwrap()
-        .sign_message(message)
+        .write()
+        .await
+        .sign_envelope(&envelope)
         .await
         .unwrap();
 
-    let recovered_address = signature.recover_address_from_msg(&message[..]).unwrap();
+    let recovered_address = signature.evm_signer_address(&envelope).unwrap();
 
     // check that the wallet's default signer is the same as the recovered address
     assert_eq!(recovered_address, client.wallet.default_signer().address());

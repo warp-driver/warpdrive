@@ -195,11 +195,11 @@ mod test {
 
     #[tokio::test]
     async fn signature_validation() {
-        let signer = mock_signer();
-        let signer_no_prefix = mock_signer_no_prefix();
+        let mut signer = mock_signer();
+        let mut signer_no_prefix = mock_signer_no_prefix();
         let envelope = mock_envelope();
 
-        let signature = envelope.sign(&signer).await.unwrap();
+        let signature = signer.sign_envelope(&envelope).await.unwrap();
 
         assert_eq!(
             signature.evm_signer_address(&envelope).unwrap(),
@@ -207,7 +207,7 @@ mod test {
         );
 
         // also see that we can recover with no prefix
-        let signature = envelope.sign(&signer_no_prefix).await.unwrap();
+        let signature = signer_no_prefix.sign_envelope(&envelope).await.unwrap();
 
         assert_eq!(
             signature.evm_signer_address(&envelope).unwrap(),
@@ -215,7 +215,7 @@ mod test {
         );
 
         // and that it fails if we try the wrong prefix
-        let mut signature = envelope.sign(&signer).await.unwrap();
+        let mut signature = signer.sign_envelope(&envelope).await.unwrap();
 
         signature.kind.prefix = None;
 
@@ -225,7 +225,7 @@ mod test {
         );
 
         // in both directions
-        let mut signature = envelope.sign(&signer_no_prefix).await.unwrap();
+        let mut signature = signer_no_prefix.sign_envelope(&envelope).await.unwrap();
 
         signature.kind.prefix = Some(warpdrive_types::SignaturePrefix::Eip191);
 
@@ -299,7 +299,13 @@ mod test {
             tracing::info!("Secondary client submitting tx {i}");
             secondary_client
                 .transfer_funds(
-                    secondary_client.signer.address().try_as_evm().unwrap(),
+                    secondary_client
+                        .signer
+                        .read()
+                        .await
+                        .address()
+                        .try_as_evm()
+                        .unwrap(),
                     "0.001",
                 )
                 .await
@@ -352,8 +358,11 @@ mod test {
 
         // Build a signed envelope referencing the primary signer.
         let envelope = mock_envelope();
-        let signature = envelope
-            .sign(primary_client.signer.as_ref())
+        let signature = primary_client
+            .signer
+            .write()
+            .await
+            .sign_envelope(&envelope)
             .await
             .expect("signing envelope should succeed");
         let current_block = primary_client
@@ -362,7 +371,7 @@ mod test {
             .await
             .expect("should get block height");
         let signature_data = envelope
-            .signature_data(vec![signature], current_block.saturating_sub(1))
+            .evm_signature_data(vec![signature], current_block.saturating_sub(1))
             .expect("signature data should build");
 
         // With a stale nonce cached, the first attempt will fail, triggering the retry path.

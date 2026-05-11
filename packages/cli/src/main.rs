@@ -309,7 +309,13 @@ async fn main() {
                         };
 
                         // Create signature using the vector EVM client's signer
-                        let signature = envelope.sign(&vectr_evm_client.signer).await.unwrap();
+                        let signature = vectr_evm_client
+                            .signer
+                            .write()
+                            .await
+                            .sign_envelope(&envelope)
+                            .await
+                            .unwrap();
 
                         // Create contract instance
                         let contract = IWarpDriveServiceHandler::new(
@@ -328,7 +334,7 @@ async fn main() {
 
                         // Prepare signature data
                         let signature_data =
-                            match envelope.signature_data(vec![signature], previous_block) {
+                            match envelope.evm_signature_data(vec![signature], previous_block) {
                                 Ok(data) => data,
                                 Err(e) => {
                                     eprintln!("Failed to prepare signature data: {e}");

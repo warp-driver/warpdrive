@@ -100,7 +100,7 @@ impl Aggregator {
 
         let signature_data = first
             .envelope
-            .signature_data(signatures, block_height_minus_one)?;
+            .evm_signature_data(signatures, block_height_minus_one)?;
 
         let result = service_manager
             .validate(first.envelope.clone().into(), signature_data.clone().into())
@@ -221,7 +221,7 @@ impl Aggregator {
 
         let signature_data = first
             .envelope
-            .signature_data(signatures, block_height_minus_one)?;
+            .evm_signature_data(signatures, block_height_minus_one)?;
 
         let result: WarpDriveValidateResult = client
             .querier

@@ -7,8 +7,9 @@ cfg_if::cfg_if! {
 
 pub use crate::solidity_types::Envelope;
 use crate::{
-    ServiceId, ServiceManagerEnvelope, ServiceManagerSignatureData, SignatureData, SignatureKind,
-    SubmitAction, TriggerAction, TriggerData, WasmResponse, WorkflowId,
+    ServiceId, ServiceManagerEnvelope, ServiceManagerSignatureData, SignatureAlgorithm,
+    SignatureData, SignatureKind, SubmitAction, TriggerAction, TriggerData, WasmResponse,
+    WorkflowId,
 };
 use alloy_primitives::{eip191_hash_message, keccak256, FixedBytes, SignatureError};
 use alloy_sol_types::SolValue;
@@ -263,8 +264,11 @@ pub enum SigningError {
     #[error("Unable to get data hash: {0:?}")]
     DataHash(anyhow::Error),
 
-    #[error("Ed25519 signing not supported yet")]
-    Ed25519Todo,
+    #[error("Wrong algoritm: expected {expected:?}, got {actual:?}")]
+    WrongAddressKind {
+        expected: SignatureAlgorithm,
+        actual: SignatureAlgorithm,
+    },
 }
 
 #[cfg(test)]
