@@ -25,7 +25,6 @@ use warpdrive_cli::{
     context::CliContext,
     util::{write_output_file, ComponentInput},
 };
-use warpdrive_types::SignatureKind;
 use warpdrive_types::WavsSigner;
 use warpdrive_types::{ChainKeyId, Envelope, IWarpDriveServiceHandler};
 
@@ -310,10 +309,7 @@ async fn main() {
                         };
 
                         // Create signature using the vector EVM client's signer
-                        let signature = envelope
-                            .sign(&vectr_evm_client.signer, SignatureKind::evm_default())
-                            .await
-                            .unwrap();
+                        let signature = envelope.sign(&vectr_evm_client.signer).await.unwrap();
 
                         // Create contract instance
                         let contract = IWarpDriveServiceHandler::new(

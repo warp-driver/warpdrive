@@ -1,35 +1,84 @@
 pub use crate::solidity_types::Envelope;
 use crate::{
-    SignatureAlgorithm, SignatureData, SignatureKind, SignaturePrefix, SigningError, WavsSignable,
-    WavsSignature,
+    ByteArray, ChainAddress, SignatureAlgorithm, SignatureData, SignatureKind, SignaturePrefix,
+    SigningError, WavsSignable, WavsSignature,
 };
+use alloy_primitives::FixedBytes;
 use alloy_signer::Signer;
 use alloy_signer_local::PrivateKeySigner;
 use async_trait::async_trait;
 
+#[derive(Clone, Debug)]
+pub enum VectrSigner {
+    Evm(PrivateKeySigner),
+    EvmNoPrefix(PrivateKeySigner),
+    Stellar(ed25519_dalek::SigningKey),
+}
+
+impl VectrSigner {
+    pub fn kind(&self) -> SignatureKind {
+        match self {
+            VectrSigner::Evm(_) => SignatureKind {
+                algorithm: SignatureAlgorithm::Secp256k1,
+                prefix: Some(SignaturePrefix::Eip191),
+            },
+            VectrSigner::EvmNoPrefix(_) => SignatureKind {
+                algorithm: SignatureAlgorithm::Secp256k1,
+                prefix: None,
+            },
+            VectrSigner::Stellar(_) => SignatureKind {
+                algorithm: SignatureAlgorithm::Ed25519,
+                prefix: Some(SignaturePrefix::Sep53),
+            },
+        }
+    }
+
+    pub async fn sign_hash(&self, hash: &FixedBytes<32>) -> anyhow::Result<Vec<u8>> {
+        match self {
+            VectrSigner::Evm(signer) => Ok(signer.sign_hash(hash).await?.into()),
+            VectrSigner::EvmNoPrefix(signer) => Ok(signer.sign_hash(hash).await?.into()),
+            VectrSigner::Stellar(_) => Err(anyhow::anyhow!(
+                "Ed25519 signing is not supported by PrivateKeySigner"
+            )),
+        }
+    }
+
+    pub fn address(&self) -> ChainAddress {
+        match self {
+            VectrSigner::Evm(signer) => ChainAddress::Evm(signer.address()),
+            VectrSigner::EvmNoPrefix(signer) => ChainAddress::Evm(signer.address()),
+            VectrSigner::Stellar(signer) => {
+                ChainAddress::StellarPubKey(ByteArray::new(*signer.verifying_key().as_bytes()))
+            }
+        }
+    }
+
+    pub fn as_evm_signer(&self) -> Option<&PrivateKeySigner> {
+        match self {
+            VectrSigner::Evm(signer) | VectrSigner::EvmNoPrefix(signer) => Some(signer),
+            VectrSigner::Stellar(_) => None,
+        }
+    }
+}
+
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 pub trait WavsSigner: WavsSignable {
-    async fn sign(
-        &self,
-        signer: &PrivateKeySigner,
-        kind: SignatureKind,
-    ) -> anyhow::Result<WavsSignature> {
-        let hash = match kind.algorithm {
-            SignatureAlgorithm::Secp256k1 => match kind.prefix {
-                Some(SignaturePrefix::Eip191) => self.prefix_eip191_hash()?,
-                None => self.unprefixed_hash()?,
-            },
+    async fn sign(&self, signer: &VectrSigner) -> anyhow::Result<WavsSignature> {
+        let kind = signer.kind();
+
+        let hash = match kind.prefix {
+            Some(SignaturePrefix::Eip191) => self.prefix_eip191_hash()?,
+            Some(SignaturePrefix::Sep53) => self.prefix_sep53_hash()?,
+            None => self.unprefixed_hash()?,
         };
 
-        Ok(signer
-            .sign_hash(&hash)
-            .await
-            .map(|signature| WavsSignature {
-                data: signature.into(),
-                kind,
-            })
-            .map_err(|e| anyhow::anyhow!("Failed to sign data: {e:?}"))?)
+        let signature = signer.sign_hash(&hash).await?;
+
+        Ok(WavsSignature {
+            data: signature.into(),
+            kind,
+        })
     }
 
     fn signature_data(
@@ -81,6 +130,14 @@ impl WavsSignature {
                                 .map_err(SigningError::DataHash)?,
                         )
                         .map_err(SigningError::RecoverSignerAddress),
+                    // This probably doesn't make sense for EIP-191, but we might as well cover the variant
+                    Some(SignaturePrefix::Sep53) => signature
+                        .recover_address_from_prehash(
+                            &signable
+                                .prefix_sep53_hash()
+                                .map_err(SigningError::DataHash)?,
+                        )
+                        .map_err(SigningError::RecoverSignerAddress),
                     None => signature
                         .recover_address_from_prehash(
                             &signable.unprefixed_hash().map_err(SigningError::DataHash)?,
@@ -88,6 +145,7 @@ impl WavsSignature {
                         .map_err(SigningError::RecoverSignerAddress),
                 }
             }
+            SignatureAlgorithm::Ed25519 => Err(SigningError::Ed25519Todo),
         }
     }
 
@@ -138,6 +196,10 @@ impl WavsSignature {
                     Some(SignaturePrefix::Eip191) => signable
                         .prefix_eip191_hash()
                         .map_err(SigningError::DataHash)?,
+                    // Again, this probably doesn't make sense for EIP-191, but we might as well cover the variant
+                    Some(SignaturePrefix::Sep53) => signable
+                        .prefix_sep53_hash()
+                        .map_err(SigningError::DataHash)?,
                     None => signable.unprefixed_hash().map_err(SigningError::DataHash)?,
                 };
                 let vk = VerifyingKey::recover_from_prehash(prehash.as_slice(), &k_sig, recid)
@@ -153,6 +215,8 @@ impl WavsSignature {
                     ))
                 })
             }
+
+            SignatureAlgorithm::Ed25519 => Err(SigningError::Ed25519Todo),
         }
     }
 }

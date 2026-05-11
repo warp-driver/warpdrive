@@ -11067,6 +11067,7 @@ dependencies = [
  "const-hex",
  "cosmwasm-schema",
  "cosmwasm-std",
+ "ed25519-dalek",
  "iri-string",
  "k256",
  "layer-climb-address",

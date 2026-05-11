@@ -357,6 +357,9 @@ impl From<warpdrive_types::SignatureAlgorithm> for component_service::SignatureA
             warpdrive_types::SignatureAlgorithm::Secp256k1 => {
                 component_service::SignatureAlgorithm::Secp256k1
             }
+            warpdrive_types::SignatureAlgorithm::Ed25519 => {
+                component_service::SignatureAlgorithm::Ed25519
+            }
         }
     }
 }
@@ -365,6 +368,7 @@ impl From<warpdrive_types::SignaturePrefix> for component_service::SignaturePref
     fn from(src: warpdrive_types::SignaturePrefix) -> Self {
         match src {
             warpdrive_types::SignaturePrefix::Eip191 => component_service::SignaturePrefix::Eip191,
+            warpdrive_types::SignaturePrefix::Sep53 => component_service::SignaturePrefix::Sep53,
         }
     }
 }
@@ -979,6 +983,9 @@ impl From<warpdrive_types::SignatureAlgorithm> for aggregator_service::Signature
             warpdrive_types::SignatureAlgorithm::Secp256k1 => {
                 aggregator_service::SignatureAlgorithm::Secp256k1
             }
+            warpdrive_types::SignatureAlgorithm::Ed25519 => {
+                aggregator_service::SignatureAlgorithm::Ed25519
+            }
         }
     }
 }
@@ -987,6 +994,7 @@ impl From<warpdrive_types::SignaturePrefix> for aggregator_service::SignaturePre
     fn from(src: warpdrive_types::SignaturePrefix) -> Self {
         match src {
             warpdrive_types::SignaturePrefix::Eip191 => aggregator_service::SignaturePrefix::Eip191,
+            warpdrive_types::SignaturePrefix::Sep53 => aggregator_service::SignaturePrefix::Sep53,
         }
     }
 }

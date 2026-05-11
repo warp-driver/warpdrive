@@ -294,6 +294,10 @@ impl From<component_service::SignatureAlgorithm> for warpdrive_types::SignatureA
             component_service::SignatureAlgorithm::Secp256k1 => {
                 warpdrive_types::SignatureAlgorithm::Secp256k1
             }
+
+            component_service::SignatureAlgorithm::Ed25519 => {
+                warpdrive_types::SignatureAlgorithm::Ed25519
+            }
         }
     }
 }
@@ -302,6 +306,7 @@ impl From<component_service::SignaturePrefix> for warpdrive_types::SignaturePref
     fn from(src: component_service::SignaturePrefix) -> Self {
         match src {
             component_service::SignaturePrefix::Eip191 => warpdrive_types::SignaturePrefix::Eip191,
+            component_service::SignaturePrefix::Sep53 => warpdrive_types::SignaturePrefix::Sep53,
         }
     }
 }

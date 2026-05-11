@@ -11,14 +11,13 @@ use crate::{
     subsystems::submission::data::SubmissionRequest, tracing_service_info, AppContext,
 };
 use alloy_primitives::FixedBytes;
-use alloy_signer_local::PrivateKeySigner;
 use error::SubmissionError;
 use tracing::instrument;
 use utils::{evm_client::signing::make_signer, telemetry::SubmissionMetrics};
-use warpdrive_types::Submission;
 use warpdrive_types::{
-    Credential, Envelope, EventOrder, ServiceId, SignerResponse, Submit, WavsSigner,
+    Credential, Envelope, EventOrder, ServiceId, SignatureKind, SignerResponse, Submit, WavsSigner,
 };
+use warpdrive_types::{Submission, VectrSigner};
 
 #[derive(Debug)]
 #[allow(clippy::large_enum_variant)]
@@ -44,7 +43,7 @@ pub struct SubmissionManager {
 }
 
 struct SignerInfo {
-    signer: PrivateKeySigner,
+    signer: VectrSigner,
     hd_index: u32,
 }
 
@@ -165,17 +164,8 @@ impl SubmissionManager {
                 .clone()
         };
 
-        let signature_kind = match self
-            .services
-            .get_workflow(service_id, req.workflow_id())?
-            .submit
-        {
-            Submit::Aggregator { signature_kind, .. } => signature_kind,
-            Submit::None => return Err(SubmissionError::InvalidSubmitKind(Submit::None)),
-        };
-
         let envelope_signature = envelope
-            .sign(&signer, signature_kind.clone())
+            .sign(&signer)
             .await
             .map_err(SubmissionError::FailedToSignEnvelope)?;
 
@@ -257,8 +247,20 @@ impl SubmissionManager {
         self.signing_mnemonic_hd_index_count
             .fetch_max(next_index, std::sync::atomic::Ordering::SeqCst);
 
+        let _signature_kind = match self.services.get(&service_id) {
+            // INVARIANT: all workflows that have a submit type must have the same signature kind, so we can just check the first one we find
+            Ok(service) => service.workflows.values().find_map(|w| match &w.submit {
+                Submit::None => None,
+                Submit::Aggregator { signature_kind, .. } => Some(signature_kind.clone()),
+            }),
+            Err(_) => None,
+        }
+        .unwrap_or_else(|| SignatureKind::evm_default()); // if we have no signer, default to evm... won't be used, but better safe than sorry
+
+        // TODO - make a different kind of signer baed on signature_kind
         let signer = make_signer(&self.signing_mnemonic, Some(hd_index))
             .map_err(|e| SubmissionError::FailedToCreateEvmSigner(service_id.clone(), e))?;
+        let signer = VectrSigner::Evm(signer);
 
         tracing::info!(
             "Created new signing client for service {} -> {}",

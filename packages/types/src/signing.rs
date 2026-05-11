@@ -15,7 +15,7 @@ use alloy_sol_types::SolValue;
 use async_trait::async_trait;
 use ripemd::Ripemd160;
 use serde::{Deserialize, Serialize};
-use sha2::Digest;
+use sha2::{Digest, Sha256};
 use thiserror::Error;
 use utoipa::ToSchema;
 
@@ -49,6 +49,22 @@ pub trait WavsSignable {
     fn prefix_eip191_hash(&self) -> anyhow::Result<FixedBytes<32>> {
         let envelope_bytes = self.encode_data()?;
         Ok(eip191_hash_message(keccak256(&envelope_bytes)))
+    }
+
+    fn prefix_sep53_hash(&self) -> anyhow::Result<FixedBytes<32>> {
+        let mut payload = std::vec::Vec::new();
+
+        payload.extend_from_slice(b"Stellar Signed Message:\n");
+        payload.extend_from_slice(self.encode_data()?.as_slice());
+
+        let hash: [u8; 32] = Sha256::digest(&payload)
+            .as_array()
+            .ok_or(anyhow::anyhow!(
+                "Failed to compute SEP-53 hash: invalid hash length"
+            ))?
+            .clone();
+
+        Ok(hash.into())
     }
 
     fn unprefixed_hash(&self) -> anyhow::Result<FixedBytes<32>> {
@@ -246,6 +262,9 @@ pub enum SigningError {
 
     #[error("Unable to get data hash: {0:?}")]
     DataHash(anyhow::Error),
+
+    #[error("Ed25519 signing not supported yet")]
+    Ed25519Todo,
 }
 
 #[cfg(test)]

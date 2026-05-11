@@ -72,7 +72,7 @@ fn extract_aggregator_service_handler(submit: &Submit) -> Option<warpdrive_types
                     }
                     // Bare-string fallback (no `<chain>:` prefix).
                     if let Ok(c) = stellar_strkey::Contract::from_string(addr_str) {
-                        return Some(warpdrive_types::ChainAddress::Stellar(c));
+                        return Some(warpdrive_types::ChainAddress::StellarContract(c));
                     }
                     if let Ok(cosmos_addr) =
                         layer_climb::prelude::CosmosAddr::new_str(addr_str, None)
@@ -681,7 +681,7 @@ async fn run_test(
                                         )
                                     })?;
                                 let stellar_contract = match submission_contract {
-                                    warpdrive_types::ChainAddress::Stellar(c) => c,
+                                    warpdrive_types::ChainAddress::StellarContract(c) => c,
                                     other => unreachable!(
                                         "expected Stellar submission handler, got {other:?}"
                                     ),

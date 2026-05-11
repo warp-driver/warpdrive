@@ -170,11 +170,13 @@ interface service {
 
     variant signature-algorithm {
         secp256k1,
-        // Future: Bls12381, Ed25519, Secp256r1, etc.
+        ed25519
+        // Future: Bls12381, Secp256r1, etc.
     }
 
     variant signature-prefix {
-        eip191
+        eip191,
+        sep53
     }
 
     // Aggregator types

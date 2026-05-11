@@ -8,7 +8,6 @@ use alloy_provider::{
     DynProvider, Provider, ProviderBuilder, WsConnect,
 };
 use alloy_rpc_types_eth::TransactionRequest;
-use alloy_signer_local::PrivateKeySigner;
 use alloy_transport::{TransportErrorKind, TransportResult};
 use anyhow::Result;
 use async_trait::async_trait;
@@ -17,7 +16,7 @@ use std::{
     str::FromStr,
     sync::{atomic::AtomicU64, Arc},
 };
-use warpdrive_types::Credential;
+use warpdrive_types::{Credential, VectrSigner};
 
 use crate::error::EvmClientError;
 
@@ -128,7 +127,7 @@ pub struct EvmSigningClient {
     /// due to type system limitations, we need to store it separately
     /// since the signer in `EthereumWallet` implements only `TxSigner`
     /// and there is not a direct way convert it into `Signer`
-    pub signer: Arc<PrivateKeySigner>,
+    pub signer: Arc<VectrSigner>,
     pub nonce_manager: AnyNonceManager,
 }
 
@@ -261,7 +260,7 @@ impl EvmSigningClient {
             provider,
             nonce_manager,
             wallet: Arc::new(wallet),
-            signer: Arc::new(signer),
+            signer: Arc::new(VectrSigner::Evm(signer)),
         })
     }
 
@@ -287,7 +286,10 @@ impl std::fmt::Debug for EvmSigningClient {
 
 impl EvmSigningClient {
     pub fn address(&self) -> Address {
-        self.signer.address()
+        self.signer
+            .address()
+            .try_as_evm()
+            .expect("EVM signer should always have an EVM address")
     }
 }
 

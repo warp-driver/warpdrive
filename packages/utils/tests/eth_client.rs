@@ -23,7 +23,13 @@ async fn client_sign_message() {
     let message = b"hello world";
 
     // client.wallet doesn't itself allow signing messages, but we created the wallet from the signer
-    let signature = client.signer.sign_message(message).await.unwrap();
+    let signature = client
+        .signer
+        .as_evm_signer()
+        .unwrap()
+        .sign_message(message)
+        .await
+        .unwrap();
 
     let recovered_address = signature.recover_address_from_msg(&message[..]).unwrap();
 
