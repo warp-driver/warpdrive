@@ -498,7 +498,7 @@ pub async fn deploy_submit_contract(
                     );
                     let parsed = stellar_strkey::Contract::from_string(&contract_id)
                         .map_err(|e| anyhow!("invalid stellar contract id from deploy: {e:?}"))?;
-                    Ok(warpdrive_types::ChainAddress::Stellar(parsed))
+                    Ok(warpdrive_types::ChainAddress::StellarContract(parsed))
                 }
             }
         }

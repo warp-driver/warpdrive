@@ -48,6 +48,10 @@ pub struct SubmissionManager {
 
 struct SignerInfo {
     signer: Arc<tokio::sync::RwLock<VectrSigner>>,
+    /// Cached signer address, captured when the signer is built. Lets
+    /// the synchronous `get_service_signer` path skip locking the
+    /// RwLock — important because we need to get the address in sync code, not just async
+    address: warpdrive_types::ChainAddress,
     hd_index: u32,
 }
 
@@ -289,16 +293,18 @@ impl SubmissionManager {
             }
         };
 
+        let address = signer.address();
         tracing::info!(
             "Created new signing client for service {} -> {}",
             service_id,
-            signer.address()
+            address
         );
 
         self.signers.write().unwrap().insert(
             service_id,
             SignerInfo {
                 signer: Arc::new(tokio::sync::RwLock::new(signer)),
+                address,
                 hd_index,
             },
         );
@@ -324,9 +330,10 @@ impl SubmissionManager {
             .ok_or_else(|| SubmissionError::MissingServiceKey {
                 service_id: service_id.clone(),
             })
-            .map(|SignerInfo { signer, hd_index }| {
-                let address = signer.blocking_read().address();
-                match address {
+            .map(
+                |SignerInfo {
+                     address, hd_index, ..
+                 }| match address {
                     warpdrive_types::ChainAddress::Evm(addr) => SignerResponse::Secp256k1 {
                         hd_index: *hd_index,
                         evm_address: addr.to_string(),
@@ -340,15 +347,15 @@ impl SubmissionManager {
                             ),
                         }
                     }
-                    // Cosmos and StellarContract addresses can't come
-                    // out of a VectrSigner today; fall back to a hex
-                    // dump rather than panic if that ever changes.
+                    // Cosmos and StellarContract addresses can't come out
+                    // of a VectrSigner today; fall back to a string dump
+                    // rather than panic if that ever changes.
                     other => SignerResponse::Secp256k1 {
                         hd_index: *hd_index,
                         evm_address: other.to_string(),
                     },
-                }
-            })?;
+                },
+            )?;
 
         if tracing::enabled!(tracing::Level::INFO) {
             let address: &str = match &key {

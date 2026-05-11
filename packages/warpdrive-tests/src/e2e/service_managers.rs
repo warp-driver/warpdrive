@@ -469,7 +469,13 @@ impl ServiceManagers {
                 } = http_client
                     .get_service_signer(stack_service_manager.clone())
                     .await
-                    .unwrap();
+                    .unwrap()
+                else {
+                    panic!(
+                        "shared Stellar stack registration assumes secp256k1 service signers; \
+                         got ed25519 for vector {operator_offset}"
+                    );
+                };
 
                 // Unlike EVM/Cosmos, Stellar `add-signer` is signed by the
                 // middleware container's admin key, not by the operator EOA
