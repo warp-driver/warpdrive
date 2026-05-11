@@ -330,8 +330,8 @@ impl TestRegistry {
         // ACCOUNT=$(stellar keys address query-test)
         // BALANCE=$(stellar contract invoke --id $XLM --source-account $ACCOUNT -- balance --id $ACCOUNT)
         const TESTNET_ACCOUNT: &str = "GBQFSBD5IXIYE2E74SQVZR4KKHDR66YH62FCNEK3ZBFJHZVNNB6ZLCXT";
-        const TESTNET_BALANCE: i64 = 100000000000;
-        const TESTNET_WEIGHT: u64 = 1000;
+        const TESTNET_BALANCE: i64 = 100_000_000_000;
+        const TESTNET_WEIGHT: u64 = 10_000;
 
         self.register(
             TestBuilder::new("stellar_balance_query")
