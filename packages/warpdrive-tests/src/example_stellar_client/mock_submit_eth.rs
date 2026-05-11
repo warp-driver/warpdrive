@@ -1,19 +1,16 @@
 use std::path::PathBuf;
 use std::process::Command;
+use std::time::Duration;
 
 use anyhow::{anyhow, bail, Context, Result};
 use rand::RngCore;
+use stellar_xdr::curr::{Limits, ReadXdr, ScVal, ScSymbol};
 use utils::filesystem::workspace_path;
-
-use crate::example_evm_client::TriggerId;
 
 /// Path (relative to the workspace root) of the staged `mock_submit_eth`
 /// WASM that `task stellar-build` produces. Both `test-warpdrive-e2e` and
 /// `debug-warpdrive-e2e` depend on `stellar-build`, so this file is
-/// guaranteed to exist when the e2e suite runs. We deliberately consume
-/// the staged copy rather than the per-crate `target/` artifact so the
-/// test process doesn't need to shell out to `stellar contract build`
-/// (and doesn't need the soroban toolchain on PATH at test time).
+/// guaranteed to exist when the e2e suite runs.
 const STAGED_MOCK_SUBMIT_ETH_WASM: &str =
     "examples/build/contracts/stellar/warpdrive_stellar_mock_submit_eth.wasm";
 
@@ -22,18 +19,26 @@ const STELLAR_NETWORK_PASSPHRASE_TESTNET: &str = "Test SDF Network ; September 2
 const STELLAR_WALLET_ALIAS: &str = "warpdrive-e2e-testnet";
 
 /// Per-test stellar mock submit contract client for the **secp256k1
-/// (ethereum-handler) path**. Builds `examples/contracts/stellar/mock_submit_eth`
-/// and deploys a fresh instance bound to the test stack's
-/// `secp256k1_verification`. The ed25519 (`mock_submit_xlm`) counterpart is
-/// deployed via `SimpleStellarSubmitXlmClient` (see `mock_submit_xlm.rs`);
-/// they are kept as separate crates because they implement different
-/// handler interfaces (`verify_eth` ABI envelope vs `verify_xlm` XDR
-/// envelope) and the test runner queries them differently.
+/// (ethereum-handler) path**.
 ///
-/// Mirrors `SimpleStellarTriggerClient` in shape but each test deploys a
-/// fresh contract (random salt, no alias) so each test has its own submit
-/// destination bound to its own `ethereum_handler` — same per-test isolation
-/// EVM/Cosmos give us via `SimpleSubmit` / `MockServiceHandler`.
+/// Wraps `examples/contracts/stellar/mock_submit_eth`, which mirrors the
+/// real `EthereumHandler`: storage is keyed by 20-byte `event_id` (not by
+/// `trigger_id` the way EVM `SimpleSubmit` does), and the contract emits
+/// a `Verified` event with the event_id as a topic on every successful
+/// `verify_eth`. Reading a test's payload back is therefore a two-step
+/// flow:
+///
+///   1. Poll the contract's `Verified` events via Soroban RPC to discover
+///      the `event_id` (we never see it before submission — it's derived
+///      from `service_id + workflow_id + bincode(trigger_data)` by
+///      WarpDrive's aggregator and we can't reconstruct it without the
+///      canonical chain-derived `TriggerData`).
+///   2. Call the contract's `payload(event_id)` view function to read the
+///      stored bytes.
+///
+/// Each test deploys a fresh contract (random salt), so there's exactly
+/// one `Verified` event per contract and the event-poll narrows to a
+/// single match.
 #[derive(Clone, Debug)]
 pub struct SimpleStellarSubmitEthClient {
     config_dir: PathBuf,
@@ -41,11 +46,6 @@ pub struct SimpleStellarSubmitEthClient {
 
 impl SimpleStellarSubmitEthClient {
     pub fn new(_chain: warpdrive_types::ChainKey) -> Self {
-        // `chain` is accepted for symmetry with `SimpleStellarTriggerClient`
-        // and so callers can stay chain-aware, but the staged WASM model
-        // means we don't need it: the stellar CLI is configured with a
-        // hard-coded testnet rpc + passphrase below, the staged artifact
-        // lives at a fixed workspace path, and deploys use a random salt.
         Self {
             // Reuse the same shared wallet config dir as the trigger client;
             // it manages the funded testnet identity that's used for both
@@ -56,15 +56,10 @@ impl SimpleStellarSubmitEthClient {
 
     /// Deploy a fresh `mock_submit_eth` instance bound to
     /// `verification_contract` (the test stack's `secp256k1_verification`).
-    /// Returns the deployed contract id.
-    ///
-    /// The WASM is built ahead of time by `task stellar-build` and staged
-    /// at [`STAGED_MOCK_SUBMIT_ETH_WASM`]; we just point `stellar contract
-    /// deploy` at the staged copy. Errors fast with a clear message if the
-    /// artifact isn't present — that almost always means the test was
-    /// invoked via `cargo test -p warpdrive-tests` directly without the
-    /// task wrapper.
-    pub async fn deploy(&self, verification_contract: &str) -> Result<String> {
+    /// `admin` is the strkey `G...` address that owns the deployed
+    /// contract's upgrade / admin-transfer flow — for the e2e tests this
+    /// is the same wallet doing the deploy.
+    pub async fn deploy(&self, admin: &str, verification_contract: &str) -> Result<String> {
         self.ensure_wallet()?;
 
         let wasm_path = self.contract_artifact_path();
@@ -96,6 +91,8 @@ impl SimpleStellarSubmitEthClient {
             "--salt",
             &salt,
             "--",
+            "--admin",
+            admin,
             "--verification_contract",
             verification_contract,
         ])?;
@@ -107,43 +104,23 @@ impl SimpleStellarSubmitEthClient {
         Ok(contract_id)
     }
 
-    /// Returns whether the given trigger_id has been validated and stored.
-    pub async fn is_valid_trigger_id(
-        &self,
-        contract_id: &str,
-        trigger_id: TriggerId,
-    ) -> Result<bool> {
-        let trigger_id = trigger_id.to_string();
-        let output = self.run_stellar(&[
-            "contract",
-            "invoke",
-            "--id",
-            contract_id,
-            "--source-account",
-            STELLAR_WALLET_ALIAS,
-            "--rpc-url",
-            STELLAR_RPC_URL_TESTNET,
-            "--network-passphrase",
-            STELLAR_NETWORK_PASSPHRASE_TESTNET,
-            "--send",
-            "no",
-            "--",
-            "is_valid_trigger_id",
-            "--trigger_id",
-            &trigger_id,
-        ])?;
+    /// Address of the funded testnet wallet used as the deploy source —
+    /// also the natural choice for the handler's `admin` argument.
+    pub fn wallet_address(&self) -> Result<String> {
+        self.ensure_wallet()?;
+        let output = self.run_stellar(&["keys", "address", STELLAR_WALLET_ALIAS])?;
         let trimmed = output.trim();
-        match trimmed {
-            "true" => Ok(true),
-            "false" => Ok(false),
-            other => bail!("unexpected is_valid_trigger_id output: {other}"),
+        if trimmed.is_empty() {
+            bail!("stellar keys address returned empty output for {STELLAR_WALLET_ALIAS}");
         }
+        Ok(trimmed.to_string())
     }
 
-    /// Reads back the stored payload for a trigger_id. Errors if the trigger
-    /// hasn't landed yet. Returns the raw bytes.
-    pub async fn get_data(&self, contract_id: &str, trigger_id: TriggerId) -> Result<Vec<u8>> {
-        let trigger_id = trigger_id.to_string();
+    /// Read the payload stored at `event_id_hex` on the per-test handler.
+    /// `event_id_hex` is the bare 40-char hex form of the 20-byte event id
+    /// (no `0x` prefix — that's what soroban-cli expects for `BytesN<20>`
+    /// arguments).
+    pub async fn payload(&self, contract_id: &str, event_id_hex: &str) -> Result<Vec<u8>> {
         let output = self.run_stellar(&[
             "contract",
             "invoke",
@@ -158,11 +135,77 @@ impl SimpleStellarSubmitEthClient {
             "--send",
             "no",
             "--",
-            "get_data",
-            "--trigger_id",
-            &trigger_id,
+            "payload",
+            "--event_id",
+            event_id_hex,
         ])?;
         parse_optional_bytes_output(&output)
+    }
+
+    /// Poll Soroban RPC for the contract's first `Verified` event and
+    /// return the embedded event_id as a 40-char hex string. We deliberately
+    /// don't filter by topic on the server side — the contract is fresh per
+    /// test and emits exactly one event, so a contract-id filter is plenty.
+    ///
+    /// `start_ledger` should be a sequence at-or-before the verify_eth
+    /// transaction; using the latest ledger just before the trigger fires
+    /// works fine and keeps the poll window tight.
+    pub async fn wait_for_verified_event_id(
+        &self,
+        contract_id: &str,
+        start_ledger: u32,
+        timeout: Duration,
+    ) -> Result<String> {
+        let rpc = wasi_stellar_rpc_client::Client::new(STELLAR_RPC_URL_TESTNET)
+            .map_err(|e| anyhow!("failed to construct stellar rpc client: {e:?}"))?;
+
+        tokio::time::timeout(timeout, async {
+            loop {
+                let resp = rpc
+                    .get_events(
+                        wasi_stellar_rpc_client::EventStart::Ledger(start_ledger),
+                        Some(wasi_stellar_rpc_client::EventType::Contract),
+                        &[contract_id.to_string()],
+                        &[],
+                        None,
+                    )
+                    .await;
+                match resp {
+                    Ok(resp) => {
+                        for event in resp.events {
+                            if let Some(hex) = extract_verified_event_id(&event) {
+                                return Ok(hex);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        tracing::debug!(
+                            "stellar get_events transient error while polling {}: {e:?}",
+                            contract_id
+                        );
+                    }
+                }
+                tracing::debug!(
+                    "Waiting for Verified event on stellar contract {}",
+                    contract_id
+                );
+                tokio::time::sleep(Duration::from_millis(500)).await;
+            }
+        })
+        .await
+        .map_err(|_| anyhow!("Timeout waiting for Verified event on {}", contract_id))?
+    }
+
+    /// Latest ledger sequence — useful as a `start_ledger` baseline before
+    /// firing a trigger so the subsequent event poll has a tight window.
+    pub async fn current_ledger(&self) -> Result<u32> {
+        let rpc = wasi_stellar_rpc_client::Client::new(STELLAR_RPC_URL_TESTNET)
+            .map_err(|e| anyhow!("failed to construct stellar rpc client: {e:?}"))?;
+        let info = rpc
+            .get_latest_ledger()
+            .await
+            .map_err(|e| anyhow!("get_latest_ledger failed: {e:?}"))?;
+        Ok(info.sequence)
     }
 
     fn ensure_wallet(&self) -> Result<()> {
@@ -216,6 +259,47 @@ impl SimpleStellarSubmitEthClient {
     }
 }
 
+/// Pulls the 20-byte event_id out of a `Verified` contract event.
+///
+/// `warpdrive_shared::interfaces::handler::Verified::publish` publishes the
+/// event with `topics = [Symbol("verified"), BytesN<20>]` and an empty
+/// payload (the body is `Verified::new(event_id)`). We accept both the
+/// "event_id in topic[1]" shape and a fallback where the event_id is in the
+/// event body — whichever the deployed Soroban runtime uses — so the
+/// matcher is robust to upstream tweaks.
+fn extract_verified_event_id(event: &wasi_stellar_rpc_client::Event) -> Option<String> {
+    let topics: Vec<ScVal> = event
+        .topic
+        .iter()
+        .filter_map(|t| ScVal::from_xdr_base64(t, Limits::none()).ok())
+        .collect();
+    let first_topic_is_verified = matches!(
+        topics.first(),
+        Some(ScVal::Symbol(ScSymbol(sym))) if sym.as_slice() == b"verified"
+    );
+    if !first_topic_is_verified {
+        return None;
+    }
+    for tail in topics.iter().skip(1) {
+        if let Some(hex) = scval_as_bytesn20_hex(tail) {
+            return Some(hex);
+        }
+    }
+    if let Ok(value) = ScVal::from_xdr_base64(&event.value, Limits::none()) {
+        if let Some(hex) = scval_as_bytesn20_hex(&value) {
+            return Some(hex);
+        }
+    }
+    None
+}
+
+fn scval_as_bytesn20_hex(v: &ScVal) -> Option<String> {
+    match v {
+        ScVal::Bytes(b) if b.0.len() == 20 => Some(const_hex::encode(&b.0)),
+        _ => None,
+    }
+}
+
 fn random_salt_hex() -> String {
     let mut salt = [0u8; 32];
     rand::rng().fill_bytes(&mut salt);
@@ -227,7 +311,7 @@ fn random_salt_hex() -> String {
 fn parse_optional_bytes_output(raw: &str) -> Result<Vec<u8>> {
     let trimmed = raw.trim();
     if trimmed.is_empty() || trimmed == "null" {
-        bail!("stellar mock_submit_eth returned no data for trigger");
+        bail!("stellar mock_submit_eth returned no data for event_id");
     }
     // Try JSON first (handles both quoted strings and bare hex objects).
     if let Ok(s) = serde_json::from_str::<String>(trimmed) {

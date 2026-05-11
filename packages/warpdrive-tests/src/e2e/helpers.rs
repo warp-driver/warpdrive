@@ -439,14 +439,22 @@ pub async fn deploy_submit_contract(
                 StellarContracts::SecpContracts(c) => {
                     let verification_contract = format!("{}", c.secp256k1_verification);
                     tracing::info!(
-                        "Deploying Stellar mock submit handler on chain {} bound to verification {}",
+                        "Deploying Stellar mock submit (eth/secp256k1) handler on chain {} \
+                         bound to verification {}",
                         chain,
                         verification_contract
                     );
-                    let client =
-                        crate::example_stellar_client::SimpleStellarSubmitEthClient::new(chain);
-                    let contract_id = client.deploy(&verification_contract).await?;
-                    tracing::info!("Stellar mock submit handler deployed at {}", contract_id);
+                    let client = crate::example_stellar_client::SimpleStellarSubmitEthClient::new(
+                        chain.clone(),
+                    );
+                    let admin = client
+                        .wallet_address()
+                        .context("failed to resolve mock_submit_eth admin address")?;
+                    let contract_id = client.deploy(&admin, &verification_contract).await?;
+                    tracing::info!(
+                        "Stellar mock submit (eth/secp256k1) handler deployed at {}",
+                        contract_id
+                    );
                     let parsed = stellar_strkey::Contract::from_string(&contract_id)
                         .map_err(|e| anyhow!("invalid stellar contract id from deploy: {e:?}"))?;
                     Ok(warpdrive_types::ChainAddress::Stellar(parsed))
@@ -662,37 +670,73 @@ pub async fn evm_wait_for_task_to_land(
     .map_err(|_| anyhow::anyhow!("Timeout when waiting for task to land"))?
 }
 
+/// Wait for the per-test Stellar `mock_submit_eth` handler to record the
+/// aggregator's verified payload, then return its bytes.
+///
+/// The contract is now keyed by `event_id` (the 20-byte ripemd160 hash the
+/// aggregator computes from `service_id + workflow_id + bincode(trigger_data)`)
+/// rather than by the test's `trigger_id`, so we can't precompute the key.
+/// Flow:
+///
+///   1. Poll Soroban RPC for the contract's `Verified` event — that event
+///      carries the event_id as a topic.
+///   2. Call `payload(event_id)` on the contract to fetch the stored bytes.
+///
+/// `start_ledger` is the ledger sequence just before the trigger fired; we
+/// use it as the event-poll lower bound so we don't scan the entire chain.
+/// `_trigger_id` is kept in the signature for parity with the EVM/Cosmos
+/// helpers (the runner threads it through generically) but the eth Stellar
+/// handler no longer keys on it.
 pub async fn stellar_wait_for_task_to_land(
     chain: warpdrive_types::ChainKey,
     contract_id: stellar_strkey::Contract,
-    trigger_id: TriggerId,
+    _trigger_id: TriggerId,
     timeout: Duration,
 ) -> Result<Vec<u8>> {
+    use alloy_sol_types::{sol, SolValue};
+
+    // The aggregator wraps the WasmResponse bytes in an ABI-encoded
+    // `DataWithId { triggerId, data }` (`examples/components/_helpers/src/trigger.rs`
+    // `evm_encode_trigger_output`) and then wraps *that* in an
+    // ABI-encoded `Envelope { eventId, ordering, payload }`. The mock
+    // handler (now production-aligned) decodes the envelope on-chain but
+    // stores `envelope.payload` raw — so what we read back is still
+    // ABI-encoded `DataWithId`. Mirror the EVM `SimpleSubmit.sol` path
+    // and decode it client-side here, so the test runner sees just the
+    // inner `data` bytes (same shape EVM/Cosmos return).
+    sol! {
+        struct DataWithId {
+            uint64 triggerId;
+            bytes data;
+        }
+    }
+
     let submit_client = crate::example_stellar_client::SimpleStellarSubmitEthClient::new(chain);
     let contract_id_str = format!("{contract_id}");
 
-    tokio::time::timeout(timeout, async move {
-        loop {
-            if submit_client
-                .is_valid_trigger_id(&contract_id_str, trigger_id)
-                .await
-                .unwrap_or(false)
-            {
-                return submit_client
-                    .get_data(&contract_id_str, trigger_id)
-                    .await
-                    .map_err(|e| anyhow!("Failed to get stellar submit data: {e}"));
-            }
+    // Anchor the event poll at the current ledger minus a small slack so we
+    // don't miss a verify_eth tx that lands in the same ledger we sample.
+    // Soroban testnet retains roughly the last day of events; 100 ledgers
+    // (~10 min) is well inside that window and keeps the scan tight.
+    let now = submit_client.current_ledger().await?;
+    let start_ledger = now.saturating_sub(100).max(1);
 
-            tracing::debug!(
-                "Waiting for stellar task response on trigger {}",
-                trigger_id
-            );
-            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-        }
-    })
-    .await
-    .map_err(|_| anyhow::anyhow!("Timeout when waiting for stellar task to land"))?
+    let event_id_hex = submit_client
+        .wait_for_verified_event_id(&contract_id_str, start_ledger, timeout)
+        .await
+        .with_context(|| format!("waiting for Verified event on {contract_id_str}"))?;
+    tracing::info!(
+        "Stellar handler {} fired Verified for event_id 0x{}",
+        contract_id_str,
+        event_id_hex
+    );
+    let raw = submit_client
+        .payload(&contract_id_str, &event_id_hex)
+        .await
+        .map_err(|e| anyhow!("Failed to read stellar payload({event_id_hex}): {e}"))?;
+    let decoded = DataWithId::abi_decode(&raw)
+        .map_err(|e| anyhow!("Failed to ABI-decode DataWithId from stellar payload: {e}"))?;
+    Ok(decoded.data.to_vec())
 }
 
 pub async fn cosmos_wait_for_task_to_land(
