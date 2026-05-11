@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use derive_enum_all_values::AllValues;
 use serde::{Deserialize, Serialize};
+use utils::test_utils::middleware::stellar::SignerScheme;
 
 use super::components::{AggregatorComponent, ComponentName, VectorComponent};
 
@@ -81,6 +82,24 @@ pub enum StellarService {
     /// component RPC. CI configs deliberately don't include this so
     /// CI stays green.
     StellarQuery,
+}
+
+impl StellarService {
+    /// Which Stellar signing scheme this test runs against. All current
+    /// Stellar tests share the secp256k1 (`--variant ethereum`) stack.
+    ///
+    /// TODO: when an ed25519 (`--variant stellar`) test is added, return
+    /// `SignerScheme::Ed25519` from its arm here. The ed25519 mock-submit
+    /// branch in `helpers::deploy_submit_contract` is still `todo!()`, so
+    /// switching a test to Ed25519 requires implementing that arm first.
+    pub fn scheme(self) -> SignerScheme {
+        match self {
+            StellarService::EchoData
+            | StellarService::BlockInterval
+            | StellarService::BlockIntervalStartStop
+            | StellarService::StellarQuery => SignerScheme::Secp256k1,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]

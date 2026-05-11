@@ -7,6 +7,7 @@ use serde_json::json;
 use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
+use utils::test_utils::middleware::stellar::SignerScheme;
 use warpdrive_types::AtProtoAction;
 
 use super::clients::Clients;
@@ -230,16 +231,17 @@ impl TestRegistry {
 
         for service in &matrix.stellar {
             let stellar = chains.primary_stellar().unwrap();
+            let scheme = service.scheme();
 
             match service {
                 StellarService::EchoData => {
-                    registry.register_stellar_echo_data_test(stellar, stellar);
+                    registry.register_stellar_echo_data_test(stellar, stellar, scheme);
                 }
                 StellarService::BlockInterval | StellarService::BlockIntervalStartStop => {
                     tracing::warn!("Stellar interval tests are not yet registered in e2e");
                 }
                 StellarService::StellarQuery => {
-                    registry.register_stellar_stellar_query_test(stellar);
+                    registry.register_stellar_stellar_query_test(stellar, scheme);
                 }
             }
         }
@@ -288,6 +290,7 @@ impl TestRegistry {
         &mut self,
         trigger_chain: &ChainKey,
         submit_chain: &ChainKey,
+        scheme: SignerScheme,
     ) -> &mut Self {
         self.register(
             TestBuilder::new("stellar_echo_data")
@@ -311,6 +314,7 @@ impl TestRegistry {
                         .build(),
                 )
                 .with_service_manager_chain(submit_chain)
+                .with_stellar_scheme(scheme)
                 .build(),
         )
     }
@@ -323,7 +327,11 @@ impl TestRegistry {
     /// follow-up integrates a Soroban-from-component RPC client.
     /// Don't add this to the CI configs; it's only in
     /// `warpdrive-tests-default.toml`.
-    fn register_stellar_stellar_query_test(&mut self, chain: &ChainKey) -> &mut Self {
+    fn register_stellar_stellar_query_test(
+        &mut self,
+        chain: &ChainKey,
+        scheme: SignerScheme,
+    ) -> &mut Self {
         // In warpdrive-contracts: task testnet:fund SOURCE=query-test
         //
         // XLM=$(stellar contract id asset --asset native)
@@ -357,6 +365,7 @@ impl TestRegistry {
                         .build(),
                 )
                 .with_service_manager_chain(chain)
+                .with_stellar_scheme(scheme)
                 .build(),
         );
 
@@ -384,6 +393,7 @@ impl TestRegistry {
                         .build(),
                 )
                 .with_service_manager_chain(chain)
+                .with_stellar_scheme(scheme)
                 .build(),
         )
     }

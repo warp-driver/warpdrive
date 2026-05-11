@@ -458,7 +458,16 @@ pub async fn deploy_submit_contract(
                         chain,
                         verification_contract
                     );
-                    todo!("Implement the native stellar branch");
+                    // TODO(ed25519): no Stellar test runs against the
+                    // ed25519 stack yet. When we add one, ship a
+                    // stellar-native `mock_submit` analogue that binds to
+                    // `ed25519_verification` and return its Stellar contract
+                    // id here. Until that arrives, mark such tests with
+                    // `StellarService::scheme() == SignerScheme::Ed25519` so
+                    // the shared-stack bootstrap deploys the ed25519
+                    // variant; this branch will then be the only thing
+                    // gating the test from running.
+                    todo!("Implement the native stellar (ed25519) mock_submit branch");
                 }
             }
         }

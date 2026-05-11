@@ -1,4 +1,7 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use futures::{stream::FuturesUnordered, StreamExt};
 use utils::test_utils::{
@@ -32,6 +35,12 @@ use crate::e2e::{
 pub struct ServiceManagers {
     configs: Arc<Configs>,
     lookup: Arc<HashMap<String, AnyServiceManagerInstance>>,
+    /// One shared Stellar stack per `SignerScheme`. All Stellar tests on a
+    /// given scheme route to the same `project_root`, so we only pay the
+    /// ~120s testnet deploy once instead of N times. Per-test isolation
+    /// lives downstream of `project_root` in the per-test `mock_submit`
+    /// handler (`helpers::deploy_submit_contract`).
+    stellar_stacks: Arc<HashMap<SignerScheme, SharedStellarStack>>,
 }
 
 pub enum AnyServiceManagerInstance {
@@ -43,17 +52,35 @@ pub enum AnyServiceManagerInstance {
         chain: ChainKey,
         manager: CosmosServiceManager,
     },
+    /// Stellar tests reference a shared stack by `scheme` rather than
+    /// owning a unique `StellarServiceManager`. Look up the stack on
+    /// `ServiceManagers::stellar_stacks` to get `project_root`,
+    /// `deploy_file_path`, the `StellarMiddleware` handle, and the
+    /// per-stack URI mutex.
     Stellar {
         chain: ChainKey,
-        manager: StellarServiceManager,
-        middleware: StellarMiddleware,
+        scheme: SignerScheme,
     },
+}
+
+/// A pre-deployed Stellar middleware stack (one `project_root` plus its
+/// `*_security`, `*_verification`, and `*_handler` contracts) shared by
+/// every test that uses the matching `SignerScheme`. The single
+/// `project_root` only holds one service URI at a time, so writes to it
+/// must serialize on `uri_lock`.
+#[derive(Clone)]
+pub struct SharedStellarStack {
+    pub chain: ChainKey,
+    pub manager: StellarServiceManager,
+    pub middleware: StellarMiddleware,
+    pub uri_lock: Arc<tokio::sync::Mutex<()>>,
 }
 
 impl ServiceManagers {
     pub fn new(configs: Configs) -> Self {
         Self {
             lookup: Arc::new(HashMap::new()),
+            stellar_stacks: Arc::new(HashMap::new()),
             configs: Arc::new(configs),
         }
     }
@@ -100,10 +127,27 @@ impl ServiceManagers {
                 chain: chain.clone(),
                 address: manager.address.clone(),
             },
-            AnyServiceManagerInstance::Stellar { chain, manager, .. } => ServiceManager::Stellar {
-                chain: chain.clone(),
-                address: manager.project_root,
-            },
+            AnyServiceManagerInstance::Stellar { chain, scheme } => {
+                let stack = self.stellar_stacks.get(scheme).expect(
+                    "shared Stellar stack for scheme missing — bootstrap should have deployed it",
+                );
+                ServiceManager::Stellar {
+                    chain: chain.clone(),
+                    address: stack.manager.project_root,
+                }
+            }
+        }
+    }
+
+    /// Resolve the `SharedStellarStack` for a registered test, if it is a
+    /// Stellar test. Used by the test runner / submit-contract deploy to
+    /// reach the per-scheme middleware, URI lock, and contracts manifest.
+    pub fn stellar_stack_for_test(&self, test_name: &str) -> Option<SharedStellarStack> {
+        match self.lookup.get(test_name)? {
+            AnyServiceManagerInstance::Stellar { scheme, .. } => {
+                self.stellar_stacks.get(scheme).cloned()
+            }
+            _ => None,
         }
     }
 
@@ -117,6 +161,67 @@ impl ServiceManagers {
     ) {
         let mut lookup = HashMap::new();
 
+        // --- Step 1: pre-deploy one shared Stellar stack per scheme used by
+        // the active matrix. Each `cli.sh deploy` is a ~120s testnet round-
+        // trip; doing this once per scheme rather than once per test is the
+        // whole point of the shared-stack model.
+        let stellar_schemes: HashSet<(SignerScheme, ChainKey)> = registry
+            .list_all()
+            .filter_map(|test| {
+                let chain = test.service_manager_chain.as_ref()?;
+                if chain.namespace.as_str() != ChainKeyNamespace::STELLAR {
+                    return None;
+                }
+                let scheme = test
+                    .stellar_scheme
+                    .expect("Stellar test registered without a stellar_scheme");
+                Some((scheme, chain.clone()))
+            })
+            .collect();
+
+        let mut stellar_stacks: HashMap<SignerScheme, SharedStellarStack> = HashMap::new();
+        for (scheme, chain) in stellar_schemes {
+            if let Some(existing) = stellar_stacks.get(&scheme) {
+                // We only support one chain per scheme: there's a single
+                // `StellarMiddleware` container, so multiple stellar chains
+                // would need a separate middleware per chain.
+                assert_eq!(
+                    existing.chain, chain,
+                    "Stellar tests for scheme {scheme:?} use different chains \
+                     ({} vs {chain}); only one chain per scheme is supported",
+                    existing.chain
+                );
+                continue;
+            }
+            let middleware = stellar_middleware
+                .clone()
+                .expect("stellar middleware not initialized");
+            tracing::info!(
+                "Deploying shared stellar stack for scheme {:?} on chain {}",
+                scheme,
+                chain
+            );
+            let manager = middleware.deploy_service_manager(scheme).await.unwrap();
+            tracing::info!(
+                "Shared stellar stack ({:?}) project_root is {}",
+                scheme,
+                manager.project_root
+            );
+            stellar_stacks.insert(
+                scheme,
+                SharedStellarStack {
+                    chain,
+                    manager,
+                    middleware,
+                    uri_lock: Arc::new(tokio::sync::Mutex::new(())),
+                },
+            );
+        }
+        self.stellar_stacks = Arc::new(stellar_stacks);
+
+        // --- Step 2: build per-test lookup entries. EVM/Cosmos still deploy a
+        // unique service manager per test (anvil / wasmd are cheap); Stellar
+        // tests just record their scheme and reference the shared stack.
         let mut futures = Vec::new();
 
         for test in registry.list_all() {
@@ -124,10 +229,10 @@ impl ServiceManagers {
                 .service_manager_chain
                 .clone()
                 .unwrap_or_else(|| panic!("missing service manager chain for test {}", test.name));
+            let stellar_scheme = test.stellar_scheme;
             futures.push({
                 let evm_middleware = evm_middleware.clone();
                 let cosmos_middlewares = cosmos_middlewares.clone();
-                let stellar_middleware = stellar_middleware.clone();
                 async move {
                     match chain.namespace.as_str() {
                         ChainKeyNamespace::EVM => {
@@ -159,26 +264,11 @@ impl ServiceManagers {
                             )
                         }
                         ChainKeyNamespace::STELLAR => {
-                            let middleware = stellar_middleware
-                                .clone()
-                                .expect("stellar middleware not initialized");
-                            tracing::info!(
-                                "Deploying stellar service manager for test {}",
-                                test.name
-                            );
-                            let manager = middleware.deploy_service_manager().await.unwrap();
-                            tracing::info!(
-                                "Stellar Service manager for test {} project_root is {}",
-                                test.name,
-                                manager.project_root
-                            );
+                            let scheme = stellar_scheme
+                                .expect("Stellar test missing stellar_scheme at lookup time");
                             (
                                 test.name.clone(),
-                                AnyServiceManagerInstance::Stellar {
-                                    manager,
-                                    chain,
-                                    middleware,
-                                },
+                                AnyServiceManagerInstance::Stellar { chain, scheme },
                             )
                         }
                         other => panic!("Unsupported chain namespace: {}", other),
@@ -211,7 +301,25 @@ impl ServiceManagers {
     pub async fn set_initial_service_uris(&self, registry: &TestRegistry, clients: &Clients) {
         let mut futures = Vec::new();
 
+        // Stellar tests on a shared stack all resolve to the same on-chain
+        // project_root with a single URI slot, and `ServiceId` is derived
+        // purely from the manager address (`Service::id`) — so per-test
+        // bootstrap rows would all collide on the WarpDrive side. We pick
+        // one representative test per scheme to set an initial Paused URI;
+        // its `change_service` path then carries every other test of the
+        // same scheme via per-test `update_services` calls.
+        let mut bootstrapped_stellar_schemes: HashSet<SignerScheme> = HashSet::new();
+
         for test in registry.list_all() {
+            let service_manager_instance = self.lookup.get(&test.name).unwrap();
+
+            if let AnyServiceManagerInstance::Stellar { scheme, .. } = service_manager_instance {
+                if !bootstrapped_stellar_schemes.insert(*scheme) {
+                    // Already bootstrapped via the representative test for this scheme.
+                    continue;
+                }
+            }
+
             let service_manager = self.get_service_manager(&test.name);
 
             let service = Service {
@@ -226,7 +334,14 @@ impl ServiceManagers {
                 .await
                 .unwrap();
 
-            let service_manager_instance = self.lookup.get(&test.name).unwrap();
+            // Pre-resolve the shared Stellar stack so the future doesn't
+            // need to keep `self` borrowed for the matching arm.
+            let stellar_stack = match service_manager_instance {
+                AnyServiceManagerInstance::Stellar { scheme, .. } => {
+                    Some(self.stellar_stacks.get(scheme).expect("...").clone())
+                }
+                _ => None,
+            };
 
             futures.push(async move {
                 match service_manager_instance {
@@ -236,13 +351,14 @@ impl ServiceManagers {
                     AnyServiceManagerInstance::Cosmos { manager, .. } => {
                         manager.set_service_uri(&service_url).await.unwrap();
                     }
-                    AnyServiceManagerInstance::Stellar {
-                        manager,
-                        middleware,
-                        ..
-                    } => {
-                        middleware
-                            .set_service_uri(&manager.deploy_file_path, &service_url)
+                    AnyServiceManagerInstance::Stellar { .. } => {
+                        let stack = stellar_stack
+                            .as_ref()
+                            .expect("Stellar branch entered without a resolved stack");
+                        let _guard = stack.uri_lock.clone().lock_owned().await;
+                        stack
+                            .middleware
+                            .set_service_uri(&stack.manager.deploy_file_path, &service_url)
                             .await
                             .unwrap();
                     }
@@ -266,7 +382,22 @@ impl ServiceManagers {
     ) {
         let mut futures = Vec::new();
 
+        // See `set_initial_service_uris`: only the representative test per
+        // Stellar scheme actually registers the (shared) service on
+        // WarpDrive at bootstrap. Subsequent stellar tests reuse the same
+        // `ServiceId` and are switched in via `update_services` →
+        // `change_service` when their turn comes.
+        let mut registered_stellar_schemes: HashSet<SignerScheme> = HashSet::new();
+
         for test in registry.list_all() {
+            if let Some(AnyServiceManagerInstance::Stellar { scheme, .. }) =
+                self.lookup.get(&test.name)
+            {
+                if !registered_stellar_schemes.insert(*scheme) {
+                    continue;
+                }
+            }
+
             let service_manager = self.get_service_manager(&test.name);
             let http_clients = clients.http_clients.clone();
 
@@ -301,9 +432,143 @@ impl ServiceManagers {
     pub async fn register_operators(&self, registry: &TestRegistry, clients: &Clients) {
         use crate::e2e::config::MULTI_VECTOR_COUNT;
 
+        // --- Stellar: register signers + threshold ONCE per shared stack.
+        // All Stellar tests on the same scheme share the project_root +
+        // security contract, so the on-chain signer set is the same for
+        // every test. Doing this per-test would just re-add the same keys
+        // and re-set the same threshold, paying extra testnet round-trips.
+        //
+        // We use the same num_vectors / threshold rule as the EVM/Cosmos
+        // path: 2/3 quorum for multi-vector, otherwise 1. No Stellar test
+        // currently has `multi_vector = true`, but we honor it if any test
+        // on a given scheme requests it.
+        for (scheme, stack) in self.stellar_stacks.iter() {
+            let any_multi_vector = registry.list_all().any(|test| {
+                test.multi_vector
+                    && test.stellar_scheme == Some(*scheme)
+                    && test
+                        .service_manager_chain
+                        .as_ref()
+                        .map(|c| c.namespace.as_str() == ChainKeyNamespace::STELLAR)
+                        .unwrap_or(false)
+            });
+
+            let num_vectors = std::cmp::min(MULTI_VECTOR_COUNT, clients.http_clients.len());
+
+            let stack_service_manager = ServiceManager::Stellar {
+                chain: stack.chain.clone(),
+                address: stack.manager.project_root,
+            };
+
+            let mut avs_operators = Vec::with_capacity(num_vectors);
+            for operator_offset in 0..num_vectors {
+                let http_client = &clients.http_clients[operator_offset];
+                let SignerResponse::Secp256k1 {
+                    evm_address: avs_signer_address,
+                    hd_index: wavs_signer_hd_index,
+                } = http_client
+                    .get_service_signer(stack_service_manager.clone())
+                    .await
+                    .unwrap();
+
+                // Unlike EVM/Cosmos, Stellar `add-signer` is signed by the
+                // middleware container's admin key, not by the operator EOA
+                // itself, so we don't need per-test unique HD indexes to
+                // avoid nonce collisions. Just key off the vector offset.
+                let operator_mnemonic = &self.configs.mnemonics.vectors[operator_offset];
+                let operator_signer = utils::evm_client::signing::make_signer(
+                    operator_mnemonic,
+                    Some(operator_offset as u32),
+                )
+                .unwrap();
+                let vector_address = operator_signer.address();
+                let operator_private_key = const_hex::encode(operator_signer.to_bytes());
+
+                let signing_signer = utils::evm_client::signing::make_signer(
+                    operator_mnemonic,
+                    Some(wavs_signer_hd_index),
+                )
+                .unwrap();
+                let signing_address = signing_signer.address();
+                let signing_private_key = const_hex::encode(signing_signer.to_bytes());
+
+                assert_eq!(
+                    signing_address.to_string().to_lowercase(),
+                    avs_signer_address.to_lowercase(),
+                    "Derived signing address doesn't match WarpDrive signer address for vector {}",
+                    operator_offset
+                );
+
+                avs_operators.push(AvsOperator::with_keys(
+                    vector_address,
+                    signing_address,
+                    operator_private_key,
+                    signing_private_key,
+                ));
+            }
+
+            let required_to_pass = if any_multi_vector {
+                ((num_vectors as u64) * 2).div_ceil(3)
+            } else {
+                1
+            };
+            let denominator = std::cmp::max(num_vectors, 1) as u32;
+
+            // Operators carry their secp256k1 signing key as a 32-byte
+            // private scalar; we reconstruct `k256::SigningKey` and use the
+            // compressed (0x02/0x03 || x) form for Stellar's
+            // `secp256k1_security` contract.
+            //
+            // TODO(ed25519): when an ed25519-scheme test is added, derive
+            // the registered key from the WarpDrive instance's ed25519
+            // signing key instead and call `add-signer --scheme ed25519`.
+            for operator in &avs_operators {
+                let private_hex = operator
+                    .signer_private_key
+                    .as_ref()
+                    .expect("AvsOperator missing signer_private_key");
+                let private_bytes = const_hex::decode(private_hex)
+                    .expect("operator signer_private_key not valid hex");
+                let secp_key = k256::ecdsa::SigningKey::from_slice(&private_bytes)
+                    .expect("operator signer_private_key not a valid secp256k1 key");
+                let compressed_pubkey = secp_key.verifying_key().to_sec1_bytes();
+                let pubkey_hex = const_hex::encode(&compressed_pubkey);
+                stack
+                    .middleware
+                    .add_signer(
+                        &stack.manager.deploy_file_path,
+                        *scheme,
+                        &pubkey_hex,
+                        operator.weight as u32,
+                    )
+                    .await
+                    .unwrap();
+            }
+            stack
+                .middleware
+                .set_threshold(
+                    &stack.manager.deploy_file_path,
+                    *scheme,
+                    required_to_pass as u32,
+                    denominator,
+                )
+                .await
+                .unwrap();
+        }
+
+        // --- EVM / Cosmos: still per-test (anvil / wasmd round-trips are cheap).
         let mut futures = Vec::new();
 
         for (test_index, test) in registry.list_all().enumerate() {
+            let service_manager_instance = self.lookup.get(&test.name).unwrap();
+            if matches!(
+                service_manager_instance,
+                AnyServiceManagerInstance::Stellar { .. }
+            ) {
+                // Already registered once per shared stack above.
+                continue;
+            }
+
             let service_manager = self.get_service_manager(&test.name);
 
             // Register vectors for all running WarpDrive instances since any of them
@@ -372,7 +637,6 @@ impl ServiceManagers {
                 1
             };
 
-            let service_manager_instance = self.lookup.get(&test.name).unwrap();
             futures.push(async move {
                 match service_manager_instance {
                     AnyServiceManagerInstance::Evm { manager, .. } => {
@@ -391,70 +655,8 @@ impl ServiceManagers {
                             manager.register_operator(vector.clone()).await.unwrap();
                         }
                     }
-                    AnyServiceManagerInstance::Stellar {
-                        manager,
-                        middleware,
-                        ..
-                    } => {
-                        // IMPORTANT: operators use the **same secp256k1
-                        // signing key** across EVM, Cosmos, and Stellar — what
-                        // differs is only how that key is materialized for
-                        // each chain's signer-set:
-                        //
-                        //   - EVM:     signer's 20-byte address = keccak256(uncompressed_pubkey)[12..]
-                        //   - Cosmos:  signer's bech32 address derived from the same secp256k1 pubkey
-                        //   - Stellar: signer is the **33-byte compressed
-                        //              secp256k1 public key**, registered as
-                        //              hex on `secp256k1_security`. We pass
-                        //              the same key bytes through soroban-sdk
-                        //              ed25519 verifier? No — secp256k1 has its
-                        //              own contract on stellar (the Warpdrive
-                        //              contracts repo deploys both
-                        //              `secp256k1_security` AND
-                        //              `ed25519_security`; we only register on
-                        //              the secp256k1 side because operators
-                        //              sign with secp256k1).
-                        //
-                        // Derivation: alloy stores the key as a 32-byte
-                        // private scalar; we reconstruct `k256::SigningKey`
-                        // from it and call `verifying_key().to_sec1_bytes()`
-                        // for the compressed (0x02 || x | 0x03 || x) form.
-                        // This matches the test-vectors helper in
-                        // `warpdrive-contracts/tools/test-vectors`.
-                        //
-                        // Threshold maps directly: `required_to_pass /
-                        // num_vectors` (e.g. 2/3 for multi-vector).
-                        let denominator = std::cmp::max(num_vectors, 1) as u32;
-                        for operator in &avs_operators {
-                            let private_hex = operator
-                                .signer_private_key
-                                .as_ref()
-                                .expect("AvsOperator missing signer_private_key");
-                            let private_bytes = const_hex::decode(private_hex)
-                                .expect("operator signer_private_key not valid hex");
-                            let secp_key = k256::ecdsa::SigningKey::from_slice(&private_bytes)
-                                .expect("operator signer_private_key not a valid secp256k1 key");
-                            let compressed_pubkey = secp_key.verifying_key().to_sec1_bytes();
-                            let pubkey_hex = const_hex::encode(&compressed_pubkey);
-                            middleware
-                                .add_signer(
-                                    &manager.deploy_file_path,
-                                    SignerScheme::Secp256k1,
-                                    &pubkey_hex,
-                                    operator.weight as u32,
-                                )
-                                .await
-                                .unwrap();
-                        }
-                        middleware
-                            .set_threshold(
-                                &manager.deploy_file_path,
-                                SignerScheme::Secp256k1,
-                                required_to_pass as u32,
-                                denominator,
-                            )
-                            .await
-                            .unwrap();
+                    AnyServiceManagerInstance::Stellar { .. } => {
+                        unreachable!("Stellar handled above");
                     }
                 }
             });
@@ -481,13 +683,12 @@ impl ServiceManagers {
 
         for test in registry.list_all() {
             let service_manager = self.get_service_manager(&test.name);
-            // Pull the StellarServiceManager out of the lookup if this test
-            // has one — the deploy_submit_contract Stellar arm needs the
-            // verification_contract address from its manifest.
-            let stellar_service_manager = self.lookup.get(&test.name).and_then(|inst| match inst {
-                AnyServiceManagerInstance::Stellar { manager, .. } => Some(manager.clone()),
-                _ => None,
-            });
+            // Pull the shared StellarServiceManager out of the per-scheme
+            // stack if this is a Stellar test — `deploy_submit_contract`
+            // needs the `*_verification` address from its manifest.
+            let stellar_service_manager = self
+                .stellar_stack_for_test(&test.name)
+                .map(|stack| stack.manager.clone());
 
             futures.push(create_service_for_test(
                 test,
@@ -526,8 +727,29 @@ impl ServiceManagers {
                 .unwrap();
 
             let service_manager_instance = self.lookup.get(&service.name).unwrap();
+            // For Stellar tests, pre-resolve the shared stack so the future
+            // body can take the URI lock. The lock covers both the on-chain
+            // `set-project-spec-repo` and the per-instance
+            // `wait_for_service_update` so two tests can't stomp the single
+            // project_root URI between set and convergence.
+            let stellar_stack = match service_manager_instance {
+                AnyServiceManagerInstance::Stellar { scheme, .. } => Some(
+                    self.stellar_stacks
+                        .get(scheme)
+                        .expect("missing shared stellar stack for scheme")
+                        .clone(),
+                ),
+                _ => None,
+            };
             let http_clients = clients.http_clients.clone();
             futures.push(async move {
+                // Hold the per-scheme URI lock for the entire Stellar future.
+                // For non-Stellar tests this is `None` and costs nothing.
+                let _stellar_guard = if let Some(stack) = &stellar_stack {
+                    Some(stack.uri_lock.clone().lock_owned().await)
+                } else {
+                    None
+                };
                 match service_manager_instance {
                     AnyServiceManagerInstance::Evm { manager, .. } => {
                         // wait for the trigger streams to be ready on all instances before we update the service uri
@@ -548,13 +770,13 @@ impl ServiceManagers {
                     AnyServiceManagerInstance::Cosmos { manager, .. } => {
                         manager.set_service_uri(&service_url).await.unwrap();
                     }
-                    AnyServiceManagerInstance::Stellar {
-                        manager,
-                        middleware,
-                        ..
-                    } => {
-                        middleware
-                            .set_service_uri(&manager.deploy_file_path, &service_url)
+                    AnyServiceManagerInstance::Stellar { .. } => {
+                        let stack = stellar_stack
+                            .as_ref()
+                            .expect("Stellar branch entered without a resolved stack");
+                        stack
+                            .middleware
+                            .set_service_uri(&stack.manager.deploy_file_path, &service_url)
                             .await
                             .unwrap();
                     }

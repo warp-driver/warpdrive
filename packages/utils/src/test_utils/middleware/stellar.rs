@@ -203,7 +203,10 @@ impl StellarMiddleware {
         Ok(())
     }
 
-    pub async fn deploy_service_manager(&self) -> Result<StellarServiceManager> {
+    pub async fn deploy_service_manager(
+        &self,
+        scheme: SignerScheme,
+    ) -> Result<StellarServiceManager> {
         // Unique filename per deploy so concurrent deploys don't collide.
         let id = uuid::Uuid::now_v7();
         let filename = format!("deploy-{id}.json");
@@ -218,6 +221,8 @@ impl StellarMiddleware {
                     &self.inner.container_id,
                     "/warpdrive/cli.sh",
                     "deploy",
+                    "--variant",
+                    scheme.deploy_variant(),
                     "--output-path",
                     &in_container_path,
                 ])
@@ -303,8 +308,9 @@ impl Drop for StellarMiddlewareInner {
 }
 
 /// Signature scheme of a deployed security/verification contract pair on
-/// the warpdrive Stellar stack. Maps 1:1 to `cli.sh add-signer --scheme`.
-#[derive(Clone, Copy, Debug)]
+/// the warpdrive Stellar stack. Maps 1:1 to `cli.sh add-signer --scheme`,
+/// and 1:1 (via `deploy_variant`) to `cli.sh deploy --variant`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum SignerScheme {
     Secp256k1,
     Ed25519,
@@ -315,6 +321,17 @@ impl SignerScheme {
         match self {
             SignerScheme::Secp256k1 => "secp256k1",
             SignerScheme::Ed25519 => "ed25519",
+        }
+    }
+
+    /// `cli.sh deploy --variant` value. The middleware image names the
+    /// secp256k1 stack "ethereum" (after the handler) and the ed25519 stack
+    /// "stellar". `--variant ethereum` is the cli.sh default but we always
+    /// pass it explicitly so the call is unambiguous on either side.
+    pub fn deploy_variant(self) -> &'static str {
+        match self {
+            SignerScheme::Secp256k1 => "ethereum",
+            SignerScheme::Ed25519 => "stellar",
         }
     }
 }

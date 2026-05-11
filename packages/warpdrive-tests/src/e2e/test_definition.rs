@@ -8,6 +8,7 @@ use example_types::{
     PermissionsResponse, SquareRequest, SquareResponse, StellarQueryRequest,
 };
 use regex::Regex;
+use utils::test_utils::middleware::stellar::SignerScheme;
 use warpdrive_types::{ChainKey, Trigger, WorkflowId};
 
 use crate::e2e::components::{
@@ -48,6 +49,11 @@ pub struct TestDefinition {
 
     /// Service manager chain
     pub service_manager_chain: Option<ChainKey>,
+
+    /// Stellar signing scheme. `Some` for Stellar tests, `None` otherwise.
+    /// Used by `ServiceManagers` to route the test to the right shared
+    /// Stellar stack (secp256k1 / ethereum-handler vs ed25519 / stellar-handler).
+    pub stellar_scheme: Option<SignerScheme>,
 
     /// Execution group (ascending priority)
     pub group: TestGroupId,
@@ -300,6 +306,7 @@ impl TestBuilder {
                 description: None,
                 workflows: BTreeMap::new(),
                 service_manager_chain: None,
+                stellar_scheme: None,
                 change_service: None,
                 group: TestGroupId::Default,
                 multi_vector: false,
@@ -345,6 +352,13 @@ impl TestBuilder {
     /// Set the service manager chain
     pub fn with_service_manager_chain(mut self, chain: &ChainKey) -> Self {
         self.definition.service_manager_chain = Some(chain.clone());
+        self
+    }
+
+    /// Tag this test with the Stellar signing scheme it runs against. Only
+    /// meaningful for Stellar tests; ignored elsewhere.
+    pub fn with_stellar_scheme(mut self, scheme: SignerScheme) -> Self {
+        self.definition.stellar_scheme = Some(scheme);
         self
     }
 
