@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use anyhow::{anyhow, bail, Context, Result};
 use rand::RngCore;
-use stellar_xdr::curr::{Limits, ReadXdr, ScVal, ScSymbol};
+use stellar_xdr::curr::{Limits, ReadXdr, ScSymbol, ScVal};
 use utils::filesystem::workspace_path;
 
 /// Path (relative to the workspace root) of the staged `mock_submit_eth`
