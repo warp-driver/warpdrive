@@ -11,7 +11,7 @@
 [workspace]
 
 [package]
-name = "warpdrive-stellar-mock-submit"
+name = "warpdrive-stellar-mock-submit-eth"
 version = "0.0.0"
 edition = "2021"
 publish = false

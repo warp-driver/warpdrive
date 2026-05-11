@@ -1,4 +1,4 @@
-# See the matching note in `examples/contracts/stellar/mock_submit/Cargo.toml`
+# See the matching note in `examples/contracts/stellar/mock_submit_eth/Cargo.toml`
 # — empty `[workspace]` makes cargo treat this contract as its own
 # workspace root, so cargo doesn't walk up past the warpdrive
 # workspace into whatever outer Cargo.toml might exist on disk.

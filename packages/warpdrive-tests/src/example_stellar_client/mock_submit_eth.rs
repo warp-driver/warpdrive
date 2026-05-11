@@ -12,19 +12,26 @@ const STELLAR_RPC_URL_TESTNET: &str = "https://soroban-testnet.stellar.org";
 const STELLAR_NETWORK_PASSPHRASE_TESTNET: &str = "Test SDF Network ; September 2015";
 const STELLAR_WALLET_ALIAS: &str = "warpdrive-e2e-testnet";
 
-/// Per-test stellar mock submit contract client.
+/// Per-test stellar mock submit contract client for the **secp256k1
+/// (ethereum-handler) path**. Builds `examples/contracts/stellar/mock_submit_eth`
+/// and deploys a fresh instance bound to the test stack's
+/// `secp256k1_verification`. The ed25519 (`mock_submit_xlm`) counterpart is
+/// deployed via `SimpleStellarSubmitXlmClient` (see `mock_submit_xlm.rs`);
+/// they are kept as separate crates because they implement different
+/// handler interfaces (`verify_eth` ABI envelope vs `verify_xlm` XDR
+/// envelope) and the test runner queries them differently.
 ///
 /// Mirrors `SimpleStellarTriggerClient` in shape but each test deploys a
 /// fresh contract (random salt, no alias) so each test has its own submit
 /// destination bound to its own `ethereum_handler` — same per-test isolation
 /// EVM/Cosmos give us via `SimpleSubmit` / `MockServiceHandler`.
 #[derive(Clone, Debug)]
-pub struct SimpleStellarSubmitClient {
+pub struct SimpleStellarSubmitEthClient {
     chain: ChainKey,
     config_dir: PathBuf,
 }
 
-impl SimpleStellarSubmitClient {
+impl SimpleStellarSubmitEthClient {
     pub fn new(chain: ChainKey) -> Self {
         Self {
             chain,
@@ -35,8 +42,8 @@ impl SimpleStellarSubmitClient {
         }
     }
 
-    /// Build (idempotent) the mock_submit contract WASM and deploy a fresh
-    /// instance bound to `verification_contract` (the test stack's
+    /// Build (idempotent) the mock_submit_eth contract WASM and deploy a
+    /// fresh instance bound to `verification_contract` (the test stack's
     /// `secp256k1_verification`). Returns the deployed contract id.
     pub async fn deploy(&self, verification_contract: &str) -> Result<String> {
         self.ensure_wallet()?;
@@ -159,7 +166,7 @@ impl SimpleStellarSubmitClient {
     }
 
     fn build_contract(&self) -> Result<()> {
-        let contract_dir = workspace_path().join("examples/contracts/stellar/mock_submit");
+        let contract_dir = workspace_path().join("examples/contracts/stellar/mock_submit_eth");
 
         let output = Command::new("stellar")
             .arg("--config-dir")
@@ -184,7 +191,7 @@ impl SimpleStellarSubmitClient {
 
     fn contract_artifact_path(&self) -> PathBuf {
         workspace_path().join(
-            "examples/contracts/stellar/mock_submit/target/wasm32v1-none/release/warpdrive_stellar_mock_submit.wasm",
+            "examples/contracts/stellar/mock_submit_eth/target/wasm32v1-none/release/warpdrive_stellar_mock_submit_eth.wasm",
         )
     }
 
@@ -220,7 +227,7 @@ fn random_salt_hex() -> String {
 fn parse_optional_bytes_output(raw: &str) -> Result<Vec<u8>> {
     let trimmed = raw.trim();
     if trimmed.is_empty() || trimmed == "null" {
-        bail!("stellar mock_submit returned no data for trigger");
+        bail!("stellar mock_submit_eth returned no data for trigger");
     }
     // Try JSON first (handles both quoted strings and bare hex objects).
     if let Ok(s) = serde_json::from_str::<String>(trimmed) {

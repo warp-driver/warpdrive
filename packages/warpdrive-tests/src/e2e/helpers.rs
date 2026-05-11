@@ -444,7 +444,7 @@ pub async fn deploy_submit_contract(
                         verification_contract
                     );
                     let client =
-                        crate::example_stellar_client::SimpleStellarSubmitClient::new(chain);
+                        crate::example_stellar_client::SimpleStellarSubmitEthClient::new(chain);
                     let contract_id = client.deploy(&verification_contract).await?;
                     tracing::info!("Stellar mock submit handler deployed at {}", contract_id);
                     let parsed = stellar_strkey::Contract::from_string(&contract_id)
@@ -646,7 +646,7 @@ pub async fn stellar_wait_for_task_to_land(
     trigger_id: TriggerId,
     timeout: Duration,
 ) -> Result<Vec<u8>> {
-    let submit_client = crate::example_stellar_client::SimpleStellarSubmitClient::new(chain);
+    let submit_client = crate::example_stellar_client::SimpleStellarSubmitEthClient::new(chain);
     let contract_id_str = format!("{contract_id}");
 
     tokio::time::timeout(timeout, async move {
