@@ -1,8 +1,10 @@
 use std::path::PathBuf;
 use std::process::Command;
+use std::time::Duration;
 
 use anyhow::{anyhow, bail, Context, Result};
 use rand::RngCore;
+use stellar_xdr::curr::{Limits, ReadXdr, ScSymbol, ScVal};
 use utils::filesystem::workspace_path;
 
 /// Path (relative to the workspace root) of the staged `mock_submit_xlm`
@@ -29,13 +31,13 @@ const STELLAR_WALLET_ALIAS: &str = "warpdrive-e2e-testnet";
 /// e2e wallet alias as the admin — it's the same identity signing the
 /// deploy tx, so there's no separate identity to manage.
 ///
-/// **Read API**: not implemented yet. The xlm handler stores payloads
-/// keyed by 20-byte `event_id` (extracted from the envelope) via
+/// **Read API**: the xlm handler stores payloads keyed by 20-byte
+/// `event_id` (extracted from the envelope) via
 /// `payload(event_id) -> Option<Bytes>`, not by `u64` `trigger_id` the
-/// way the eth mock does (`get_data` / `is_valid_trigger_id`). When the
-/// first ed25519 e2e test gets added, wire reads through `payload(...)`
-/// and update `stellar_wait_for_task_to_land` (in `e2e/helpers.rs`) to
-/// route by scheme.
+/// way the eth mock does. The flow mirrors the eth mock: each handler
+/// is freshly deployed per test and emits a single `Verified` event on
+/// every successful `verify_xlm`, so polling that event yields the
+/// event_id which we then pass to `payload(...)`.
 #[derive(Clone, Debug)]
 pub struct SimpleStellarSubmitXlmClient {
     config_dir: PathBuf,
@@ -116,6 +118,98 @@ impl SimpleStellarSubmitXlmClient {
         Ok(trimmed.to_string())
     }
 
+    /// Read the payload stored at `event_id_hex` on the per-test handler.
+    /// `event_id_hex` is the bare 40-char hex form of the 20-byte event id
+    /// (no `0x` prefix — that's what soroban-cli expects for `BytesN<20>`
+    /// arguments).
+    pub async fn payload(&self, contract_id: &str, event_id_hex: &str) -> Result<Vec<u8>> {
+        let output = self.run_stellar(&[
+            "contract",
+            "invoke",
+            "--id",
+            contract_id,
+            "--source-account",
+            STELLAR_WALLET_ALIAS,
+            "--rpc-url",
+            STELLAR_RPC_URL_TESTNET,
+            "--network-passphrase",
+            STELLAR_NETWORK_PASSPHRASE_TESTNET,
+            "--send",
+            "no",
+            "--",
+            "payload",
+            "--event_id",
+            event_id_hex,
+        ])?;
+        parse_optional_bytes_output(&output)
+    }
+
+    /// Poll Soroban RPC for the contract's first `Verified` event and
+    /// return the embedded event_id as a 40-char hex string. Mirrors the
+    /// eth client's helper of the same name — the `Verified` event shape
+    /// is shared (`warpdrive_shared::interfaces::handler::Verified`).
+    pub async fn wait_for_verified_event_id(
+        &self,
+        contract_id: &str,
+        start_ledger: u32,
+        timeout: Duration,
+    ) -> Result<String> {
+        let rpc = wasi_stellar_rpc_client::Client::new(STELLAR_RPC_URL_TESTNET)
+            .map_err(|e| anyhow!("failed to construct stellar rpc client: {e:?}"))?;
+
+        tokio::time::timeout(timeout, async {
+            let mut start = wasi_stellar_rpc_client::EventStart::Ledger(start_ledger);
+            loop {
+                let resp = rpc
+                    .get_events(
+                        start.clone(),
+                        Some(wasi_stellar_rpc_client::EventType::Contract),
+                        &[contract_id.to_string()],
+                        &[],
+                        None,
+                    )
+                    .await;
+                match resp {
+                    Ok(resp) => {
+                        for event in resp.events {
+                            if let Some(hex) = extract_verified_event_id(&event) {
+                                return Ok(hex);
+                            }
+                        }
+                        if !resp.cursor.is_empty() {
+                            start = wasi_stellar_rpc_client::EventStart::Cursor(resp.cursor);
+                        }
+                    }
+                    Err(e) => {
+                        tracing::debug!(
+                            "stellar get_events transient error while polling {}: {e:?}",
+                            contract_id
+                        );
+                    }
+                }
+                tracing::debug!(
+                    "Waiting for Verified event on stellar contract {}",
+                    contract_id
+                );
+                tokio::time::sleep(Duration::from_millis(500)).await;
+            }
+        })
+        .await
+        .map_err(|_| anyhow!("Timeout waiting for Verified event on {}", contract_id))?
+    }
+
+    /// Latest ledger sequence — useful as a `start_ledger` baseline before
+    /// firing a trigger so the subsequent event poll has a tight window.
+    pub async fn current_ledger(&self) -> Result<u32> {
+        let rpc = wasi_stellar_rpc_client::Client::new(STELLAR_RPC_URL_TESTNET)
+            .map_err(|e| anyhow!("failed to construct stellar rpc client: {e:?}"))?;
+        let info = rpc
+            .get_latest_ledger()
+            .await
+            .map_err(|e| anyhow!("get_latest_ledger failed: {e:?}"))?;
+        Ok(info.sequence)
+    }
+
     fn ensure_wallet(&self) -> Result<()> {
         std::fs::create_dir_all(&self.config_dir)
             .with_context(|| format!("create stellar config dir {}", self.config_dir.display()))?;
@@ -171,4 +265,53 @@ fn random_salt_hex() -> String {
     let mut salt = [0u8; 32];
     rand::rng().fill_bytes(&mut salt);
     salt.iter().map(|b| format!("{b:02x}")).collect()
+}
+
+fn extract_verified_event_id(event: &wasi_stellar_rpc_client::Event) -> Option<String> {
+    let topics: Vec<ScVal> = event
+        .topic
+        .iter()
+        .filter_map(|t| ScVal::from_xdr_base64(t, Limits::none()).ok())
+        .collect();
+    let first_topic_is_verified = matches!(
+        topics.first(),
+        Some(ScVal::Symbol(ScSymbol(sym))) if sym.as_slice() == b"verified"
+    );
+    if !first_topic_is_verified {
+        return None;
+    }
+    for tail in topics.iter().skip(1) {
+        if let Some(hex) = scval_as_bytesn20_hex(tail) {
+            return Some(hex);
+        }
+    }
+    if let Ok(value) = ScVal::from_xdr_base64(&event.value, Limits::none()) {
+        if let Some(hex) = scval_as_bytesn20_hex(&value) {
+            return Some(hex);
+        }
+    }
+    None
+}
+
+fn scval_as_bytesn20_hex(v: &ScVal) -> Option<String> {
+    match v {
+        ScVal::Bytes(b) if b.0.len() == 20 => Some(const_hex::encode(&b.0)),
+        _ => None,
+    }
+}
+
+fn parse_optional_bytes_output(raw: &str) -> Result<Vec<u8>> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() || trimmed == "null" {
+        bail!("stellar mock_submit_xlm returned no data for event_id");
+    }
+    if let Ok(s) = serde_json::from_str::<String>(trimmed) {
+        return decode_bytes_payload(&s);
+    }
+    decode_bytes_payload(trimmed.trim_matches('"'))
+}
+
+fn decode_bytes_payload(s: &str) -> Result<Vec<u8>> {
+    let s = s.strip_prefix("0x").unwrap_or(s);
+    const_hex::decode(s).with_context(|| format!("failed to hex-decode bytes payload: {s}"))
 }

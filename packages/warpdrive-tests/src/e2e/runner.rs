@@ -686,11 +686,18 @@ async fn run_test(
                                         "expected Stellar submission handler, got {other:?}"
                                     ),
                                 };
+                                let scheme = test.stellar_scheme.ok_or_else(|| {
+                                    anyhow!(
+                                        "Stellar workflow {} ran without a stellar_scheme set",
+                                        workflow_id
+                                    )
+                                })?;
                                 stellar_wait_for_task_to_land(
                                     chain.clone(),
                                     *stellar_contract,
                                     trigger_id,
                                     *timeout,
+                                    scheme,
                                 )
                                 .await?
                             }
