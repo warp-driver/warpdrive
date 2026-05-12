@@ -130,6 +130,7 @@ pub fn encode_trigger_output(
         ServiceManager::Stellar(_) => evm_encode_trigger_output(trigger_id, output),
     }
 }
+
 // For EVM ServiceHandler contracts, encode output using DataWithId struct
 fn evm_encode_trigger_output(
     trigger_id: u64,
@@ -158,6 +159,24 @@ fn cosmos_encode_trigger_output(
         }
         .to_bytes()
         .unwrap(),
+        ordering: None,
+        event_id_salt: None,
+    }
+}
+
+pub fn stellar_encode_trigger_output(
+    _trigger_id: u64,
+    output: impl AsRef<[u8]>,
+) -> component_output::WasmResponse {
+    component_output::WasmResponse {
+        // TODO: make a new XLM type to handle this - use it in the example contracts
+        // payload: MessageWithId {
+        //     trigger_id: cosmwasm_std::Uint64::from(trigger_id),
+        //     message: cosmwasm_std::HexBinary::from(output.as_ref().to_vec()),
+        // }
+        // .to_bytes()
+        // .unwrap(),
+        payload: output.as_ref().to_vec(),
         ordering: None,
         event_id_salt: None,
     }

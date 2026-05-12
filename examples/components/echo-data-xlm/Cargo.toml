@@ -1,0 +1,18 @@
+[package]
+name = "echo-data-xlm"
+edition.workspace = true
+version.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[dependencies]
+tokio = { workspace = true, features = ["sync", "io-util", "macros", "rt", "time"] }
+example-helpers = { workspace = true }
+anyhow = { workspace = true }
+
+[lib]
+crate-type = ["cdylib"]
+
+[package.metadata.component]
+package = "warpdrive-tests:echo-data-xlm"

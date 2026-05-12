@@ -12,6 +12,7 @@ members = [
     "examples/components/stellar-query",
     "examples/components/chain-trigger-lookup",
     "examples/components/echo-data",
+    "examples/components/echo-data-xlm",
     "examples/components/square",
     "examples/components/permissions",
     "examples/components/echo-block-interval",

@@ -3573,6 +3573,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "echo-data-xlm"
+version = "2.10.0"
+dependencies = [
+ "anyhow",
+ "example-helpers",
+ "tokio",
+]
+
+[[package]]
 name = "ed25519"
 version = "2.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
