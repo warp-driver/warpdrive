@@ -478,25 +478,37 @@ impl ServiceManagers {
                 // mnemonic at the WarpDrive instance's reported hd_index.
                 let operator_mnemonic = &self.configs.mnemonics.vectors[operator_offset];
 
-                let pubkey_hex = match (*scheme, signer) {
-                    (
-                        SignerScheme::Secp256k1,
-                        SignerResponse::Secp256k1 {
-                            evm_address: avs_signer_address,
-                            hd_index,
-                        },
-                    ) => {
+                // WarpDrive's `add_service_key` picks the signer's
+                // algorithm by reading the service's workflow
+                // `signature_kind` — but at this point in bootstrap the
+                // service has only the empty-workflow placeholder
+                // (`set_initial_service_uris`), so it always falls back
+                // to `SignatureKind::evm_default()` (secp256k1) even on
+                // ed25519 stacks. The signer is re-derived at the right
+                // hd_index once the real workflows arrive via
+                // `update_services`, so here we just need the hd_index
+                // and we derive the on-chain key from the operator's
+                // mnemonic ourselves.
+                let pubkey_hex = match *scheme {
+                    SignerScheme::Secp256k1 => {
+                        let hd_index = signer.hd_index();
                         let signing_signer = utils::evm_client::signing::make_signer(
                             operator_mnemonic,
                             Some(hd_index),
                         )
                         .unwrap();
-                        assert_eq!(
-                            signing_signer.address().to_string().to_lowercase(),
-                            avs_signer_address.to_lowercase(),
-                            "Derived signing address doesn't match WarpDrive signer address \
-                             for vector {operator_offset}"
-                        );
+                        if let SignerResponse::Secp256k1 {
+                            evm_address: avs_signer_address,
+                            ..
+                        } = &signer
+                        {
+                            assert_eq!(
+                                signing_signer.address().to_string().to_lowercase(),
+                                avs_signer_address.to_lowercase(),
+                                "Derived signing address doesn't match WarpDrive signer address \
+                                 for vector {operator_offset}"
+                            );
+                        }
                         // Stellar's `secp256k1_security` contract keys on
                         // the compressed sec1 pubkey (0x02/0x03 || x).
                         let secret_bytes = signing_signer.to_bytes();
@@ -504,39 +516,42 @@ impl ServiceManagers {
                             .expect("operator signing key not a valid secp256k1 key");
                         const_hex::encode(secp_key.verifying_key().to_sec1_bytes())
                     }
-                    (
-                        SignerScheme::Ed25519,
-                        SignerResponse::Ed25519 {
-                            stellar_pubkey: avs_stellar_pubkey,
-                            hd_index,
-                        },
-                    ) => {
+                    SignerScheme::Ed25519 => {
+                        let hd_index = signer.hd_index();
                         // SLIP-0010 / SEP-0005 derivation, same path the
-                        // WarpDrive instance uses for its signing key.
+                        // WarpDrive instance uses for its signing key
+                        // once it picks up an ed25519 workflow.
                         let signing_key = utils::stellar_client::make_stellar_signer(
                             operator_mnemonic,
                             Some(hd_index),
                         )
                         .unwrap();
-                        let derived_strkey = format!(
-                            "{}",
-                            stellar_strkey::ed25519::PublicKey(
-                                *signing_key.verifying_key().as_bytes(),
-                            )
-                        );
-                        assert_eq!(
-                            derived_strkey, avs_stellar_pubkey,
-                            "Derived stellar pubkey doesn't match WarpDrive signer pubkey \
-                             for vector {operator_offset}"
-                        );
+                        // Only sanity-check the strkey match if WarpDrive
+                        // already reports the matching algorithm. Until
+                        // `update_services` runs with an ed25519 workflow
+                        // it'll still be returning the bootstrap-default
+                        // secp256k1 response, which we accept here.
+                        if let SignerResponse::Ed25519 {
+                            stellar_pubkey: avs_stellar_pubkey,
+                            ..
+                        } = &signer
+                        {
+                            let derived_strkey = format!(
+                                "{}",
+                                stellar_strkey::ed25519::PublicKey(
+                                    *signing_key.verifying_key().as_bytes(),
+                                )
+                            );
+                            assert_eq!(
+                                derived_strkey, *avs_stellar_pubkey,
+                                "Derived stellar pubkey doesn't match WarpDrive signer pubkey \
+                                 for vector {operator_offset}"
+                            );
+                        }
                         // `ed25519_security` contract takes the raw
                         // 32-byte BytesN<32> public key.
                         const_hex::encode(signing_key.verifying_key().as_bytes())
                     }
-                    (expected, got) => panic!(
-                        "Stellar stack ({expected:?}) got mismatched signer response for \
-                         vector {operator_offset}: {got:?}"
-                    ),
                 };
 
                 operator_pubkeys_hex.push(pubkey_hex);
