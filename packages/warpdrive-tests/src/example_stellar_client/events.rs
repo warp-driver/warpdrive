@@ -80,9 +80,11 @@ pub(super) async fn wait_for_triggered_event_id(
 
 /// Pull the 20-byte event_id out of a `Triggered { trigger_id, event_id }`
 /// contract event. Matching topic chain is
-/// `[Symbol("triggered"), U64(trigger_id)]`; the body is the event_id as
-/// a bare `ScVal::Bytes(20)` (soroban-sdk's `#[contractevent]` doesn't
-/// wrap a single non-topic field).
+/// `[Symbol("triggered"), U64(trigger_id)]`; the body is an `ScMap` with
+/// one entry `{ Symbol("event_id") -> Bytes(20) }` because soroban-sdk's
+/// `#[contractevent]` defaults to `data_format = "map"`. We tolerate a
+/// bare `ScVal::Bytes(20)` body too in case a future version of the
+/// macro switches to `single-value`.
 fn extract_triggered_event_id(
     event: &wasi_stellar_rpc_client::Event,
     expected_trigger_id: u64,
@@ -106,12 +108,23 @@ fn extract_triggered_event_id(
     if !trigger_id_matches {
         return None;
     }
-    if let Ok(value) = ScVal::from_xdr_base64(&event.value, Limits::none()) {
-        if let Some(hex) = scval_as_bytesn20_hex(&value) {
-            return Some(hex);
+    let value = ScVal::from_xdr_base64(&event.value, Limits::none()).ok()?;
+    // Default `data_format = "map"` shape: { event_id -> Bytes(20) }.
+    if let ScVal::Map(Some(map)) = &value {
+        for entry in map.0.iter() {
+            let key_matches = matches!(
+                &entry.key,
+                ScVal::Symbol(ScSymbol(sym)) if sym.as_slice() == b"event_id"
+            );
+            if key_matches {
+                if let Some(hex) = scval_as_bytesn20_hex(&entry.val) {
+                    return Some(hex);
+                }
+            }
         }
     }
-    None
+    // `data_format = "single-value"` fallback.
+    scval_as_bytesn20_hex(&value)
 }
 
 pub(super) fn scval_as_bytesn20_hex(v: &ScVal) -> Option<String> {
