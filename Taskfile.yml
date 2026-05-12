@@ -156,6 +156,17 @@ tasks:
       echo "Checksums written to $CHECKSUM_FILE"
       cat "$CHECKSUM_FILE"
 
+  copy-stellar-contracts:
+    desc: Take mock contracts from local warpdrive-contracts
+    cmds:
+      - cp ../warpdrive-contracts/contracts/ethereum-handler/src/*.rs ./examples/contracts/stellar/mock_submit_eth/src
+      - rm ./examples/contracts/stellar/mock_submit_eth/src/tests.rs
+      - sed -i '/test/d' ./examples/contracts/stellar/mock_submit_eth/src/lib.rs
+      - cp ../warpdrive-contracts/contracts/stellar-handler/src/*.rs ./examples/contracts/stellar/mock_submit_xlm/src
+      - rm ./examples/contracts/stellar/mock_submit_xlm/src/tests.rs
+      - sed -i '/test/d' ./examples/contracts/stellar/mock_submit_xlm/src/lib.rs
+      - task: stellar-build
+
   wasi-publish:
     desc: Publish WASM components to wa.dev registry
     vars:
@@ -409,6 +420,13 @@ tasks:
       task start-alertmanager &
       task start-jaeger &
       wait
+
+  unit-test:
+    desc: Quick unit tests
+    cmds:
+      - cargo test -p warpdrive-cli --lib -- --skip test_set_component_source_registry
+      - cargo test -p warpdrive-types --lib
+      - cargo test -p warpdrive-engine --lib
 
   test-warpdrive-e2e:
     desc: Run on-chain integration tests
