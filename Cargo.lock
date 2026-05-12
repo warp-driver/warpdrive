@@ -3846,6 +3846,7 @@ dependencies = [
  "serde",
  "serde_json",
  "stellar-xdr",
+ "warpdrive-client",
  "warpdrive-wasi-utils",
  "wasip2",
  "wit-bindgen 0.53.1",

@@ -24,6 +24,7 @@ cw-warpdrive-mock-api = {workspace = true}
 wasip2 = {workspace = true}
 base64 = { workspace = true }
 stellar-xdr = { workspace = true }
+warpdrive-client = { workspace = true }
 
 [lib]
 crate-type = ["rlib", "cdylib"]

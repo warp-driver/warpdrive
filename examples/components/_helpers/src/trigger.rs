@@ -165,18 +165,24 @@ fn cosmos_encode_trigger_output(
 }
 
 pub fn stellar_encode_trigger_output(
-    _trigger_id: u64,
+    trigger_id: u64,
     output: impl AsRef<[u8]>,
 ) -> component_output::WasmResponse {
+    // Wrap as XDR-encoded `MessageWithId` so the stellar-handler can
+    // decode `envelope.payload`, recover `trigger_id`, and publish the
+    // `Triggered { trigger_id, event_id }` event. `warpdrive_client`
+    // exposes a std-side mirror of `warpdrive_shared::interfaces::handler
+    // ::MessageWithId` so we don't need to drag soroban-sdk into the
+    // WASI component build.
+    let payload = warpdrive_client::message_with_id::MessageWithId {
+        trigger_id,
+        message: output.as_ref().to_vec(),
+    }
+    .to_xdr_bytes()
+    .expect("MessageWithId XDR encode failed");
+
     component_output::WasmResponse {
-        // TODO: make a new XLM type to handle this - use it in the example contracts
-        // payload: MessageWithId {
-        //     trigger_id: cosmwasm_std::Uint64::from(trigger_id),
-        //     message: cosmwasm_std::HexBinary::from(output.as_ref().to_vec()),
-        // }
-        // .to_bytes()
-        // .unwrap(),
-        payload: output.as_ref().to_vec(),
+        payload,
         ordering: None,
         event_id_salt: None,
     }
