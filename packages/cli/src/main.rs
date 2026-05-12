@@ -25,7 +25,6 @@ use warpdrive_cli::{
     context::CliContext,
     util::{write_output_file, ComponentInput},
 };
-use warpdrive_types::SignatureKind;
 use warpdrive_types::WavsSigner;
 use warpdrive_types::{ChainKeyId, Envelope, IWarpDriveServiceHandler};
 
@@ -310,8 +309,11 @@ async fn main() {
                         };
 
                         // Create signature using the vector EVM client's signer
-                        let signature = envelope
-                            .sign(&vectr_evm_client.signer, SignatureKind::evm_default())
+                        let signature = vectr_evm_client
+                            .signer
+                            .write()
+                            .await
+                            .sign_envelope(&envelope)
                             .await
                             .unwrap();
 
@@ -332,7 +334,7 @@ async fn main() {
 
                         // Prepare signature data
                         let signature_data =
-                            match envelope.signature_data(vec![signature], previous_block) {
+                            match envelope.evm_signature_data(vec![signature], previous_block) {
                                 Ok(data) => data,
                                 Err(e) => {
                                     eprintln!("Failed to prepare signature data: {e}");

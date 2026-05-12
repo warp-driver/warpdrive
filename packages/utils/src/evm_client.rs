@@ -8,7 +8,6 @@ use alloy_provider::{
     DynProvider, Provider, ProviderBuilder, WsConnect,
 };
 use alloy_rpc_types_eth::TransactionRequest;
-use alloy_signer_local::PrivateKeySigner;
 use alloy_transport::{TransportErrorKind, TransportResult};
 use anyhow::Result;
 use async_trait::async_trait;
@@ -17,7 +16,7 @@ use std::{
     str::FromStr,
     sync::{atomic::AtomicU64, Arc},
 };
-use warpdrive_types::Credential;
+use warpdrive_types::{Credential, VectrSigner};
 
 use crate::error::EvmClientError;
 
@@ -128,7 +127,10 @@ pub struct EvmSigningClient {
     /// due to type system limitations, we need to store it separately
     /// since the signer in `EthereumWallet` implements only `TxSigner`
     /// and there is not a direct way convert it into `Signer`
-    pub signer: Arc<PrivateKeySigner>,
+    pub signer: Arc<tokio::sync::RwLock<VectrSigner>>,
+    /// Cached signer address. Captured at construction so synchronous
+    /// callers (e.g. `address()`) don't have to lock the RwLock (which is also an ergonomics win for sync callers)
+    pub address: Address,
     pub nonce_manager: AnyNonceManager,
 }
 
@@ -256,12 +258,14 @@ impl EvmSigningClient {
             EvmEndpoint::Http(url) => DynProvider::new(builder.connect_http(url.clone())),
         };
 
+        let address = signer.address();
         Ok(Self {
             config,
             provider,
             nonce_manager,
             wallet: Arc::new(wallet),
-            signer: Arc::new(signer),
+            signer: Arc::new(tokio::sync::RwLock::new(VectrSigner::Evm(signer))),
+            address,
         })
     }
 
@@ -287,7 +291,7 @@ impl std::fmt::Debug for EvmSigningClient {
 
 impl EvmSigningClient {
     pub fn address(&self) -> Address {
-        self.signer.address()
+        self.address
     }
 }
 

@@ -17,6 +17,21 @@ pub enum SignerResponse {
         /// The evm-style address ("0x" prefixed hex string) derived from the key
         evm_address: String,
     },
+    Ed25519 {
+        /// The derivation index used to create this key from the mnemonic
+        hd_index: u32,
+        /// The Stellar `G...` strkey for the operator's signing key
+        stellar_pubkey: String,
+    },
+}
+
+impl SignerResponse {
+    pub fn hd_index(&self) -> u32 {
+        match self {
+            SignerResponse::Secp256k1 { hd_index, .. } => *hd_index,
+            SignerResponse::Ed25519 { hd_index, .. } => *hd_index,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema)]

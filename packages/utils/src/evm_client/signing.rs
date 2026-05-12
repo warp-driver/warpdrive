@@ -159,8 +159,8 @@ mod test {
     use alloy_primitives::{Bytes, FixedBytes};
     use alloy_provider::Provider;
     use alloy_rpc_types_eth::TransactionTrait;
-    use alloy_signer_local::{coins_bip39::English, MnemonicBuilder, PrivateKeySigner};
-    use warpdrive_types::{Credential, Envelope, SignatureKind, WavsSigner};
+    use alloy_signer_local::{coins_bip39::English, MnemonicBuilder};
+    use warpdrive_types::{Credential, Envelope, VectrSigner, WavsSigner};
 
     use crate::{
         evm_client::{AnyNonceManager, EvmSigningClient, EvmSigningClientConfig},
@@ -195,74 +195,87 @@ mod test {
 
     #[tokio::test]
     async fn signature_validation() {
-        let signer = mock_signer();
+        use warpdrive_types::WavsSignature;
+
+        let mut signer = mock_signer();
+        let mut signer_no_prefix = mock_signer_no_prefix();
         let envelope = mock_envelope();
 
-        let signature = envelope
-            .sign(&signer, SignatureKind::evm_default())
-            .await
-            .unwrap();
+        let signature = signer.sign_envelope(&envelope).await.unwrap();
 
         assert_eq!(
-            signature.evm_signer_address(&envelope).unwrap(),
-            signer.address()
+            signature
+                .signer_address(&envelope)
+                .unwrap()
+                .try_as_evm()
+                .unwrap(),
+            signer.address().try_as_evm().unwrap()
         );
 
         // also see that we can recover with no prefix
-        let signature = envelope
-            .sign(
-                &signer,
-                SignatureKind {
-                    algorithm: warpdrive_types::SignatureAlgorithm::Secp256k1,
-                    prefix: None,
-                },
-            )
-            .await
-            .unwrap();
+        let signature = signer_no_prefix.sign_envelope(&envelope).await.unwrap();
 
         assert_eq!(
-            signature.evm_signer_address(&envelope).unwrap(),
-            signer.address()
+            signature
+                .signer_address(&envelope)
+                .unwrap()
+                .try_as_evm()
+                .unwrap(),
+            signer_no_prefix.address().try_as_evm().unwrap()
         );
 
         // and that it fails if we try the wrong prefix
-        let mut signature = envelope
-            .sign(&signer, SignatureKind::evm_default())
-            .await
-            .unwrap();
-
-        signature.kind.prefix = None;
+        let signature = signer.sign_envelope(&envelope).await.unwrap();
+        let tampered = match signature {
+            WavsSignature::Secp256k1 { sig, .. } => WavsSignature::Secp256k1 { sig, prefix: None },
+            other => panic!("expected Secp256k1 variant, got {other:?}"),
+        };
 
         assert_ne!(
-            signature.evm_signer_address(&envelope).unwrap(),
-            signer.address()
+            tampered
+                .signer_address(&envelope)
+                .unwrap()
+                .try_as_evm()
+                .unwrap(),
+            signer.address().try_as_evm().unwrap()
         );
 
         // in both directions
-        let mut signature = envelope
-            .sign(
-                &signer,
-                SignatureKind {
-                    algorithm: warpdrive_types::SignatureAlgorithm::Secp256k1,
-                    prefix: None,
-                },
-            )
-            .await
-            .unwrap();
-
-        signature.kind.prefix = Some(warpdrive_types::SignaturePrefix::Eip191);
+        let signature = signer_no_prefix.sign_envelope(&envelope).await.unwrap();
+        let tampered = match signature {
+            WavsSignature::Secp256k1 { sig, .. } => WavsSignature::Secp256k1 {
+                sig,
+                prefix: Some(warpdrive_types::SignaturePrefix::Eip191),
+            },
+            other => panic!("expected Secp256k1 variant, got {other:?}"),
+        };
 
         assert_ne!(
-            signature.evm_signer_address(&envelope).unwrap(),
-            signer.address()
+            tampered
+                .signer_address(&envelope)
+                .unwrap()
+                .try_as_evm()
+                .unwrap(),
+            signer_no_prefix.address().try_as_evm().unwrap()
         );
     }
 
-    fn mock_signer() -> PrivateKeySigner {
-        MnemonicBuilder::<English>::default()
+    fn mock_signer() -> VectrSigner {
+        let signer = MnemonicBuilder::<English>::default()
             .word_count(24)
             .build_random()
-            .unwrap()
+            .unwrap();
+
+        VectrSigner::Evm(signer)
+    }
+
+    fn mock_signer_no_prefix() -> VectrSigner {
+        let signer = MnemonicBuilder::<English>::default()
+            .word_count(24)
+            .build_random()
+            .unwrap();
+
+        VectrSigner::EvmNoPrefix(signer)
     }
 
     fn mock_envelope() -> Envelope {
@@ -310,7 +323,16 @@ mod test {
         for i in 1..=transactions_to_send {
             tracing::info!("Secondary client submitting tx {i}");
             secondary_client
-                .transfer_funds(secondary_client.signer.address(), "0.001")
+                .transfer_funds(
+                    secondary_client
+                        .signer
+                        .read()
+                        .await
+                        .address()
+                        .try_as_evm()
+                        .unwrap(),
+                    "0.001",
+                )
                 .await
                 .expect("secondary transfer should succeed");
             tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
@@ -361,8 +383,11 @@ mod test {
 
         // Build a signed envelope referencing the primary signer.
         let envelope = mock_envelope();
-        let signature = envelope
-            .sign(primary_client.signer.as_ref(), SignatureKind::evm_default())
+        let signature = primary_client
+            .signer
+            .write()
+            .await
+            .sign_envelope(&envelope)
             .await
             .expect("signing envelope should succeed");
         let current_block = primary_client
@@ -371,7 +396,7 @@ mod test {
             .await
             .expect("should get block height");
         let signature_data = envelope
-            .signature_data(vec![signature], current_block.saturating_sub(1))
+            .evm_signature_data(vec![signature], current_block.saturating_sub(1))
             .expect("signature data should build");
 
         // With a stale nonce cached, the first attempt will fail, triggering the retry path.

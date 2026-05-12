@@ -100,7 +100,7 @@ impl Aggregator {
 
         let signature_data = first
             .envelope
-            .signature_data(signatures, block_height_minus_one)?;
+            .evm_signature_data(signatures, block_height_minus_one)?;
 
         let result = service_manager
             .validate(first.envelope.clone().into(), signature_data.clone().into())
@@ -221,7 +221,7 @@ impl Aggregator {
 
         let signature_data = first
             .envelope
-            .signature_data(signatures, block_height_minus_one)?;
+            .evm_signature_data(signatures, block_height_minus_one)?;
 
         let result: WarpDriveValidateResult = client
             .querier
@@ -371,7 +371,15 @@ impl Aggregator {
         // the receive-time validator in `validate.rs`.
         let mut signers_and_sigs: Vec<([u8; 33], [u8; 65])> = Vec::with_capacity(queue.len());
         for queued in queue {
-            let sig_bytes: &[u8] = &queued.envelope_signature.data;
+            let sig_bytes: &[u8] = match &queued.envelope_signature {
+                WavsSignature::Secp256k1 { sig, .. } => sig,
+                WavsSignature::Ed25519 { .. } => {
+                    return Err(AggregatorError::Stellar(
+                        "stellar submit (secp256k1 verifier): expected a secp256k1 signature"
+                            .to_string(),
+                    ));
+                }
+            };
             if sig_bytes.len() != 65 {
                 return Err(AggregatorError::Stellar(format!(
                     "stellar submit: expected 65-byte secp256k1 signature, got {}",

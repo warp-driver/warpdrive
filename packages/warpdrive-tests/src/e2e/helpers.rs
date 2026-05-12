@@ -353,7 +353,8 @@ pub async fn create_submit_from_config(
                     let handler_str = match submission_contract {
                         warpdrive_types::ChainAddress::Evm(addr) => addr.to_string(),
                         warpdrive_types::ChainAddress::Cosmos(addr) => addr.to_string(),
-                        warpdrive_types::ChainAddress::Stellar(c) => format!("{c}"),
+                        warpdrive_types::ChainAddress::StellarContract(c) => format!("{c}"),
+                        warpdrive_types::ChainAddress::StellarPubKey(k) => format!("{k}"),
                     };
                     config_vars.insert("service_handler".to_string(), handler_str);
                 }
@@ -457,7 +458,7 @@ pub async fn deploy_submit_contract(
                     );
                     let parsed = stellar_strkey::Contract::from_string(&contract_id)
                         .map_err(|e| anyhow!("invalid stellar contract id from deploy: {e:?}"))?;
-                    Ok(warpdrive_types::ChainAddress::Stellar(parsed))
+                    Ok(warpdrive_types::ChainAddress::StellarContract(parsed))
                 }
                 StellarContracts::EdContracts(c) => {
                     // ed25519 (stellar-handler) path. Deploys the
@@ -497,7 +498,7 @@ pub async fn deploy_submit_contract(
                     );
                     let parsed = stellar_strkey::Contract::from_string(&contract_id)
                         .map_err(|e| anyhow!("invalid stellar contract id from deploy: {e:?}"))?;
-                    Ok(warpdrive_types::ChainAddress::Stellar(parsed))
+                    Ok(warpdrive_types::ChainAddress::StellarContract(parsed))
                 }
             }
         }

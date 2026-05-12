@@ -167,7 +167,9 @@ impl ServiceManager {
         match self {
             ServiceManager::Evm { address, .. } => crate::ChainAddress::Evm(*address),
             ServiceManager::Cosmos { address, .. } => crate::ChainAddress::Cosmos(address.clone()),
-            ServiceManager::Stellar { address, .. } => crate::ChainAddress::Stellar(*address),
+            ServiceManager::Stellar { address, .. } => {
+                crate::ChainAddress::StellarContract(*address)
+            }
         }
     }
 }
@@ -602,7 +604,8 @@ impl SignatureKind {
 #[serde(rename_all = "snake_case")]
 pub enum SignatureAlgorithm {
     Secp256k1,
-    // Future: Bls12381, Ed25519, Secp256r1, etc.
+    Ed25519,
+    // Future: Bls12381, Secp256r1, etc.
 }
 
 #[cfg_attr(feature = "ts-bindings", derive(TS))]
@@ -611,6 +614,9 @@ pub enum SignatureAlgorithm {
 #[serde(rename_all = "snake_case")]
 pub enum SignaturePrefix {
     Eip191,
+    /// see https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0053.md
+    /// this is essentially "Stellar Signed Message:\n"
+    Sep53,
 }
 
 #[cfg_attr(feature = "ts-bindings", derive(TS))]

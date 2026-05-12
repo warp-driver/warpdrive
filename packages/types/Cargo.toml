@@ -55,6 +55,7 @@ cosmwasm-schema = { workspace = true, optional = true }
 stellar-xdr = { workspace = true }
 stellar-strkey = { workspace = true }
 k256 = { workspace = true }
+ed25519-dalek = { workspace = true }
 ts-rs = { version = "11.1", features = ["serde-compat"], optional = true }
 
 [dev-dependencies]

@@ -1144,7 +1144,7 @@ impl TriggerManager {
                     // contract gets added later).
                     if is_updated_spec_repo_topic(&topic_segments) {
                         if let Ok(parsed) = stellar_strkey::Contract::from_string(&contract_id) {
-                            let chain_addr = warpdrive_types::ChainAddress::Stellar(parsed);
+                            let chain_addr = warpdrive_types::ChainAddress::StellarContract(parsed);
                             let service_id_opt = self
                                 .lookup_maps
                                 .service_manager

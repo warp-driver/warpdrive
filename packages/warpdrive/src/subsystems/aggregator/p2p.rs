@@ -729,10 +729,10 @@ impl EventLoopState {
     fn store_submission(&mut self, submission: Submission) {
         let service_id = submission.service_id().clone();
 
-        // Extract signer address - reject submissions with invalid signatures
+        // Extract signer identifier - reject submissions with invalid signatures
         let signer_addr = match submission
             .envelope_signature
-            .evm_signer_address(&submission.envelope)
+            .signer_address(&submission.envelope)
         {
             Ok(addr) => addr,
             Err(e) => {
@@ -748,7 +748,7 @@ impl EventLoopState {
             s.submission.event_id == submission.event_id
                 && s.submission
                     .envelope_signature
-                    .evm_signer_address(&s.submission.envelope)
+                    .signer_address(&s.submission.envelope)
                     .map(|a| a == signer_addr)
                     .unwrap_or(false)
         });

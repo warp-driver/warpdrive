@@ -11,14 +11,17 @@ use crate::{
     subsystems::submission::data::SubmissionRequest, tracing_service_info, AppContext,
 };
 use alloy_primitives::FixedBytes;
-use alloy_signer_local::PrivateKeySigner;
 use error::SubmissionError;
 use tracing::instrument;
-use utils::{evm_client::signing::make_signer, telemetry::SubmissionMetrics};
-use warpdrive_types::Submission;
-use warpdrive_types::{
-    Credential, Envelope, EventOrder, ServiceId, SignerResponse, Submit, WavsSigner,
+use utils::{
+    evm_client::signing::make_signer, stellar_client::make_stellar_signer,
+    telemetry::SubmissionMetrics,
 };
+use warpdrive_types::{
+    Credential, Envelope, EventOrder, ServiceId, SignatureAlgorithm, SignatureKind, SignerResponse,
+    Submit,
+};
+use warpdrive_types::{Submission, VectrSigner};
 
 #[derive(Debug)]
 #[allow(clippy::large_enum_variant)]
@@ -44,7 +47,11 @@ pub struct SubmissionManager {
 }
 
 struct SignerInfo {
-    signer: PrivateKeySigner,
+    signer: Arc<tokio::sync::RwLock<VectrSigner>>,
+    /// Cached signer address, captured when the signer is built. Lets
+    /// the synchronous `get_service_signer` path skip locking the
+    /// RwLock — important because we need to get the address in sync code, not just async
+    address: warpdrive_types::ChainAddress,
     hd_index: u32,
 }
 
@@ -165,17 +172,10 @@ impl SubmissionManager {
                 .clone()
         };
 
-        let signature_kind = match self
-            .services
-            .get_workflow(service_id, req.workflow_id())?
-            .submit
-        {
-            Submit::Aggregator { signature_kind, .. } => signature_kind,
-            Submit::None => return Err(SubmissionError::InvalidSubmitKind(Submit::None)),
-        };
-
-        let envelope_signature = envelope
-            .sign(&signer, signature_kind.clone())
+        let envelope_signature = signer
+            .write()
+            .await
+            .sign_envelope(&envelope)
             .await
             .map_err(SubmissionError::FailedToSignEnvelope)?;
 
@@ -257,19 +257,57 @@ impl SubmissionManager {
         self.signing_mnemonic_hd_index_count
             .fetch_max(next_index, std::sync::atomic::Ordering::SeqCst);
 
-        let signer = make_signer(&self.signing_mnemonic, Some(hd_index))
-            .map_err(|e| SubmissionError::FailedToCreateEvmSigner(service_id.clone(), e))?;
+        let signature_kind = match self.services.get(&service_id) {
+            // INVARIANT: all workflows that have a submit type must have the same signature kind, so we can just check the first one we find
+            Ok(service) => service.workflows.values().find_map(|w| match &w.submit {
+                Submit::None => None,
+                Submit::Aggregator { signature_kind, .. } => Some(signature_kind.clone()),
+            }),
+            Err(_) => None,
+        }
+        .unwrap_or_else(SignatureKind::evm_default); // if we have no signer, default to evm... won't be used, but better safe than sorry
 
+        let signer = match signature_kind.algorithm {
+            SignatureAlgorithm::Secp256k1 => {
+                let inner = make_signer(&self.signing_mnemonic, Some(hd_index))
+                    .map_err(|e| SubmissionError::FailedToCreateEvmSigner(service_id.clone(), e))?;
+                match signature_kind.prefix {
+                    // EvmNoPrefix is for raw-keccak signatures (no
+                    // EIP-191 wrapping). Any prefix that isn't None
+                    // is treated as the EIP-191 path today; if Sep53
+                    // over secp256k1 becomes a real submit shape,
+                    // branch it here.
+                    None => VectrSigner::EvmNoPrefix(inner),
+                    Some(_) => VectrSigner::Evm(inner),
+                }
+            }
+            SignatureAlgorithm::Ed25519 => {
+                let inner =
+                    make_stellar_signer(&self.signing_mnemonic, Some(hd_index)).map_err(|e| {
+                        SubmissionError::FailedToCreateStellarSigner(
+                            service_id.clone(),
+                            anyhow::anyhow!("{e}"),
+                        )
+                    })?;
+                VectrSigner::Stellar(inner)
+            }
+        };
+
+        let address = signer.address();
         tracing::info!(
             "Created new signing client for service {} -> {}",
             service_id,
-            signer.address()
+            address
         );
 
-        self.signers
-            .write()
-            .unwrap()
-            .insert(service_id, SignerInfo { signer, hd_index });
+        self.signers.write().unwrap().insert(
+            service_id,
+            SignerInfo {
+                signer: Arc::new(tokio::sync::RwLock::new(signer)),
+                address,
+                hd_index,
+            },
+        );
 
         Ok(())
     }
@@ -293,15 +331,36 @@ impl SubmissionManager {
                 service_id: service_id.clone(),
             })
             .map(
-                |SignerInfo { signer, hd_index }| SignerResponse::Secp256k1 {
-                    hd_index: *hd_index,
-                    evm_address: signer.address().to_string(),
+                |SignerInfo {
+                     address, hd_index, ..
+                 }| match address {
+                    warpdrive_types::ChainAddress::Evm(addr) => SignerResponse::Secp256k1 {
+                        hd_index: *hd_index,
+                        evm_address: addr.to_string(),
+                    },
+                    warpdrive_types::ChainAddress::StellarPubKey(pubkey) => {
+                        SignerResponse::Ed25519 {
+                            hd_index: *hd_index,
+                            stellar_pubkey: format!(
+                                "{}",
+                                stellar_strkey::ed25519::PublicKey(pubkey.into_inner())
+                            ),
+                        }
+                    }
+                    // Cosmos and StellarContract addresses can't come out
+                    // of a VectrSigner today; fall back to a string dump
+                    // rather than panic if that ever changes.
+                    other => SignerResponse::Secp256k1 {
+                        hd_index: *hd_index,
+                        evm_address: other.to_string(),
+                    },
                 },
             )?;
 
         if tracing::enabled!(tracing::Level::INFO) {
-            let address = match &key {
+            let address: &str = match &key {
                 SignerResponse::Secp256k1 { evm_address, .. } => evm_address,
+                SignerResponse::Ed25519 { stellar_pubkey, .. } => stellar_pubkey,
             };
 
             tracing_service_info!(

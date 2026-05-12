@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use utoipa::ToSchema;
 
+use crate::ByteArray;
+
 /// A chain-agnostic on-chain address.
 ///
 /// Use this type whenever you need to refer to "an address on some chain"
@@ -24,7 +26,9 @@ pub enum ChainAddress {
     #[schema(value_type = String)]
     Cosmos(layer_climb_address::CosmosAddr),
     #[schema(value_type = String)]
-    Stellar(stellar_strkey::Contract),
+    StellarContract(stellar_strkey::Contract),
+    #[schema(value_type = String)]
+    StellarPubKey(ByteArray<32>),
 }
 
 impl ChainAddress {
@@ -33,7 +37,15 @@ impl ChainAddress {
         match self {
             ChainAddress::Evm(addr) => addr.as_slice().to_vec(),
             ChainAddress::Cosmos(addr) => addr.to_vec(),
-            ChainAddress::Stellar(contract) => contract.0.to_vec(),
+            ChainAddress::StellarContract(contract) => contract.0.to_vec(),
+            ChainAddress::StellarPubKey(key) => key.as_slice().to_vec(),
+        }
+    }
+
+    pub fn try_as_evm(&self) -> Option<alloy_primitives::Address> {
+        match self {
+            ChainAddress::Evm(addr) => Some(*addr),
+            _ => None,
         }
     }
 }
@@ -58,7 +70,7 @@ impl From<layer_climb_address::CosmosAddr> for ChainAddress {
 
 impl From<stellar_strkey::Contract> for ChainAddress {
     fn from(contract: stellar_strkey::Contract) -> Self {
-        ChainAddress::Stellar(contract)
+        ChainAddress::StellarContract(contract)
     }
 }
 
@@ -83,7 +95,7 @@ impl TryFrom<ChainAddress> for layer_climb_address::Address {
         match value {
             ChainAddress::Evm(addr) => Ok(layer_climb_address::Address::Evm(addr.into())),
             ChainAddress::Cosmos(addr) => Ok(layer_climb_address::Address::Cosmos(addr)),
-            ChainAddress::Stellar(_) => {
+            ChainAddress::StellarContract(_) | ChainAddress::StellarPubKey(_) => {
                 Err(ChainAddressConversionError::StellarNotSupportedByLayerClimb)
             }
         }
@@ -95,7 +107,8 @@ impl fmt::Display for ChainAddress {
         match self {
             ChainAddress::Evm(addr) => write!(f, "evm:{addr}"),
             ChainAddress::Cosmos(addr) => write!(f, "cosmos:{addr}"),
-            ChainAddress::Stellar(contract) => write!(f, "stellar:{contract}"),
+            ChainAddress::StellarContract(contract) => write!(f, "stellar_contract:{contract}"),
+            ChainAddress::StellarPubKey(pubkey) => write!(f, "stellar_pubkey:{pubkey}"),
         }
     }
 }
@@ -111,7 +124,9 @@ pub enum ChainAddressParseError {
     #[error("invalid cosmos address: {0}")]
     Cosmos(String),
     #[error("invalid stellar contract id: {0}")]
-    Stellar(String),
+    StellarContract(String),
+    #[error("invalid stellar contract pubkey: {0}")]
+    StellarPubkey(String),
 }
 
 impl FromStr for ChainAddress {
@@ -128,9 +143,12 @@ impl FromStr for ChainAddress {
             "cosmos" => layer_climb_address::CosmosAddr::new_str(rest, None)
                 .map(ChainAddress::Cosmos)
                 .map_err(|e| ChainAddressParseError::Cosmos(e.to_string())),
-            "stellar" => stellar_strkey::Contract::from_string(rest)
-                .map(ChainAddress::Stellar)
-                .map_err(|e| ChainAddressParseError::Stellar(format!("{e:?}"))),
+            "stellar_contract" => stellar_strkey::Contract::from_string(rest)
+                .map(ChainAddress::StellarContract)
+                .map_err(|e| ChainAddressParseError::StellarContract(format!("{e:?}"))),
+            "stellar_pubkey" => const_hex::decode_to_array(rest)
+                .map(|bytes| ChainAddress::StellarPubKey(ByteArray::new(bytes)))
+                .map_err(|e| ChainAddressParseError::StellarPubkey(format!("{e:?}"))),
             other => Err(ChainAddressParseError::UnknownNamespace(other.to_string())),
         }
     }
@@ -151,7 +169,7 @@ mod tests {
 
     #[test]
     fn stellar_does_not_fit_layer_climb() {
-        let chain = ChainAddress::Stellar(stellar_strkey::Contract([0u8; 32]));
+        let chain = ChainAddress::StellarContract(stellar_strkey::Contract([0u8; 32]));
         let res: Result<layer_climb_address::Address, _> = chain.try_into();
         assert!(matches!(
             res,
@@ -163,7 +181,7 @@ mod tests {
     fn display_and_parse_round_trip() {
         let cases = [
             ChainAddress::Evm(alloy_primitives::Address::from([0xab; 20])),
-            ChainAddress::Stellar(stellar_strkey::Contract([0xcd; 32])),
+            ChainAddress::StellarContract(stellar_strkey::Contract([0xcd; 32])),
         ];
         for case in cases {
             let s = case.to_string();

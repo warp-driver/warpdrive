@@ -7,15 +7,16 @@ cfg_if::cfg_if! {
 
 pub use crate::solidity_types::Envelope;
 use crate::{
-    ServiceId, ServiceManagerEnvelope, ServiceManagerSignatureData, SignatureData, SignatureKind,
-    SubmitAction, TriggerAction, TriggerData, WasmResponse, WorkflowId,
+    ByteArray, ServiceId, ServiceManagerEnvelope, ServiceManagerSignatureData, SignatureAlgorithm,
+    SignatureData, SignatureKind, SignaturePrefix, SubmitAction, TriggerAction, TriggerData,
+    WasmResponse, WorkflowId,
 };
 use alloy_primitives::{eip191_hash_message, keccak256, FixedBytes, SignatureError};
 use alloy_sol_types::SolValue;
 use async_trait::async_trait;
 use ripemd::Ripemd160;
 use serde::{Deserialize, Serialize};
-use sha2::Digest;
+use sha2::{Digest, Sha256};
 use thiserror::Error;
 use utoipa::ToSchema;
 
@@ -49,6 +50,17 @@ pub trait WavsSignable {
     fn prefix_eip191_hash(&self) -> anyhow::Result<FixedBytes<32>> {
         let envelope_bytes = self.encode_data()?;
         Ok(eip191_hash_message(keccak256(&envelope_bytes)))
+    }
+
+    fn prefix_sep53_hash(&self) -> anyhow::Result<FixedBytes<32>> {
+        let mut payload = std::vec::Vec::new();
+
+        payload.extend_from_slice(b"Stellar Signed Message:\n");
+        payload.extend_from_slice(self.encode_data()?.as_slice());
+
+        let hash: [u8; 32] = Sha256::digest(&payload).into();
+
+        Ok(hash.into())
     }
 
     fn unprefixed_hash(&self) -> anyhow::Result<FixedBytes<32>> {
@@ -92,11 +104,41 @@ impl From<SignatureData> for ServiceManagerSignatureData {
     }
 }
 
+/// A signature produced by an operator. The algorithm tag is intrinsic
+/// to the variant: secp256k1 signatures are recoverable (the pubkey is
+/// derivable from sig + message), so they carry only the raw bytes plus
+/// an optional message-prefix scheme; Ed25519 signatures are *not*
+/// recoverable, so the pubkey is bundled with the signature on the wire.
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema, PartialEq, Eq, Hash)]
-#[serde(rename_all = "snake_case")]
-pub struct WavsSignature {
-    pub data: Vec<u8>,
-    pub kind: SignatureKind,
+#[serde(rename_all = "snake_case", tag = "algorithm")]
+pub enum WavsSignature {
+    Secp256k1 {
+        #[serde(with = "const_hex")]
+        sig: Vec<u8>,
+        prefix: Option<SignaturePrefix>,
+    },
+    Ed25519 {
+        sig: ByteArray<64>,
+        pubkey: ByteArray<32>,
+    },
+}
+
+impl WavsSignature {
+    pub fn kind(&self) -> SignatureKind {
+        match self {
+            WavsSignature::Secp256k1 { prefix, .. } => SignatureKind {
+                algorithm: SignatureAlgorithm::Secp256k1,
+                prefix: prefix.clone(),
+            },
+            WavsSignature::Ed25519 { .. } => SignatureKind {
+                algorithm: SignatureAlgorithm::Ed25519,
+                // Ed25519 is currently always Stellar / Sep53. If we ever
+                // need an unprefixed Ed25519 path, lift `prefix` into the
+                // variant.
+                prefix: Some(SignaturePrefix::Sep53),
+            },
+        }
+    }
 }
 
 #[derive(
@@ -246,6 +288,15 @@ pub enum SigningError {
 
     #[error("Unable to get data hash: {0:?}")]
     DataHash(anyhow::Error),
+
+    #[error("Wrong algoritm: expected {expected:?}, got {actual:?}")]
+    WrongAddressKind {
+        expected: SignatureAlgorithm,
+        actual: SignatureAlgorithm,
+    },
+
+    #[error("Ed25519 signature failed to verify against the bundled pubkey")]
+    Ed25519Verify,
 }
 
 #[cfg(test)]
