@@ -692,10 +692,12 @@ pub async fn evm_wait_for_task_to_land(
 /// rather than by the test's `trigger_id`, so we can't precompute the key.
 /// Flow (shared across both schemes):
 ///
-///   1. Poll Soroban RPC for an event from the contract that carries the
-///      event_id — `Verified` for secp256k1, `Triggered { trigger_id,
-///      event_id }` for ed25519. The Triggered topic chain lets us filter
-///      on the specific trigger we fired.
+///   1. Poll Soroban RPC for the contract's `Triggered { trigger_id,
+///      event_id }` event filtered on our `trigger_id` — both
+///      `mock_submit_eth` and `mock_submit_xlm` publish it on a successful
+///      verify_*, decoding `trigger_id` from the inner payload (ABI
+///      `DataWithId.triggerId` for eth, XDR `MessageWithId.trigger_id`
+///      for xlm).
 ///   2. Call `payload(event_id)` on the contract to fetch the stored bytes.
 ///   3. Decode the payload into the inner message bytes.
 ///
@@ -739,13 +741,25 @@ pub async fn stellar_wait_for_task_to_land(
             let now = submit_client.current_ledger().await?;
             let start_ledger = now.saturating_sub(100).max(1);
 
+            let trigger_id_u64 = trigger_id.u64();
             let event_id_hex = submit_client
-                .wait_for_verified_event_id(&contract_id_str, start_ledger, timeout)
+                .wait_for_triggered_event_id(
+                    &contract_id_str,
+                    trigger_id_u64,
+                    start_ledger,
+                    timeout,
+                )
                 .await
-                .with_context(|| format!("waiting for Verified event on {contract_id_str}"))?;
+                .with_context(|| {
+                    format!(
+                        "waiting for Triggered event on {contract_id_str} \
+                         for trigger_id={trigger_id_u64}"
+                    )
+                })?;
             tracing::info!(
-                "Stellar handler {} fired Verified for event_id 0x{}",
+                "Stellar handler {} fired Triggered for trigger_id={} event_id 0x{}",
                 contract_id_str,
+                trigger_id_u64,
                 event_id_hex
             );
             let raw = submit_client
