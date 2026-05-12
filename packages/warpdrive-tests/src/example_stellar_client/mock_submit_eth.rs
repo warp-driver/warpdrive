@@ -160,10 +160,15 @@ impl SimpleStellarSubmitEthClient {
             .map_err(|e| anyhow!("failed to construct stellar rpc client: {e:?}"))?;
 
         tokio::time::timeout(timeout, async {
+            // Advance the cursor across iterations so each poll only asks
+            // for ledgers we haven't seen yet. The first call seeds from
+            // `start_ledger`; subsequent calls resume from the cursor that
+            // Soroban RPC returns.
+            let mut start = wasi_stellar_rpc_client::EventStart::Ledger(start_ledger);
             loop {
                 let resp = rpc
                     .get_events(
-                        wasi_stellar_rpc_client::EventStart::Ledger(start_ledger),
+                        start.clone(),
                         Some(wasi_stellar_rpc_client::EventType::Contract),
                         &[contract_id.to_string()],
                         &[],
@@ -176,6 +181,9 @@ impl SimpleStellarSubmitEthClient {
                             if let Some(hex) = extract_verified_event_id(&event) {
                                 return Ok(hex);
                             }
+                        }
+                        if !resp.cursor.is_empty() {
+                            start = wasi_stellar_rpc_client::EventStart::Cursor(resp.cursor);
                         }
                     }
                     Err(e) => {

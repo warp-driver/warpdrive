@@ -338,7 +338,7 @@ impl ServiceManagers {
             // need to keep `self` borrowed for the matching arm.
             let stellar_stack = match service_manager_instance {
                 AnyServiceManagerInstance::Stellar { scheme, .. } => {
-                    Some(self.stellar_stacks.get(scheme).expect("...").clone())
+                    Some(self.stellar_stacks.get(scheme).unwrap().clone())
                 }
                 _ => None,
             };
