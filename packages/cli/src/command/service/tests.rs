@@ -949,6 +949,108 @@ async fn test_workflow_trigger_operations() {
         .to_string()
         .contains("invalid bech32"));
 
+    // Test setting Stellar trigger
+    let stellar_chain = ChainKey::from_str("stellar:testnet").unwrap();
+    let stellar_contract_id =
+        "CA3JNPPPWEC6XDRYHSFCJPK3F47H22TPHL6C5SZLEVSYMLDVEB2XNSRF".to_string();
+    let stellar_segments = vec![
+        parse_stellar_topic_segment("symbol:swap").unwrap(),
+        parse_stellar_topic_segment("wildcard").unwrap(),
+        parse_stellar_topic_segment("rest-wildcard").unwrap(),
+    ];
+
+    let stellar_result = set_stellar_trigger(
+        &file_path,
+        workflow_id.clone(),
+        stellar_contract_id.clone(),
+        stellar_chain.clone(),
+        stellar_segments.clone(),
+    )
+    .unwrap();
+
+    assert_eq!(stellar_result.workflow_id, workflow_id);
+    if let Trigger::StellarContractEvent {
+        chain,
+        contract_id,
+        topic_segments,
+    } = &stellar_result.trigger
+    {
+        assert_eq!(chain, &stellar_chain);
+        assert_eq!(contract_id, &stellar_contract_id);
+        assert_eq!(topic_segments, &stellar_segments);
+    } else {
+        panic!("Expected StellarContractEvent trigger");
+    }
+
+    // Verify the trigger persisted to disk
+    let service_after_stellar: ServiceBuilder =
+        serde_json::from_str(&std::fs::read_to_string(&file_path).unwrap()).unwrap();
+    let stellar_workflow = service_after_stellar.workflows.get(&workflow_id).unwrap();
+    match &stellar_workflow.trigger {
+        TriggerBuilder::Trigger(Trigger::StellarContractEvent {
+            chain,
+            contract_id,
+            topic_segments,
+        }) => {
+            assert_eq!(chain, &stellar_chain);
+            assert_eq!(contract_id, &stellar_contract_id);
+            assert_eq!(topic_segments, &stellar_segments);
+        }
+        _ => panic!("Expected StellarContractEvent in persisted service"),
+    }
+
+    // Reject more than 4 segments
+    let too_many = (0..5)
+        .map(|_| parse_stellar_topic_segment("wildcard").unwrap())
+        .collect::<Vec<_>>();
+    let too_many_err = set_stellar_trigger(
+        &file_path,
+        workflow_id.clone(),
+        stellar_contract_id.clone(),
+        stellar_chain.clone(),
+        too_many,
+    );
+    assert!(too_many_err.is_err());
+    assert!(too_many_err
+        .unwrap_err()
+        .to_string()
+        .contains("at most 4 topic segments"));
+
+    // Reject rest-wildcard not in last position
+    let bad_order = vec![
+        parse_stellar_topic_segment("rest-wildcard").unwrap(),
+        parse_stellar_topic_segment("wildcard").unwrap(),
+    ];
+    let bad_order_err = set_stellar_trigger(
+        &file_path,
+        workflow_id.clone(),
+        stellar_contract_id.clone(),
+        stellar_chain.clone(),
+        bad_order,
+    );
+    assert!(bad_order_err.is_err());
+    assert!(bad_order_err
+        .unwrap_err()
+        .to_string()
+        .contains("rest-wildcard must be the last"));
+
+    // Reject non-existent workflow
+    let stellar_no_workflow = set_stellar_trigger(
+        &file_path,
+        non_existent_workflow.clone(),
+        stellar_contract_id,
+        stellar_chain,
+        stellar_segments,
+    );
+    assert!(stellar_no_workflow.is_err());
+    let msg = stellar_no_workflow.unwrap_err().to_string();
+    assert!(msg.contains(&non_existent_workflow.to_string()));
+    assert!(msg.contains("not found"));
+
+    // Topic segment parser surface
+    assert!(parse_stellar_topic_segment("nope:value").is_err());
+    assert!(parse_stellar_topic_segment("bare-string").is_err());
+
     // Test setting BlockInterval trigger
     let interval_chain = ChainKey::from_str("evm:polygon-mainnet").unwrap();
     let n_blocks = NonZeroU32::new(10).unwrap();
@@ -1006,6 +1108,42 @@ async fn test_workflow_trigger_operations() {
     } else {
         panic!("Expected Cron trigger");
     }
+}
+
+#[test]
+fn test_set_stellar_manager() {
+    let temp_dir = tempdir().unwrap();
+    let file_path = temp_dir.path().join("stellar_manager_test.json");
+    init_service(&file_path, "Test Service".to_string()).unwrap();
+
+    let chain = ChainKey::from_str("stellar:testnet").unwrap();
+    let address = "CA3JNPPPWEC6XDRYHSFCJPK3F47H22TPHL6C5SZLEVSYMLDVEB2XNSRF".to_string();
+
+    let result = set_stellar_manager(&file_path, chain.clone(), address.clone()).unwrap();
+    assert_eq!(result.chain, chain);
+    assert_eq!(result.address, address);
+    assert_eq!(result.file_path, file_path);
+
+    let service: ServiceBuilder =
+        serde_json::from_str(&std::fs::read_to_string(&file_path).unwrap()).unwrap();
+    match service.manager {
+        ServiceManagerBuilder::Manager(ServiceManager::Stellar {
+            chain: c,
+            address: a,
+        }) => {
+            assert_eq!(c, chain);
+            assert_eq!(a, address.parse::<stellar_strkey::Contract>().unwrap());
+        }
+        _ => panic!("Expected ServiceManager::Stellar"),
+    }
+
+    // Invalid C-address is rejected
+    let bad = set_stellar_manager(&file_path, chain, "not-a-stellar-address".to_string());
+    assert!(bad.is_err());
+    assert!(bad
+        .unwrap_err()
+        .to_string()
+        .contains("invalid Stellar contract C-address"));
 }
 
 #[tokio::test]

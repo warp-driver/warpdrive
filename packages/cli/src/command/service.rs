@@ -6,8 +6,8 @@ mod tests;
 
 pub use types::{
     ChainType, ComponentContext, ComponentOperationResult, EvmManagerResult, ServiceInitResult,
-    ServiceValidationResult, UpdateStatusResult, WorkflowAddResult, WorkflowDeleteResult,
-    WorkflowSetSubmitNoneResult, WorkflowTriggerResult,
+    ServiceValidationResult, StellarManagerResult, UpdateStatusResult, WorkflowAddResult,
+    WorkflowDeleteResult, WorkflowSetSubmitNoneResult, WorkflowTriggerResult,
 };
 pub use validate::{
     check_cosmos_contract_exists, check_evm_contract_exists, validate_contracts_exist,
@@ -26,13 +26,14 @@ use std::{
     num::{NonZeroU32, NonZeroU64},
     path::{Path, PathBuf},
 };
+use stellar_xdr::curr::{ScString, ScSymbol, ScVal};
 use utils::{config::WARPDRIVE_ENV_PREFIX, service::fetch_bytes, wkg::WkgClient};
 use uuid::Uuid;
 use warpdrive_types::{
     AggregatorBuilder, AllowedHostPermission, AnyChainConfig, AtProtoAction, ByteArray, ChainKey,
     Component, ComponentBuilder, ComponentDigest, ComponentSource, Registry, ServiceBuilder,
-    ServiceManager, ServiceManagerBuilder, ServiceStatus, SignatureKind, Submit, SubmitBuilder,
-    Timestamp, Trigger, TriggerBuilder, WorkflowBuilder, WorkflowId,
+    ServiceManager, ServiceManagerBuilder, ServiceStatus, SignatureKind, StellarTopicSegment,
+    Submit, SubmitBuilder, Timestamp, Trigger, TriggerBuilder, WorkflowBuilder, WorkflowId,
 };
 
 use crate::{
@@ -93,6 +94,18 @@ pub async fn handle_service_command(
                     let result = set_evm_trigger(&file, id, address, chain, event_hash)?;
                     display_result(ctx, result, json)?;
                 }
+                TriggerCommand::SetStellar {
+                    contract_id,
+                    chain,
+                    topics,
+                } => {
+                    let segments = topics
+                        .iter()
+                        .map(|t| parse_stellar_topic_segment(t))
+                        .collect::<Result<Vec<_>>>()?;
+                    let result = set_stellar_trigger(&file, id, contract_id, chain, segments)?;
+                    display_result(ctx, result, json)?;
+                }
                 TriggerCommand::SetBlockInterval {
                     chain,
                     n_blocks,
@@ -146,6 +159,10 @@ pub async fn handle_service_command(
         ServiceCommand::Manager { command } => match command {
             ManagerCommand::SetEvm { chain, address } => {
                 let result = set_evm_manager(&file, address, chain)?;
+                display_result(ctx, result, json)?;
+            }
+            ManagerCommand::SetStellar { chain, address } => {
+                let result = set_stellar_manager(&file, chain, address)?;
                 display_result(ctx, result, json)?;
             }
         },
@@ -707,6 +724,72 @@ pub fn set_cosmos_trigger(
     })
 }
 
+/// Set a Stellar contract event trigger for a workflow
+pub fn set_stellar_trigger(
+    file_path: &Path,
+    workflow_id: WorkflowId,
+    contract_id: String,
+    chain: ChainKey,
+    topic_segments: Vec<StellarTopicSegment>,
+) -> Result<WorkflowTriggerResult> {
+    if topic_segments.len() > 4 {
+        anyhow::bail!(
+            "at most 4 topic segments allowed, got {}",
+            topic_segments.len()
+        );
+    }
+    if let Some(idx) = topic_segments
+        .iter()
+        .position(|s| matches!(s, StellarTopicSegment::RestWildcard))
+    {
+        if idx != topic_segments.len() - 1 {
+            anyhow::bail!("rest-wildcard must be the last topic segment");
+        }
+    }
+
+    modify_service_file(file_path, |mut service| {
+        let workflow = service.workflows.get_mut(&workflow_id).ok_or_else(|| {
+            anyhow::anyhow!("Workflow with ID '{}' not found in service", workflow_id)
+        })?;
+
+        let trigger = Trigger::StellarContractEvent {
+            chain,
+            contract_id,
+            topic_segments,
+        };
+        workflow.trigger = TriggerBuilder::Trigger(trigger.clone());
+
+        Ok((
+            service,
+            WorkflowTriggerResult {
+                workflow_id,
+                trigger,
+                file_path: file_path.to_path_buf(),
+            },
+        ))
+    })
+}
+
+fn parse_stellar_topic_segment(s: &str) -> Result<StellarTopicSegment> {
+    if s == "wildcard" {
+        return Ok(StellarTopicSegment::Wildcard);
+    }
+    if s == "rest-wildcard" {
+        return Ok(StellarTopicSegment::RestWildcard);
+    }
+    let (kind, value) = s
+        .split_once(':')
+        .ok_or_else(|| anyhow::anyhow!("invalid topic segment '{s}'"))?;
+    let scval = match kind {
+        "string" => ScVal::String(ScString(value.try_into()?)),
+        "symbol" => ScVal::Symbol(ScSymbol(value.try_into()?)),
+        _ => anyhow::bail!(
+            "unknown topic kind '{kind}', expected string|symbol|wildcard|rest-wildcard"
+        ),
+    };
+    Ok(StellarTopicSegment::Exact(scval))
+}
+
 /// Set an EVM contract event trigger for a workflow
 pub fn set_evm_trigger(
     file_path: &Path,
@@ -884,6 +967,33 @@ pub async fn update_workflow_component(
         workflow_id: workflow_id.clone(),
     };
     update_component(ipfs_gateway, file_path, workflow_id, context, command).await
+}
+
+/// Set a Stellar manager for the service
+pub fn set_stellar_manager(
+    file_path: &Path,
+    chain: ChainKey,
+    address: String,
+) -> Result<StellarManagerResult> {
+    let parsed: stellar_strkey::Contract = address
+        .parse()
+        .with_context(|| format!("invalid Stellar contract C-address '{address}'"))?;
+
+    modify_service_file(file_path, |mut service| {
+        service.manager = ServiceManagerBuilder::Manager(ServiceManager::Stellar {
+            chain: chain.clone(),
+            address: parsed,
+        });
+
+        Ok((
+            service,
+            StellarManagerResult {
+                chain,
+                address: address.clone(),
+                file_path: file_path.to_path_buf(),
+            },
+        ))
+    })
 }
 
 /// Set an EVM manager for the service
