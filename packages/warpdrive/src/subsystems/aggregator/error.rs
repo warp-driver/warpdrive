@@ -174,4 +174,10 @@ pub enum AggregatorError {
     /// of the node keeps running.
     #[error("Empty submission queue for {chain_kind} submit")]
     EmptySubmissionQueue { chain_kind: &'static str },
+
+    #[error("expected {expected} envelope, got {received}")]
+    UnexpectedEnvelopeKind {
+        expected: &'static str,
+        received: &'static str,
+    },
 }

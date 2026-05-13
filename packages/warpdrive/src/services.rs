@@ -9,6 +9,7 @@ use utils::{
     storage::db::{DBError, WavsDb},
 };
 use warpdrive_client::project_root::ProjectRootClient;
+use warpdrive_types::SignatureKind;
 use warpdrive_types::{
     contracts::stellar::StellarServiceManagerContracts, AnyChainConfig, ChainConfigs, ChainKey,
     Service, ServiceId, ServiceManager, ServiceStatus, Workflow, WorkflowId,
@@ -175,6 +176,14 @@ impl Services {
         }
 
         Ok(())
+    }
+
+    #[instrument(skip(self), fields(subsys = "Services"))]
+    pub fn get_signature_kind(&self, service_id: &ServiceId) -> Result<SignatureKind> {
+        self.db_storage
+            .services
+            .map_ref(service_id, |service| service.signature_kind())
+            .ok_or_else(|| ServicesError::UnknownService(service_id.clone()))
     }
 
     #[instrument(skip(self), fields(subsys = "Services"))]

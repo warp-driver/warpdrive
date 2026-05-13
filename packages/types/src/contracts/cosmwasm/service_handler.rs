@@ -58,7 +58,7 @@ pub enum ServiceHandlerQueryMessages {
 pub struct WarpDriveEnvelope(cosmwasm_std::Binary);
 
 impl WarpDriveEnvelope {
-    pub fn new(envelope: crate::solidity_types::Envelope) -> Self {
+    pub fn new(envelope: crate::solidity_types::EvmEnvelope) -> Self {
         Self::new_raw(envelope.abi_encode())
     }
 
@@ -70,13 +70,13 @@ impl WarpDriveEnvelope {
         self.0.as_slice()
     }
 
-    pub fn decode(&self) -> Result<crate::solidity_types::Envelope, alloy_sol_types::Error> {
-        crate::solidity_types::Envelope::abi_decode(self.as_slice())
+    pub fn decode(&self) -> Result<crate::solidity_types::EvmEnvelope, alloy_sol_types::Error> {
+        crate::solidity_types::EvmEnvelope::abi_decode(self.as_slice())
     }
 }
 
-impl From<crate::solidity_types::Envelope> for WarpDriveEnvelope {
-    fn from(envelope: crate::solidity_types::Envelope) -> Self {
+impl From<crate::solidity_types::EvmEnvelope> for WarpDriveEnvelope {
+    fn from(envelope: crate::solidity_types::EvmEnvelope) -> Self {
         Self::new(envelope)
     }
 }
@@ -148,7 +148,7 @@ mod tests {
     #[test]
     fn service_handler_execute_msg_flatten() {
         // Assume our source of data comes from a Solidity contract
-        let envelope = crate::solidity_types::Envelope {
+        let envelope = crate::solidity_types::EvmEnvelope {
             eventId: [0; 20].into(),
             ordering: [0; 12].into(),
             payload: vec![1, 2, 3].into(),

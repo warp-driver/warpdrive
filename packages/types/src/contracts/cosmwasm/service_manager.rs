@@ -196,7 +196,7 @@ mod tests {
     #[test]
     fn service_manager_query_msg_flatten() {
         // Assume our source of data comes from a Solidity contract
-        let envelope = crate::solidity_types::Envelope {
+        let envelope = crate::solidity_types::EvmEnvelope {
             eventId: [0; 20].into(),
             ordering: [0; 12].into(),
             payload: vec![1, 2, 3].into(),

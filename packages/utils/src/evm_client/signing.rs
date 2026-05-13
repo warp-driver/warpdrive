@@ -58,6 +58,13 @@ impl EvmSigningClient {
             return Err(EvmClientError::NotContract(service_handler));
         }
 
+        let envelope = match envelope {
+            Envelope::Evm { data } => data,
+            _ => {
+                return Err(EvmClientError::UnsupportedEnvelopeType("Xlm".to_string()));
+            }
+        };
+
         let gas = match max_gas {
             None => {
                 let gas_estimate = self
@@ -160,7 +167,7 @@ mod test {
     use alloy_provider::Provider;
     use alloy_rpc_types_eth::TransactionTrait;
     use alloy_signer_local::{coins_bip39::English, MnemonicBuilder};
-    use warpdrive_types::{Credential, Envelope, VectrSigner, WavsSigner};
+    use warpdrive_types::{Credential, Envelope, EvmEnvelope, VectrSigner, WavsSigner};
 
     use crate::{
         evm_client::{AnyNonceManager, EvmSigningClient, EvmSigningClientConfig},
@@ -279,10 +286,12 @@ mod test {
     }
 
     fn mock_envelope() -> Envelope {
-        Envelope {
-            payload: Bytes::from_static(&[1, 2, 3]),
-            eventId: FixedBytes([1; 20]),
-            ordering: FixedBytes([0; 12]),
+        Envelope::Evm {
+            data: EvmEnvelope {
+                payload: Bytes::from_static(&[1, 2, 3]),
+                eventId: FixedBytes([1; 20]),
+                ordering: FixedBytes([0; 12]),
+            },
         }
     }
 

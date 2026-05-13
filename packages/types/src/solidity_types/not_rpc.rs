@@ -17,7 +17,7 @@ mod service_handler {
 }
 
 pub use service_handler::{
-    IWarpDriveServiceHandler, IWarpDriveServiceHandler::Envelope,
+    IWarpDriveServiceHandler, IWarpDriveServiceHandler::Envelope as EvmEnvelope,
     IWarpDriveServiceHandler::SignatureData,
 };
 pub use service_manager::IWarpDriveServiceManager;

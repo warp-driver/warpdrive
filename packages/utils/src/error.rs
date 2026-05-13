@@ -44,6 +44,9 @@ pub enum EvmClientError {
 
     #[error("Unable to get block height")]
     BlockHeight,
+
+    #[error("Unsupported envelope type: {0}")]
+    UnsupportedEnvelopeType(String),
 }
 
 pub type StellarClientResult<T> = std::result::Result<T, StellarClientError>;

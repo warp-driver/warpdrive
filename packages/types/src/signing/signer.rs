@@ -1,7 +1,6 @@
-pub use crate::solidity_types::Envelope;
 use crate::{
-    ByteArray, ChainAddress, SignatureAlgorithm, SignatureData, SignaturePrefix, SigningError,
-    WavsSignable, WavsSignature,
+    ByteArray, ChainAddress, Envelope, SignatureAlgorithm, SignatureData, SignaturePrefix,
+    SigningError, WavsSignable, WavsSignature,
 };
 use alloy_primitives::FixedBytes;
 use alloy_signer::Signer;
@@ -151,6 +150,25 @@ impl WavsSignature {
         }
     }
 
+    pub fn ed25519_pubkey<T: WavsSignable + ?Sized>(
+        &self,
+        signable: &T,
+    ) -> std::result::Result<[u8; 32], SigningError> {
+        let address = self.signer_address(signable)?;
+
+        let pubkey = match address {
+            ChainAddress::StellarPubKey(pubkey) => pubkey,
+            _ => {
+                return Err(SigningError::WrongAddressKind {
+                    expected: SignatureAlgorithm::Ed25519,
+                    actual: SignatureAlgorithm::Secp256k1,
+                });
+            }
+        };
+
+        Ok(pubkey.into_inner())
+    }
+
     /// Recover the 33-byte SEC1-compressed secp256k1 public key from
     /// the signature, given the data the operator signed. This is the
     /// shape the Stellar verification contract expects (its
@@ -237,17 +255,19 @@ fn prehash_for<T: WavsSignable + ?Sized>(
 #[cfg(test)]
 mod recovery_tests {
     use super::*;
-    use crate::{Envelope, SignaturePrefix};
+    use crate::{Envelope, EvmEnvelope, SignaturePrefix};
     use alloy_primitives::FixedBytes;
     use alloy_signer::SignerSync;
     use alloy_signer_local::PrivateKeySigner;
     use k256::ecdsa::VerifyingKey;
 
     fn sample_envelope() -> Envelope {
-        Envelope {
-            eventId: FixedBytes::from([7u8; 20]),
-            ordering: FixedBytes::from([0u8; 12]),
-            payload: alloy_primitives::Bytes::from(b"hello world".to_vec()),
+        Envelope::Evm {
+            data: EvmEnvelope {
+                eventId: FixedBytes::from([7u8; 20]),
+                ordering: FixedBytes::from([0u8; 12]),
+                payload: alloy_primitives::Bytes::from(b"hello world".to_vec()),
+            },
         }
     }
 

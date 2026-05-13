@@ -28,6 +28,8 @@ pub enum SubmissionError {
     EVM(anyhow::Error),
     #[error("missing EVM chain for {0}")]
     MissingEvmChain(ChainKey),
+    #[error("missing Stellar chain for {0}")]
+    MissingStellarChain(ChainKey),
     #[error("chain is not an EVM chain")]
     NotEvmChain,
     #[error("cross-chain submissions are not supported yet")]
@@ -70,4 +72,6 @@ pub enum SubmissionError {
     EncodeEventId(bincode::error::EncodeError),
     #[error("HD index overflow")]
     HdIndexOverflow,
+    #[error("Unable to create stellar environment for chain {chain_key}, reason: {detail}")]
+    StellarEnv { chain_key: ChainKey, detail: String },
 }
