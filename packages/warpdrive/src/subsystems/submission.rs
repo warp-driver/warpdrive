@@ -17,7 +17,7 @@ use utils::{
     evm_client::signing::make_signer, stellar_client::make_stellar_signer,
     telemetry::SubmissionMetrics,
 };
-use warpdrive_shared::interfaces::handler::XlmEnvelope;
+use warpdrive_client::xlm_envelope::XlmEnvelope;
 use warpdrive_types::{
     Credential, Envelope, EventOrder, EvmEnvelope, ServiceId, SignatureAlgorithm, SignerResponse,
 };
@@ -169,7 +169,6 @@ impl SubmissionManager {
 
             SignatureAlgorithm::Ed25519 => Envelope::Stellar {
                 data: XlmEnvelope::new(
-                    None,
                     req.operator_response.payload.clone(),
                     event_id.as_bytes().clone(),
                     match req.operator_response.ordering {
@@ -177,7 +176,7 @@ impl SubmissionManager {
                         None => [0u8; 12],
                     },
                 )
-                .encode(None),
+                .encode()?,
             },
         };
 

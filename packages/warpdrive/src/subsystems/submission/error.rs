@@ -74,4 +74,12 @@ pub enum SubmissionError {
     HdIndexOverflow,
     #[error("Unable to create stellar environment for chain {chain_key}, reason: {detail}")]
     StellarEnv { chain_key: ChainKey, detail: String },
+    #[error("Error with soroban-rs client: {0}")]
+    SorobanClient(wasi_soroban_rs::SorobanHelperError),
+}
+
+impl From<wasi_soroban_rs::SorobanHelperError> for SubmissionError {
+    fn from(value: wasi_soroban_rs::SorobanHelperError) -> Self {
+        Self::SorobanClient(value)
+    }
 }

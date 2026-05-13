@@ -11200,9 +11200,9 @@ dependencies = [
 
 [[package]]
 name = "warpdrive-client"
-version = "0.2.6"
+version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "917a52f76e5384ccb29c50239cafc16a23a4b5f41fdd863cb9d50a91a5418a78"
+checksum = "efd416b72183d7d9e21f94576d1821a7758d86894f53c4915c8881a810212cda"
 dependencies = [
  "ed25519-dalek",
  "stellar-strkey 0.0.16",
@@ -11260,8 +11260,9 @@ dependencies = [
 
 [[package]]
 name = "warpdrive-shared"
-version = "0.2.6"
-source = "git+https://github.com/warp-driver/warpdrive-contracts.git?rev=ac2bacb8644984e976a20e6801b86e3017d4c7b4#ac2bacb8644984e976a20e6801b86e3017d4c7b4"
+version = "0.2.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "16bf0741524c61741b5798905408189ea22f32e502f520c1ae3b278682fe85e8"
 dependencies = [
  "soroban-sdk",
 ]

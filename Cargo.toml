@@ -165,9 +165,8 @@ stellar-strkey = { version = "0.0.16", features = ["serde"] }
 wasi-soroban-rs = "0.2.7"
 ed25519-dalek = "2.2.0"
 k256 = "0.13.4"
-warpdrive-client = "0.2.6"
-# warpdrive-shared = "0.2.6"
-warpdrive-shared = { git = "https://github.com/warp-driver/warpdrive-contracts.git", rev = "ac2bacb8644984e976a20e6801b86e3017d4c7b4" }
+warpdrive-client = "0.2.7"
+warpdrive-shared = "0.2.7"
 
 
 # Cosmos-specific dependencies
