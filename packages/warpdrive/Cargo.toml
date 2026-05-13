@@ -74,7 +74,6 @@ wasi-soroban-rs = { workspace = true }
 ed25519-dalek = { workspace = true }
 k256 = { workspace = true }
 warpdrive-client = { workspace = true }
-warpdrive-shared = { workspace = true }
 
 [dev-dependencies]
 criterion = { workspace = true }
