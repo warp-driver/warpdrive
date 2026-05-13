@@ -73,6 +73,16 @@ pub enum CrossChainService {
 #[serde(rename_all = "snake_case")]
 pub enum StellarService {
     EchoData,
+    /// First ed25519 (`--variant stellar`) Stellar test. Drives the
+    /// `echo-data-xlm` component, which mirrors `echo-data` but emits
+    /// its `WasmResponse` through `stellar_encode_trigger_output` —
+    /// raw bytes, no `DataWithId` wrapper. The aggregator wraps that
+    /// payload in an XDR-encoded `XlmEnvelope`; `mock_submit_xlm`
+    /// decodes the envelope and stores `envelope.payload` raw, keyed
+    /// by 20-byte `event_id`. The read path polls the contract's
+    /// `Verified` event for the event_id, then calls `payload(event_id)`
+    /// to retrieve the bytes.
+    EchoDataXlm,
     BlockInterval,
     BlockIntervalStartStop,
     /// Drives the `stellar-query` component. The component logs the
@@ -85,44 +95,18 @@ pub enum StellarService {
 }
 
 impl StellarService {
-    /// Which Stellar signing scheme this test runs against. All current
-    /// Stellar tests share the secp256k1 (`--variant ethereum`) stack.
-    ///
-    /// # Adding an ed25519 (`--variant stellar`) test
-    ///
-    /// The shared-stack bootstrap, signer registration, and submit-handler
-    /// deploy already understand both schemes — the only missing piece is
-    /// the test's *read path* (polling the deployed handler for the
-    /// trigger's payload after the aggregator submits).
-    ///
-    /// Concretely, to add the first ed25519 test:
-    ///
-    /// 1. Add a new `StellarService` variant (e.g. `EchoDataXlm`) and
-    ///    return `SignerScheme::Ed25519` from its arm here.
-    /// 2. If the test uses a new component, add a `VectorComponent`
-    ///    variant and map it in [`From<StellarService> for
-    ///    Vec<ComponentName>`] below.
-    /// 3. Register the test in `e2e/test_registry.rs` and call
-    ///    `.with_stellar_scheme(SignerScheme::Ed25519)` on the builder.
-    /// 4. Replace `stellar_wait_for_task_to_land` (in `e2e/helpers.rs`)
-    ///    with a per-scheme branch: secp256k1 keeps
-    ///    `SimpleStellarSubmitEthClient::{is_valid_trigger_id, get_data}`
-    ///    (keyed by u64 `trigger_id`); ed25519 needs to read from
-    ///    `mock_submit_xlm`'s `payload(event_id)` (keyed by 20-byte
-    ///    `event_id`). Add a `payload` method to
-    ///    `SimpleStellarSubmitXlmClient` mirroring `get_data`, and have
-    ///    the runner choose between them based on the test's scheme.
-    /// 5. Add the test to `warpdrive-tests-default.toml` to enable it.
-    ///
-    /// The bootstrap will then deploy a *second* shared stack alongside
-    /// the secp256k1 one (one `--variant stellar` deploy, ed25519 signers
-    /// registered once, per-test handlers via `mock_submit_xlm`).
+    /// Which Stellar signing scheme this test runs against.
+    /// `EchoDataXlm` runs on the ed25519 (`--variant stellar`) stack;
+    /// every other Stellar test runs on the secp256k1
+    /// (`--variant ethereum`) stack. The shared-stack bootstrap deploys
+    /// one stack per distinct scheme that appears in the test matrix.
     pub fn scheme(self) -> SignerScheme {
         match self {
             StellarService::EchoData
             | StellarService::BlockInterval
             | StellarService::BlockIntervalStartStop
             | StellarService::StellarQuery => SignerScheme::Secp256k1,
+            StellarService::EchoDataXlm => SignerScheme::Ed25519,
         }
     }
 }
@@ -314,6 +298,9 @@ impl From<StellarService> for Vec<ComponentName> {
     fn from(service: StellarService) -> Self {
         match service {
             StellarService::EchoData => vec![ComponentName::Vector(VectorComponent::EchoData)],
+            StellarService::EchoDataXlm => {
+                vec![ComponentName::Vector(VectorComponent::EchoDataXlm)]
+            }
             StellarService::BlockInterval => {
                 vec![ComponentName::Vector(VectorComponent::EchoBlockInterval)]
             }

@@ -7,7 +7,7 @@ use layer_climb::pool::SigningClientPoolManager;
 use layer_climb::prelude::CosmosAddr;
 use std::{collections::BTreeMap, num::NonZero, sync::Arc, time::Duration};
 use utils::evm_client::AnyNonceManager;
-use utils::test_utils::middleware::stellar::StellarContracts;
+use utils::test_utils::middleware::stellar::{SignerScheme, StellarContracts};
 use utils::{
     config::WARPDRIVE_ENV_PREFIX, evm_client::EvmSigningClient, filesystem::workspace_path,
 };
@@ -16,7 +16,8 @@ use warpdrive_cli::clients::HttpClient;
 
 use warpdrive_types::{
     AllowedHostPermission, ByteArray, ChainKey, Component, DevTriggerStreamSubscriptionKind,
-    Permissions, Service, ServiceManager, ServiceStatus, SignatureKind, Submit, Trigger, Workflow,
+    Permissions, Service, ServiceManager, ServiceStatus, SignatureAlgorithm, SignatureKind,
+    SignaturePrefix, Submit, Trigger, Workflow,
 };
 
 use crate::deployment::{ServiceDeployment, WorkflowDeployment};
@@ -85,6 +86,7 @@ pub async fn create_service_for_test(
             component_sources,
             cosmos_code_map.clone(),
             stellar_service_manager.as_ref(),
+            test.stellar_scheme,
         )
         .await;
 
@@ -135,6 +137,7 @@ fn deploy_component(
     component
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn deploy_workflow(
     test_name: &str,
     workflow_definition: &WorkflowDefinition,
@@ -143,6 +146,7 @@ async fn deploy_workflow(
     component_sources: &ComponentSources,
     cosmos_code_map: CosmosCodeMap,
     stellar_service_manager: Option<&utils::test_utils::middleware::stellar::StellarServiceManager>,
+    stellar_scheme: Option<SignerScheme>,
 ) -> WorkflowDeployment {
     let component = deploy_component(
         component_sources,
@@ -166,6 +170,7 @@ async fn deploy_workflow(
         &workflow_definition.submit,
         &submission_contract,
         Some(component_sources),
+        stellar_scheme,
     )
     .await
     .unwrap();
@@ -322,6 +327,7 @@ pub async fn create_submit_from_config(
     submit_config: &SubmitDefinition,
     submission_contract: &warpdrive_types::ChainAddress,
     component_sources: Option<&ComponentSources>,
+    stellar_scheme: Option<SignerScheme>,
 ) -> Result<Submit> {
     match submit_config {
         SubmitDefinition::Aggregator(aggregator) => match aggregator {
@@ -361,9 +367,25 @@ pub async fn create_submit_from_config(
 
                 let component = deploy_component(sources, component_def, config_vars, env_vars);
 
+                // ed25519 stellar tests sign with `{ Ed25519, Sep53 }`;
+                // everything else (EVM, Cosmos, secp256k1 stellar) keeps
+                // the EVM default `{ Secp256k1, Eip191 }`. WarpDrive's
+                // `add_service_key` reads this `signature_kind` to pick
+                // which `VectrSigner` variant to derive — so setting it
+                // correctly here is what gets WarpDrive to register an
+                // ed25519 signer at the (preserved) hd_index when
+                // `update_services` re-runs `add_service_to_managers`.
+                let signature_kind = match stellar_scheme {
+                    Some(SignerScheme::Ed25519) => SignatureKind {
+                        algorithm: SignatureAlgorithm::Ed25519,
+                        prefix: Some(SignaturePrefix::Sep53),
+                    },
+                    _ => SignatureKind::evm_default(),
+                };
+
                 Ok(Submit::Aggregator {
                     component: Box::new(component),
-                    signature_kind: SignatureKind::evm_default(),
+                    signature_kind,
                 })
             }
         },
@@ -464,20 +486,11 @@ pub async fn deploy_submit_contract(
                     // ed25519 (stellar-handler) path. Deploys the
                     // `mock_submit_xlm` contract — the ed25519-native
                     // analogue of `mock_submit_eth` — bound to the test
-                    // stack's `ed25519_verification` contract.
-                    //
-                    // No e2e test exercises this path yet (every
-                    // `StellarService` variant returns
-                    // `SignerScheme::Secp256k1` from `scheme()` today). The
-                    // wiring exists so that flipping a test's
-                    // `stellar_scheme` to `Ed25519` "just works" up to the
-                    // handler deploy. The remaining work to actually run an
-                    // ed25519 test is to add a read-path equivalent to
-                    // `mock_submit_eth`'s `get_data` / `is_valid_trigger_id`
-                    // — the xlm handler stores `payload(event_id)` keyed by
-                    // 20-byte event_id, not by u64 trigger_id, so
-                    // `stellar_wait_for_task_to_land` needs a per-scheme
-                    // branch.
+                    // stack's `ed25519_verification` contract. The xlm
+                    // handler stores `payload(event_id)` keyed by 20-byte
+                    // event_id (not by u64 trigger_id), and the
+                    // `SignerScheme::Ed25519` branch of
+                    // `stellar_wait_for_task_to_land` reads through it.
                     let verification_contract = format!("{}", c.ed25519_verification);
                     tracing::info!(
                         "Deploying Stellar mock submit (xlm/ed25519) handler on chain {} \
@@ -677,67 +690,126 @@ pub async fn evm_wait_for_task_to_land(
 /// The contract is now keyed by `event_id` (the 20-byte ripemd160 hash the
 /// aggregator computes from `service_id + workflow_id + bincode(trigger_data)`)
 /// rather than by the test's `trigger_id`, so we can't precompute the key.
-/// Flow:
+/// Flow (shared across both schemes):
 ///
-///   1. Poll Soroban RPC for the contract's `Verified` event — that event
-///      carries the event_id as a topic.
+///   1. Poll Soroban RPC for the contract's `Triggered { trigger_id,
+///      event_id }` event filtered on our `trigger_id` — both
+///      `mock_submit_eth` and `mock_submit_xlm` publish it on a successful
+///      verify_*, decoding `trigger_id` from the inner payload (ABI
+///      `DataWithId.triggerId` for eth, XDR `MessageWithId.trigger_id`
+///      for xlm).
 ///   2. Call `payload(event_id)` on the contract to fetch the stored bytes.
+///   3. Decode the payload into the inner message bytes.
 ///
-/// `start_ledger` is the ledger sequence just before the trigger fired; we
-/// use it as the event-poll lower bound so we don't scan the entire chain.
-/// `_trigger_id` is kept in the signature for parity with the EVM/Cosmos
-/// helpers (the runner threads it through generically) but the eth Stellar
-/// handler no longer keys on it.
+/// The two schemes differ in payload shape:
+/// * `Secp256k1` (`mock_submit_eth`): payload is ABI-encoded
+///   `DataWithId { triggerId, data }` — we ABI-decode client-side and
+///   return `data` so the test runner sees the same shape as EVM/Cosmos.
+/// * `Ed25519` (`mock_submit_xlm`): payload is XDR-encoded
+///   `MessageWithId { trigger_id, message }` — produced by
+///   `stellar_encode_trigger_output` and round-tripped through the
+///   handler. We decode it via the std-side
+///   `warpdrive_client::message_with_id::MessageWithId` mirror and
+///   return `message`.
 pub async fn stellar_wait_for_task_to_land(
     chain: warpdrive_types::ChainKey,
     contract_id: stellar_strkey::Contract,
-    _trigger_id: TriggerId,
+    trigger_id: TriggerId,
     timeout: Duration,
+    scheme: SignerScheme,
 ) -> Result<Vec<u8>> {
-    use alloy_sol_types::{sol, SolValue};
-
-    // The aggregator wraps the WasmResponse bytes in an ABI-encoded
-    // `DataWithId { triggerId, data }` (`examples/components/_helpers/src/trigger.rs`
-    // `evm_encode_trigger_output`) and then wraps *that* in an
-    // ABI-encoded `Envelope { eventId, ordering, payload }`. The mock
-    // handler (now production-aligned) decodes the envelope on-chain but
-    // stores `envelope.payload` raw — so what we read back is still
-    // ABI-encoded `DataWithId`. Mirror the EVM `SimpleSubmit.sol` path
-    // and decode it client-side here, so the test runner sees just the
-    // inner `data` bytes (same shape EVM/Cosmos return).
-    sol! {
-        struct DataWithId {
-            uint64 triggerId;
-            bytes data;
-        }
-    }
-
-    let submit_client = crate::example_stellar_client::SimpleStellarSubmitEthClient::new(chain);
     let contract_id_str = format!("{contract_id}");
 
-    // Anchor the event poll at the current ledger minus a small slack so we
-    // don't miss a verify_eth tx that lands in the same ledger we sample.
-    // Soroban testnet retains roughly the last day of events; 100 ledgers
-    // (~10 min) is well inside that window and keeps the scan tight.
-    let now = submit_client.current_ledger().await?;
-    let start_ledger = now.saturating_sub(100).max(1);
+    match scheme {
+        SignerScheme::Secp256k1 => {
+            use alloy_sol_types::{sol, SolValue};
 
-    let event_id_hex = submit_client
-        .wait_for_verified_event_id(&contract_id_str, start_ledger, timeout)
-        .await
-        .with_context(|| format!("waiting for Verified event on {contract_id_str}"))?;
-    tracing::info!(
-        "Stellar handler {} fired Verified for event_id 0x{}",
-        contract_id_str,
-        event_id_hex
-    );
-    let raw = submit_client
-        .payload(&contract_id_str, &event_id_hex)
-        .await
-        .map_err(|e| anyhow!("Failed to read stellar payload({event_id_hex}): {e}"))?;
-    let decoded = DataWithId::abi_decode(&raw)
-        .map_err(|e| anyhow!("Failed to ABI-decode DataWithId from stellar payload: {e}"))?;
-    Ok(decoded.data.to_vec())
+            sol! {
+                struct DataWithId {
+                    uint64 triggerId;
+                    bytes data;
+                }
+            }
+
+            let submit_client =
+                crate::example_stellar_client::SimpleStellarSubmitEthClient::new(chain);
+
+            // Anchor the event poll at the current ledger minus a small slack so we
+            // don't miss a verify_eth tx that lands in the same ledger we sample.
+            // Soroban testnet retains roughly the last day of events; 100 ledgers
+            // (~10 min) is well inside that window and keeps the scan tight.
+            let now = submit_client.current_ledger().await?;
+            let start_ledger = now.saturating_sub(100).max(1);
+
+            let trigger_id_u64 = trigger_id.u64();
+            let event_id_hex = submit_client
+                .wait_for_triggered_event_id(
+                    &contract_id_str,
+                    trigger_id_u64,
+                    start_ledger,
+                    timeout,
+                )
+                .await
+                .with_context(|| {
+                    format!(
+                        "waiting for Triggered event on {contract_id_str} \
+                         for trigger_id={trigger_id_u64}"
+                    )
+                })?;
+            tracing::info!(
+                "Stellar handler {} fired Triggered for trigger_id={} event_id 0x{}",
+                contract_id_str,
+                trigger_id_u64,
+                event_id_hex
+            );
+            let raw = submit_client
+                .payload(&contract_id_str, &event_id_hex)
+                .await
+                .map_err(|e| anyhow!("Failed to read stellar payload({event_id_hex}): {e}"))?;
+            let decoded = DataWithId::abi_decode(&raw).map_err(|e| {
+                anyhow!("Failed to ABI-decode DataWithId from stellar payload: {e}")
+            })?;
+            Ok(decoded.data.to_vec())
+        }
+        SignerScheme::Ed25519 => {
+            let submit_client =
+                crate::example_stellar_client::SimpleStellarSubmitXlmClient::new(chain);
+
+            let now = submit_client.current_ledger().await?;
+            let start_ledger = now.saturating_sub(100).max(1);
+
+            let trigger_id_u64 = trigger_id.u64();
+            let event_id_hex = submit_client
+                .wait_for_triggered_event_id(
+                    &contract_id_str,
+                    trigger_id_u64,
+                    start_ledger,
+                    timeout,
+                )
+                .await
+                .with_context(|| {
+                    format!(
+                        "waiting for Triggered event on {contract_id_str} \
+                         for trigger_id={trigger_id_u64}"
+                    )
+                })?;
+            tracing::info!(
+                "Stellar handler {} fired Triggered for trigger_id={} event_id 0x{}",
+                contract_id_str,
+                trigger_id_u64,
+                event_id_hex
+            );
+            let raw = submit_client
+                .payload(&contract_id_str, &event_id_hex)
+                .await
+                .map_err(|e| anyhow!("Failed to read stellar payload({event_id_hex}): {e}"))?;
+            let decoded = warpdrive_client::message_with_id::MessageWithId::from_xdr_bytes(&raw)
+                .map_err(|e| {
+                    anyhow!("Failed to decode MessageWithId XDR from stellar payload: {e:?}")
+                })?;
+            Ok(decoded.message)
+        }
+    }
 }
 
 pub async fn cosmos_wait_for_task_to_land(
@@ -778,6 +850,7 @@ pub async fn change_service_for_test(
     component_sources: &ComponentSources,
     cosmos_code_map: CosmosCodeMap,
     stellar_service_manager: Option<&utils::test_utils::middleware::stellar::StellarServiceManager>,
+    stellar_scheme: Option<SignerScheme>,
 ) {
     match change_service {
         ChangeServiceDefinition::Component {
@@ -809,6 +882,7 @@ pub async fn change_service_for_test(
                 component_sources,
                 cosmos_code_map,
                 stellar_service_manager,
+                stellar_scheme,
             )
             .await;
 

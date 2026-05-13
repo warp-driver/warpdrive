@@ -3573,6 +3573,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "echo-data-xlm"
+version = "2.12.0"
+dependencies = [
+ "anyhow",
+ "example-helpers",
+ "tokio",
+]
+
+[[package]]
 name = "ed25519"
 version = "2.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3837,6 +3846,7 @@ dependencies = [
  "serde",
  "serde_json",
  "stellar-xdr",
+ "warpdrive-client",
  "warpdrive-wasi-utils",
  "wasip2",
  "wit-bindgen 0.53.1",
@@ -10953,9 +10963,9 @@ dependencies = [
 
 [[package]]
 name = "warpdrive-client"
-version = "0.2.4"
+version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd49a92547c8a9bcc853f4987e01c7f4b666b68be5bf1a26a60ff0b2db3baacc"
+checksum = "917a52f76e5384ccb29c50239cafc16a23a4b5f41fdd863cb9d50a91a5418a78"
 dependencies = [
  "ed25519-dalek",
  "stellar-strkey 0.0.16",

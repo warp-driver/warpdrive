@@ -4,7 +4,6 @@ use std::time::Duration;
 
 use anyhow::{anyhow, bail, Context, Result};
 use rand::RngCore;
-use stellar_xdr::curr::{Limits, ReadXdr, ScSymbol, ScVal};
 use utils::filesystem::workspace_path;
 
 /// Path (relative to the workspace root) of the staged `mock_submit_eth`
@@ -142,6 +141,30 @@ impl SimpleStellarSubmitEthClient {
         parse_optional_bytes_output(&output)
     }
 
+    /// Poll Soroban RPC for the contract's `Triggered` event matching
+    /// `trigger_id` and return the embedded event_id as a 40-char hex
+    /// string. Prefer this over `wait_for_verified_event_id` because the
+    /// `Triggered { trigger_id, event_id }` event lets us topic-filter on
+    /// the trigger we actually fired — the eth handler decodes
+    /// `DataWithId.triggerId` out of `envelope.payload` and publishes it
+    /// alongside Verified on every successful `verify_eth`.
+    pub async fn wait_for_triggered_event_id(
+        &self,
+        contract_id: &str,
+        trigger_id: u64,
+        start_ledger: u32,
+        timeout: Duration,
+    ) -> Result<String> {
+        super::events::wait_for_triggered_event_id(
+            STELLAR_RPC_URL_TESTNET,
+            contract_id,
+            trigger_id,
+            start_ledger,
+            timeout,
+        )
+        .await
+    }
+
     /// Poll Soroban RPC for the contract's first `Verified` event and
     /// return the embedded event_id as a 40-char hex string. We deliberately
     /// don't filter by topic on the server side — the contract is fresh per
@@ -156,44 +179,13 @@ impl SimpleStellarSubmitEthClient {
         start_ledger: u32,
         timeout: Duration,
     ) -> Result<String> {
-        let rpc = wasi_stellar_rpc_client::Client::new(STELLAR_RPC_URL_TESTNET)
-            .map_err(|e| anyhow!("failed to construct stellar rpc client: {e:?}"))?;
-
-        tokio::time::timeout(timeout, async {
-            loop {
-                let resp = rpc
-                    .get_events(
-                        wasi_stellar_rpc_client::EventStart::Ledger(start_ledger),
-                        Some(wasi_stellar_rpc_client::EventType::Contract),
-                        &[contract_id.to_string()],
-                        &[],
-                        None,
-                    )
-                    .await;
-                match resp {
-                    Ok(resp) => {
-                        for event in resp.events {
-                            if let Some(hex) = extract_verified_event_id(&event) {
-                                return Ok(hex);
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        tracing::debug!(
-                            "stellar get_events transient error while polling {}: {e:?}",
-                            contract_id
-                        );
-                    }
-                }
-                tracing::debug!(
-                    "Waiting for Verified event on stellar contract {}",
-                    contract_id
-                );
-                tokio::time::sleep(Duration::from_millis(500)).await;
-            }
-        })
+        super::events::wait_for_verified_event_id(
+            STELLAR_RPC_URL_TESTNET,
+            contract_id,
+            start_ledger,
+            timeout,
+        )
         .await
-        .map_err(|_| anyhow!("Timeout waiting for Verified event on {}", contract_id))?
     }
 
     /// Latest ledger sequence — useful as a `start_ledger` baseline before
@@ -256,47 +248,6 @@ impl SimpleStellarSubmitEthClient {
         }
 
         Ok(String::from_utf8(output.stdout)?.trim().to_string())
-    }
-}
-
-/// Pulls the 20-byte event_id out of a `Verified` contract event.
-///
-/// `warpdrive_shared::interfaces::handler::Verified::publish` publishes the
-/// event with `topics = [Symbol("verified"), BytesN<20>]` and an empty
-/// payload (the body is `Verified::new(event_id)`). We accept both the
-/// "event_id in topic[1]" shape and a fallback where the event_id is in the
-/// event body — whichever the deployed Soroban runtime uses — so the
-/// matcher is robust to upstream tweaks.
-fn extract_verified_event_id(event: &wasi_stellar_rpc_client::Event) -> Option<String> {
-    let topics: Vec<ScVal> = event
-        .topic
-        .iter()
-        .filter_map(|t| ScVal::from_xdr_base64(t, Limits::none()).ok())
-        .collect();
-    let first_topic_is_verified = matches!(
-        topics.first(),
-        Some(ScVal::Symbol(ScSymbol(sym))) if sym.as_slice() == b"verified"
-    );
-    if !first_topic_is_verified {
-        return None;
-    }
-    for tail in topics.iter().skip(1) {
-        if let Some(hex) = scval_as_bytesn20_hex(tail) {
-            return Some(hex);
-        }
-    }
-    if let Ok(value) = ScVal::from_xdr_base64(&event.value, Limits::none()) {
-        if let Some(hex) = scval_as_bytesn20_hex(&value) {
-            return Some(hex);
-        }
-    }
-    None
-}
-
-fn scval_as_bytesn20_hex(v: &ScVal) -> Option<String> {
-    match v {
-        ScVal::Bytes(b) if b.0.len() == 20 => Some(const_hex::encode(&b.0)),
-        _ => None,
     }
 }
 

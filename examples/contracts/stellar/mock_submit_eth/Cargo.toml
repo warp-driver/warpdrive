@@ -22,7 +22,7 @@ doctest = false
 
 [dependencies]
 soroban-sdk = { version = "26", features = ["alloc"] }
-warpdrive-shared = { version = "0.2.4" }
+warpdrive-shared = { version = "0.2.6" }
 alloy-sol-types = { version = "1", default-features = false }
 alloy-primitives = { version = "1", default-features = false }
 

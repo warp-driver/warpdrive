@@ -1,12 +1,12 @@
-use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String};
+use soroban_sdk::{Address, Bytes, BytesN, Env, String, contract, contractimpl};
 
 use warpdrive_shared::interfaces::{
-    handler::{EthereumHandlerInterface, HandlerError, SignatureData, Verified},
+    handler::{EthereumHandlerInterface, HandlerError, SignatureData, Triggered, Verified},
     verification::{Secp256k1VerificationClient, VerifyError},
     warpdrive::{ContractUpgraded, WarpDriveInterface},
 };
 
-use crate::envelope::Envelope as EthEnvelope;
+use crate::envelope::{DataWithId, Envelope as EthEnvelope};
 use crate::storage;
 
 /// Maximum age (in ledgers) allowed for a reference block.
@@ -114,6 +114,10 @@ impl EthereumHandlerInterface for EthereumHandler {
             EthEnvelope::abi_decode_from(&envelope_bytes).ok_or(HandlerError::InvalidEnvelope)?;
         let event_id = BytesN::from_array(&env, &envelope.eventId.0);
 
+        let data_with_id = DataWithId::abi_decode_from_bytes(envelope.payload.as_ref())
+            .ok_or(HandlerError::InvalidEnvelope)?;
+        let trigger_id: u64 = data_with_id.triggerId;
+
         // Check for duplicate event
         if storage::is_event_seen(&env, &event_id) {
             return Err(HandlerError::EventAlreadySeen);
@@ -137,7 +141,8 @@ impl EthereumHandlerInterface for EthereumHandler {
         let payload = Bytes::from_slice(&env, envelope.payload.as_ref());
         storage::save_payload(&env, event_id.clone(), payload);
 
-        Verified::new(event_id).publish(&env);
+        Verified::new(event_id.clone()).publish(&env);
+        Triggered::new(trigger_id, event_id).publish(&env);
 
         Ok(())
     }

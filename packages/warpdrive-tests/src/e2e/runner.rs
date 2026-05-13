@@ -135,6 +135,7 @@ impl Runner {
             for test in group_tests.iter() {
                 if let Some(change_service) = test.change_service.clone() {
                     let service = all_services.get(&test.name).cloned().unwrap().service;
+                    let stellar_scheme = test.stellar_scheme;
                     futures.push(async move {
                         let mut service = service;
                         change_service_for_test(
@@ -146,6 +147,7 @@ impl Runner {
                             // No stellar change_service tests today; thread
                             // a real one through if/when one is added.
                             None,
+                            stellar_scheme,
                         )
                         .await;
                         (service, change_service)
@@ -686,11 +688,18 @@ async fn run_test(
                                         "expected Stellar submission handler, got {other:?}"
                                     ),
                                 };
+                                let scheme = test.stellar_scheme.ok_or_else(|| {
+                                    anyhow!(
+                                        "Stellar workflow {} ran without a stellar_scheme set",
+                                        workflow_id
+                                    )
+                                })?;
                                 stellar_wait_for_task_to_land(
                                     chain.clone(),
                                     *stellar_contract,
                                     trigger_id,
                                     *timeout,
+                                    scheme,
                                 )
                                 .await?
                             }

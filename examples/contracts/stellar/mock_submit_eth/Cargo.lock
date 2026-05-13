@@ -1956,9 +1956,9 @@ dependencies = [
 
 [[package]]
 name = "warpdrive-shared"
-version = "0.2.4"
+version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ada821149c2c524f4405c5e992b9a869bf09a45f77199e5a6c12ad6fe575abed"
+checksum = "82922a42a2b8c49d8e40280ff6100d1a4a7f0d4286ba7a0a52604b8cccd7081a"
 dependencies = [
  "soroban-sdk",
 ]

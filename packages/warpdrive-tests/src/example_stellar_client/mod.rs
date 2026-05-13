@@ -1,3 +1,4 @@
+mod events;
 mod mock_submit_eth;
 mod mock_submit_xlm;
 mod trigger;

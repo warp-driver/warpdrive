@@ -12,6 +12,7 @@ members = [
     "examples/components/stellar-query",
     "examples/components/chain-trigger-lookup",
     "examples/components/echo-data",
+    "examples/components/echo-data-xlm",
     "examples/components/square",
     "examples/components/permissions",
     "examples/components/echo-block-interval",
@@ -164,7 +165,7 @@ stellar-strkey = { version = "0.0.16", features = ["serde"] }
 wasi-soroban-rs = "0.2.7"
 ed25519-dalek = "2.2.0"
 k256 = "0.13.4"
-warpdrive-client = "0.2.4"
+warpdrive-client = "0.2.6"
 
 # Cosmos-specific dependencies
 cosmwasm-schema = "3.0.2"

@@ -1,7 +1,10 @@
-use soroban_sdk::{contract, contractimpl, xdr::FromXdr, Address, Bytes, BytesN, Env, String};
+use soroban_sdk::{Address, Bytes, BytesN, Env, String, contract, contractimpl, xdr::FromXdr};
 
 use warpdrive_shared::interfaces::{
-    handler::{Ed25519SignatureData, HandlerError, StellarHandlerInterface, Verified, XlmEnvelope},
+    handler::{
+        Ed25519SignatureData, HandlerError, MessageWithId, StellarHandlerInterface, Triggered,
+        Verified, XlmEnvelope,
+    },
     verification::{Ed25519VerificationClient, VerifyError},
     warpdrive::{ContractUpgraded, WarpDriveInterface},
 };
@@ -113,6 +116,10 @@ impl StellarHandlerInterface for StellarHandler {
             .map_err(|_| HandlerError::InvalidEnvelope)?;
         let event_id = envelope.event_id;
 
+        let message_with_id = MessageWithId::from_xdr(&env, &envelope.payload)
+            .map_err(|_| HandlerError::InvalidEnvelope)?;
+        let trigger_id = message_with_id.trigger_id;
+
         // Check for duplicate event
         if storage::is_event_seen(&env, &event_id) {
             return Err(HandlerError::EventAlreadySeen);
@@ -135,7 +142,8 @@ impl StellarHandlerInterface for StellarHandler {
         // Save payload
         storage::save_payload(&env, event_id.clone(), envelope.payload);
 
-        Verified::new(event_id).publish(&env);
+        Verified::new(event_id.clone()).publish(&env);
+        Triggered::new(trigger_id, event_id).publish(&env);
 
         Ok(())
     }

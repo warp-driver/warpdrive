@@ -130,6 +130,7 @@ pub fn encode_trigger_output(
         ServiceManager::Stellar(_) => evm_encode_trigger_output(trigger_id, output),
     }
 }
+
 // For EVM ServiceHandler contracts, encode output using DataWithId struct
 fn evm_encode_trigger_output(
     trigger_id: u64,
@@ -158,6 +159,30 @@ fn cosmos_encode_trigger_output(
         }
         .to_bytes()
         .unwrap(),
+        ordering: None,
+        event_id_salt: None,
+    }
+}
+
+pub fn stellar_encode_trigger_output(
+    trigger_id: u64,
+    output: impl AsRef<[u8]>,
+) -> component_output::WasmResponse {
+    // Wrap as XDR-encoded `MessageWithId` so the stellar-handler can
+    // decode `envelope.payload`, recover `trigger_id`, and publish the
+    // `Triggered { trigger_id, event_id }` event. `warpdrive_client`
+    // exposes a std-side mirror of `warpdrive_shared::interfaces::handler
+    // ::MessageWithId` so we don't need to drag soroban-sdk into the
+    // WASI component build.
+    let payload = warpdrive_client::message_with_id::MessageWithId {
+        trigger_id,
+        message: output.as_ref().to_vec(),
+    }
+    .to_xdr_bytes()
+    .expect("MessageWithId XDR encode failed");
+
+    component_output::WasmResponse {
+        payload,
         ordering: None,
         event_id_salt: None,
     }
