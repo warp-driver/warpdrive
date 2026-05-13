@@ -234,7 +234,10 @@ mod test {
         // and that it fails if we try the wrong prefix
         let signature = signer.sign_envelope(&envelope).await.unwrap();
         let tampered = match signature {
-            WavsSignature::Secp256k1 { sig, .. } => WavsSignature::Secp256k1 { sig, prefix: None },
+            WavsSignature::Secp256k1 { signature, .. } => WavsSignature::Secp256k1 {
+                signature,
+                prefix: None,
+            },
             other => panic!("expected Secp256k1 variant, got {other:?}"),
         };
 
@@ -250,8 +253,8 @@ mod test {
         // in both directions
         let signature = signer_no_prefix.sign_envelope(&envelope).await.unwrap();
         let tampered = match signature {
-            WavsSignature::Secp256k1 { sig, .. } => WavsSignature::Secp256k1 {
-                sig,
+            WavsSignature::Secp256k1 { signature, .. } => WavsSignature::Secp256k1 {
+                signature,
                 prefix: Some(warpdrive_types::SignaturePrefix::Eip191),
             },
             other => panic!("expected Secp256k1 variant, got {other:?}"),

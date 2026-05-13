@@ -10,7 +10,7 @@ use warpdrive_types::{
             error::WavsValidateError, ServiceManagerQueryMessages, WarpDriveValidateResult,
         },
     },
-    ChainAddress, CosmosSubmitAction, EvmSubmitAction,
+    CosmosSubmitAction, EvmSubmitAction,
     IWarpDriveServiceHandler::IWarpDriveServiceHandlerInstance,
     IWarpDriveServiceManager::IWarpDriveServiceManagerInstance,
     Service, ServiceManager, ServiceManagerError, SignatureAlgorithm, StellarSubmitAction,
@@ -384,50 +384,10 @@ impl Aggregator {
             AggregatorError::Stellar(format!("failed to encode stellar envelope: {e:?}"))
         })?;
 
-        // TODO - consolidate this into branches for ed25519 / secp
         // ── Recover compressed pubkey + sig per queue entry. The
         // shared `WavsSignature::secp256k1_compressed_pubkey` helper
         // does the EIP-191 prehash + recovery; same primitive used by
         // the receive-time validator in `validate.rs`.
-        let mut signers_and_sigs: Vec<([u8; 33], [u8; 65])> = Vec::with_capacity(queue.len());
-        for queued in queue {
-            let sig_bytes: &[u8] = match &queued.envelope_signature {
-                WavsSignature::Secp256k1 { sig, .. } => sig,
-                WavsSignature::Ed25519 { sig, .. } => sig.as_slice(),
-            };
-
-            match service.signature_kind().algorithm {
-                SignatureAlgorithm::Secp256k1 => {
-                    if sig_bytes.len() != 65 {
-                        return Err(AggregatorError::Stellar(format!(
-                            "stellar submit: expected 65-byte secp256k1 signature, got {}",
-                            sig_bytes.len()
-                        )));
-                    }
-                    let pubkey = queued
-                        .envelope_signature
-                        .secp256k1_compressed_pubkey(&queued.envelope)
-                        .map_err(|e| {
-                            AggregatorError::Stellar(format!(
-                                "secp256k1 recovery failed for stellar submit: {e:?}"
-                            ))
-                        })?;
-                    let mut sig_arr = [0u8; 65];
-                    sig_arr.copy_from_slice(sig_bytes);
-                    signers_and_sigs.push((pubkey, sig_arr));
-                }
-                SignatureAlgorithm::Ed25519 => {
-                    let pubkey = queued.envelope_signature.ed25519_pubkey(&queued.envelope)?;
-
-                    signers_and_sigs.push((pubkey, sig_arr));
-                }
-            }
-        }
-
-        // Verification contract expects signers in ascending pubkey order.
-        signers_and_sigs.sort_by_key(|a| a.0);
-        let (signers, signatures): (Vec<[u8; 33]>, Vec<[u8; 65]>) =
-            signers_and_sigs.into_iter().unzip();
 
         // ── Reference block: pinned at receive-time validation. All
         // queued packets were validated against this exact ledger
@@ -491,10 +451,38 @@ impl Aggregator {
             env,
             source_account: account,
         };
-        let num_signers = signers.len();
 
         match service.signature_kind().algorithm {
             SignatureAlgorithm::Secp256k1 => {
+                let mut signers_and_sigs: Vec<([u8; 33], [u8; 65])> =
+                    Vec::with_capacity(queue.len());
+
+                for queued in queue {
+                    match &queued.envelope_signature {
+                        WavsSignature::Secp256k1 { signature, .. } => {
+                            let pubkey = queued
+                                .envelope_signature
+                                .secp256k1_compressed_pubkey(&queued.envelope)
+                                .map_err(|e| {
+                                    AggregatorError::Stellar(format!(
+                                        "secp256k1 recovery failed for stellar submit: {e:?}"
+                                    ))
+                                })?;
+                            signers_and_sigs.push((pubkey, signature.into_inner()));
+                        }
+                        WavsSignature::Ed25519 { .. } => {
+                            return Err(AggregatorError::Stellar(format!(
+                                "secp256k1 recovery failed for stellar submit, wrong signature kind! (got ed25519)"
+                            )))
+                        }
+                    }
+                }
+                // Verification contract expects signers in ascending pubkey order.
+                signers_and_sigs.sort_by_key(|a| a.0);
+                let (signers, signatures): (Vec<[u8; 33]>, Vec<[u8; 65]>) =
+                    signers_and_sigs.into_iter().unzip();
+
+                let num_signers = signers.len();
                 tracing::info!(
                     chain = %action.chain,
                     handler = %contract_id,
@@ -518,6 +506,36 @@ impl Aggregator {
                 }
             }
             SignatureAlgorithm::Ed25519 => {
+                let mut signers_and_sigs: Vec<([u8; 32], [u8; 64])> =
+                    Vec::with_capacity(queue.len());
+
+                for queued in queue {
+                    match &queued.envelope_signature {
+                        WavsSignature::Secp256k1 { .. } => {
+                            return Err(AggregatorError::Stellar(format!(
+                                "ed25519 recovery failed for stellar submit, wrong signature kind! (got secp256k1)"
+                            )));
+                        }
+                        WavsSignature::Ed25519 { signature, pubkey } => {
+                            signers_and_sigs.push((pubkey.into_inner(), signature.into_inner()));
+                        }
+                    }
+                }
+
+                // Verification contract expects signers in ascending pubkey order.
+                signers_and_sigs.sort_by_key(|a| a.0);
+                let (signers, signatures): (Vec<[u8; 32]>, Vec<[u8; 64]>) =
+                    signers_and_sigs.into_iter().unzip();
+
+                let num_signers = signers.len();
+                tracing::info!(
+                    chain = %action.chain,
+                    handler = %contract_id,
+                    num_signers,
+                    reference_block,
+                    "Stellar: submitting via EthereumHandlerClient::verify_eth"
+                );
+
                 let sig_data = warpdrive_client::stellar_handler::Ed25519SignatureData {
                     signers,
                     signatures,

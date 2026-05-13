@@ -21,8 +21,8 @@ use utils::{
 };
 use warpdrive_engine::bindings::aggregator::world::AnyTxHash;
 use warpdrive_types::{
-    AggregatorAction, ChainKey, EventId, QuorumQueue, QuorumQueueId, Service, SignatureAlgorithm,
-    Submission, Submit, SubmitAction, TimerAction,
+    AggregatorAction, ChainKey, EventId, QuorumQueue, QuorumQueueId, Service, Submission, Submit,
+    SubmitAction, TimerAction,
 };
 
 use crate::{

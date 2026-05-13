@@ -36,6 +36,12 @@ impl<const N: usize> ByteArray<N> {
     }
 }
 
+impl<const N: usize> From<[u8; N]> for ByteArray<N> {
+    fn from(value: [u8; N]) -> Self {
+        ByteArray(value)
+    }
+}
+
 impl<const N: usize> TryFrom<Vec<u8>> for ByteArray<N> {
     type Error = ByteArrayError<N>;
 

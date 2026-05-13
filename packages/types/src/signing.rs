@@ -128,12 +128,11 @@ impl From<SignatureData> for ServiceManagerSignatureData {
 #[serde(rename_all = "snake_case", tag = "algorithm")]
 pub enum WavsSignature {
     Secp256k1 {
-        #[serde(with = "const_hex")]
-        sig: Vec<u8>,
+        signature: ByteArray<65>,
         prefix: Option<SignaturePrefix>,
     },
     Ed25519 {
-        sig: ByteArray<64>,
+        signature: ByteArray<64>,
         pubkey: ByteArray<32>,
     },
 }

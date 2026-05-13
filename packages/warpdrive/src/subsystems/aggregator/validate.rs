@@ -51,7 +51,7 @@ use warpdrive_client::{
 use warpdrive_types::{
     contracts::cosmwasm::service_manager::ServiceManagerQueryMessages, AnyChainConfig, ChainKey,
     EventId, IWarpDriveServiceManager::IWarpDriveServiceManagerInstance, Service, ServiceManager,
-    SignatureAlgorithm, Submission, WavsSignable,
+    Submission, WavsSignable, WavsSignature,
 };
 
 use crate::subsystems::aggregator::{error::AggregatorError, Aggregator};
@@ -233,76 +233,43 @@ impl Aggregator {
             .encode_data()
             .map_err(|e| AggregatorError::InvalidPacketSignature(format!("envelope: {e:?}")))?;
 
-        let sig_slice = match &submission.envelope_signature {
-            warpdrive_types::WavsSignature::Secp256k1 { sig, .. } => sig.as_slice(),
-            warpdrive_types::WavsSignature::Ed25519 { sig, .. } => sig.as_slice(),
-        };
-
-        let signature_kind = self.services.get_signature_kind(submission.service_id())?;
-
-        let (res, signer_pubkey_hex) = match signature_kind.algorithm {
-            SignatureAlgorithm::Secp256k1 => {
-                // Recover the compressed pubkey from the operator's signature.
-                // `secp256k1_compressed_pubkey` does the EIP-191 prehash +
-                // recovery itself, so a malformed sig fails here before any
-                // RPC.
-                let pubkey: [u8; 33] = submission
+        let (res, signer_pubkey_hex) = match submission.envelope_signature {
+            WavsSignature::Secp256k1 { signature, .. } => {
+                let pubkey = submission
                     .envelope_signature
-                    .secp256k1_compressed_pubkey(&submission.envelope)
-                    .map_err(|e| AggregatorError::InvalidPacketSignature(format!("{e:?}")))?;
+                    .secp256k1_compressed_pubkey(&submission.envelope)?;
 
-                if sig_slice.len() != 65 {
-                    return Err(AggregatorError::InvalidPacketSignature(format!(
-                        "expected 65-byte secp256k1 signature, got {}",
-                        sig_slice.len()
-                    )));
-                }
-
-                let mut sig_arr = [0u8; 65];
-                sig_arr.copy_from_slice(sig_slice);
-
-                let verification_client =
+                let res =
                     Secp256k1VerificationClient::new(wasi_soroban_rs::ClientContractConfigs {
                         contract_id: stellar_strkey::Contract(verification_contract.0.into()),
                         env,
                         source_account: account,
-                    });
-                let res = verification_client
-                    .check_one(envelope_bytes, sig_arr, pubkey, Some(ref_block as u32))
+                    })
+                    .check_one(
+                        envelope_bytes,
+                        signature.into_inner(),
+                        pubkey,
+                        Some(ref_block as u32),
+                    )
                     .await;
 
-                let pubkey_str = const_hex::encode(pubkey);
-                (res, pubkey_str)
+                (res, const_hex::encode(pubkey))
             }
-            SignatureAlgorithm::Ed25519 => {
-                let pubkey = submission
-                    .envelope_signature
-                    .ed25519_pubkey(&submission.envelope)
-                    .map_err(|e| AggregatorError::InvalidPacketSignature(format!("{e:?}")))?;
+            WavsSignature::Ed25519 { signature, pubkey } => {
+                let res = Ed25519VerificationClient::new(wasi_soroban_rs::ClientContractConfigs {
+                    contract_id: stellar_strkey::Contract(verification_contract.0.into()),
+                    env,
+                    source_account: account,
+                })
+                .check_one(
+                    envelope_bytes,
+                    signature.into_inner(),
+                    pubkey.into_inner(),
+                    Some(ref_block as u32),
+                )
+                .await;
 
-                if sig_slice.len() != 64 {
-                    return Err(AggregatorError::InvalidPacketSignature(format!(
-                        "expected 64-byte ed25519 signature, got {}",
-                        sig_slice.len()
-                    )));
-                }
-
-                let mut sig_arr = [0u8; 64];
-                sig_arr.copy_from_slice(sig_slice);
-
-                let verification_client =
-                    Ed25519VerificationClient::new(wasi_soroban_rs::ClientContractConfigs {
-                        contract_id: stellar_strkey::Contract(verification_contract.0.into()),
-                        env,
-                        source_account: account,
-                    });
-
-                let res = verification_client
-                    .check_one(envelope_bytes, sig_arr, pubkey, Some(ref_block as u32))
-                    .await;
-
-                let pubkey_str = const_hex::encode(pubkey.as_slice());
-                (res, pubkey_str)
+                (res, const_hex::encode(pubkey.as_slice()))
             }
         };
 
