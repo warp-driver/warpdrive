@@ -166,7 +166,6 @@ wasi-soroban-rs = "0.2.7"
 ed25519-dalek = "2.2.0"
 k256 = "0.13.4"
 warpdrive-client = "0.2.7"
-warpdrive-shared = "0.2.7"
 
 
 # Cosmos-specific dependencies
