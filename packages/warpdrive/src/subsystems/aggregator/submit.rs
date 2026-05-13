@@ -471,9 +471,9 @@ impl Aggregator {
                             signers_and_sigs.push((pubkey, signature.into_inner()));
                         }
                         WavsSignature::Ed25519 { .. } => {
-                            return Err(AggregatorError::Stellar(format!(
-                                "secp256k1 recovery failed for stellar submit, wrong signature kind! (got ed25519)"
-                            )))
+                            return Err(AggregatorError::Stellar(
+                                "secp256k1 recovery failed for stellar submit, wrong signature kind! (got ed25519)".to_string()
+                            ))
                         }
                     }
                 }
@@ -512,9 +512,9 @@ impl Aggregator {
                 for queued in queue {
                     match &queued.envelope_signature {
                         WavsSignature::Secp256k1 { .. } => {
-                            return Err(AggregatorError::Stellar(format!(
-                                "ed25519 recovery failed for stellar submit, wrong signature kind! (got secp256k1)"
-                            )));
+                            return Err(AggregatorError::Stellar(
+                                "ed25519 recovery failed for stellar submit, wrong signature kind! (got secp256k1)".to_string()
+                            ));
                         }
                         WavsSignature::Ed25519 { signature, pubkey } => {
                             signers_and_sigs.push((pubkey.into_inner(), signature.into_inner()));

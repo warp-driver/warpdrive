@@ -170,9 +170,9 @@ impl SubmissionManager {
             SignatureAlgorithm::Ed25519 => Envelope::Stellar {
                 data: XlmEnvelope::new(
                     req.operator_response.payload.clone(),
-                    event_id.as_bytes().clone(),
+                    *event_id.as_bytes(),
                     match req.operator_response.ordering {
-                        Some(ordering) => EventOrder::new_u64(ordering).as_bytes().clone(),
+                        Some(ordering) => *EventOrder::new_u64(ordering).as_bytes(),
                         None => [0u8; 12],
                     },
                 )
