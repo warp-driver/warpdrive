@@ -21,8 +21,8 @@ use utils::{
 };
 use warpdrive_engine::bindings::aggregator::world::AnyTxHash;
 use warpdrive_types::{
-    AggregatorAction, ChainKey, EventId, QuorumQueue, QuorumQueueId, Service, Submission, Submit,
-    SubmitAction, TimerAction,
+    AggregatorAction, ChainKey, EventId, QuorumQueue, QuorumQueueId, Service, SignatureAlgorithm,
+    Submission, Submit, SubmitAction, TimerAction,
 };
 
 use crate::{
@@ -671,10 +671,10 @@ impl Aggregator {
                                 .await
                         }
                         SubmitAction::Stellar(action) => {
-                            let signing_key = _self.get_stellar_signing_key(&action.chain)?;
+                            let funded_key = _self.get_stellar_signing_key(&action.chain)?;
                             _self
                                 .handle_action_submit_stellar(
-                                    signing_key,
+                                    funded_key,
                                     &service_clone,
                                     &queue,
                                     action,
