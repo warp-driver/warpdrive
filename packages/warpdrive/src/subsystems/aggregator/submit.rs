@@ -395,11 +395,6 @@ impl Aggregator {
             AggregatorError::Stellar(format!("failed to encode stellar envelope: {e:?}"))
         })?;
 
-        // ── Recover compressed pubkey + sig per queue entry. The
-        // shared `WavsSignature::secp256k1_compressed_pubkey` helper
-        // does the EIP-191 prehash + recovery; same primitive used by
-        // the receive-time validator in `validate.rs`.
-
         // ── Reference block: pinned at receive-time validation. All
         // queued packets were validated against this exact ledger
         // sequence, so the verification contract's per-signer weight
@@ -544,7 +539,7 @@ impl Aggregator {
                     handler = %contract_id,
                     num_signers,
                     reference_block,
-                    "Stellar: submitting via EthereumHandlerClient::verify_eth"
+                    "Stellar: submitting via StellarHandlerClient::verify_xlm"
                 );
 
                 let sig_data = warpdrive_client::stellar_handler::Ed25519SignatureData {
