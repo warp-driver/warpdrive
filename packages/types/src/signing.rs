@@ -5,11 +5,10 @@ cfg_if::cfg_if! {
     }
 }
 
-pub use crate::solidity_types::Envelope;
 use crate::{
-    ByteArray, ServiceId, ServiceManagerEnvelope, ServiceManagerSignatureData, SignatureAlgorithm,
-    SignatureData, SignatureKind, SignaturePrefix, SubmitAction, TriggerAction, TriggerData,
-    WasmResponse, WorkflowId,
+    ByteArray, EvmEnvelope, ServiceId, ServiceManagerEnvelope, ServiceManagerSignatureData,
+    SignatureAlgorithm, SignatureData, SignatureKind, SignaturePrefix, SubmitAction, TriggerAction,
+    TriggerData, WasmResponse, WorkflowId,
 };
 use alloy_primitives::{eip191_hash_message, keccak256, FixedBytes, SignatureError};
 use alloy_sol_types::SolValue;
@@ -19,6 +18,19 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use thiserror::Error;
 use utoipa::ToSchema;
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum Envelope {
+    Evm {
+        data: EvmEnvelope,
+    },
+    Stellar {
+        // Must have already been encoded to XDR and converted to bytes
+        // since we're not carrying the `Env` around through to the database storage etc.
+        data: Vec<u8>,
+    },
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, ToSchema)]
 #[serde(rename_all = "snake_case")]
@@ -71,7 +83,10 @@ pub trait WavsSignable {
 
 impl WavsSignable for Envelope {
     fn encode_data(&self) -> anyhow::Result<Vec<u8>> {
-        Ok(self.abi_encode())
+        match self {
+            Envelope::Evm { data } => Ok(data.abi_encode()),
+            Envelope::Stellar { data } => Ok(data.clone()),
+        }
     }
 }
 
@@ -84,8 +99,8 @@ impl WavsSignable for &[SubmitAction] {
     }
 }
 
-impl From<Envelope> for ServiceManagerEnvelope {
-    fn from(envelope: Envelope) -> Self {
+impl From<EvmEnvelope> for ServiceManagerEnvelope {
+    fn from(envelope: EvmEnvelope) -> Self {
         ServiceManagerEnvelope {
             eventId: envelope.eventId,
             ordering: envelope.ordering,
@@ -113,12 +128,11 @@ impl From<SignatureData> for ServiceManagerSignatureData {
 #[serde(rename_all = "snake_case", tag = "algorithm")]
 pub enum WavsSignature {
     Secp256k1 {
-        #[serde(with = "const_hex")]
-        sig: Vec<u8>,
+        signature: ByteArray<65>,
         prefix: Option<SignaturePrefix>,
     },
     Ed25519 {
-        sig: ByteArray<64>,
+        signature: ByteArray<64>,
         pubkey: ByteArray<32>,
     },
 }
@@ -255,6 +269,10 @@ impl EventOrder {
         bytes[0..8].copy_from_slice(&value.to_be_bytes());
         Self(bytes)
     }
+
+    pub fn as_bytes(&self) -> &[u8; 12] {
+        &self.0
+    }
 }
 
 impl From<FixedBytes<12>> for EventOrder {
@@ -272,12 +290,6 @@ impl From<EventOrder> for FixedBytes<12> {
 impl std::fmt::Display for EventOrder {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", const_hex::encode(self.0))
-    }
-}
-
-impl AsRef<[u8]> for EventOrder {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
     }
 }
 

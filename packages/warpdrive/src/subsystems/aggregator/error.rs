@@ -64,9 +64,6 @@ pub enum AggregatorError {
     #[error("Services: {0}")]
     ServicesError(#[from] ServicesError),
 
-    #[error("Queue is empty: {0:?}")]
-    QueueIsEmpty(QuorumQueueId),
-
     #[error("Signing: {0:?}")]
     Signing(#[from] SigningError),
 
@@ -174,4 +171,10 @@ pub enum AggregatorError {
     /// of the node keeps running.
     #[error("Empty submission queue for {chain_kind} submit")]
     EmptySubmissionQueue { chain_kind: &'static str },
+
+    #[error("expected {expected} envelope, got {received}")]
+    UnexpectedEnvelopeKind {
+        expected: &'static str,
+        received: &'static str,
+    },
 }

@@ -5,7 +5,8 @@ use utils::context::AppContext;
 use utils::filesystem::workspace_path;
 use warpdrive::config::Config;
 use warpdrive_types::{
-    AllowedHostPermission, Component, ComponentDigest, ComponentSource, Service, WorkflowId,
+    AllowedHostPermission, Component, ComponentDigest, ComponentSource, Envelope, Service,
+    WorkflowId,
 };
 use warpdrive_types::{SignatureKind, Submit};
 
@@ -274,9 +275,16 @@ impl DevTriggersRuntime {
         let submissions = self.dispatcher.submission_manager.get_debug_submissions();
         assert_eq!(submissions.len(), expected);
         for submission in submissions {
-            assert_eq!(submission.envelope.payload.0, &self.payload);
             assert_eq!(submission.workflow_id().clone(), self.workflow_id);
             assert_eq!(submission.service_id().clone(), self.service.id());
+
+            let evm_envelope = match submission.envelope {
+                Envelope::Evm { data } => data,
+                Envelope::Stellar { .. } => {
+                    panic!("not an evm envelope");
+                }
+            };
+            assert_eq!(evm_envelope.payload.0, &self.payload);
         }
     }
 }

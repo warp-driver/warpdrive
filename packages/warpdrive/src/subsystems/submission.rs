@@ -17,9 +17,9 @@ use utils::{
     evm_client::signing::make_signer, stellar_client::make_stellar_signer,
     telemetry::SubmissionMetrics,
 };
+use warpdrive_client::xlm_envelope::XlmEnvelope;
 use warpdrive_types::{
-    Credential, Envelope, EventOrder, ServiceId, SignatureAlgorithm, SignatureKind, SignerResponse,
-    Submit,
+    Credential, Envelope, EventOrder, EvmEnvelope, ServiceId, SignatureAlgorithm, SignerResponse,
 };
 use warpdrive_types::{Submission, VectrSigner};
 
@@ -154,13 +154,29 @@ impl SubmissionManager {
 
         let event_id = req.event_id().map_err(SubmissionError::EncodeEventId)?;
 
-        let envelope = Envelope {
-            // a bit of a heavy clone, but we need it
-            payload: req.operator_response.payload.clone().into(),
-            eventId: event_id.clone().into(),
-            ordering: match req.operator_response.ordering {
-                Some(ordering) => EventOrder::new_u64(ordering).into(),
-                None => FixedBytes::default(),
+        let envelope = match req.service.signature_kind().algorithm {
+            SignatureAlgorithm::Secp256k1 => Envelope::Evm {
+                data: EvmEnvelope {
+                    // a bit of a heavy clone, but we need it
+                    payload: req.operator_response.payload.clone().into(),
+                    eventId: event_id.clone().into(),
+                    ordering: match req.operator_response.ordering {
+                        Some(ordering) => EventOrder::new_u64(ordering).into(),
+                        None => FixedBytes::default(),
+                    },
+                },
+            },
+
+            SignatureAlgorithm::Ed25519 => Envelope::Stellar {
+                data: XlmEnvelope::new(
+                    req.operator_response.payload.clone(),
+                    *event_id.as_bytes(),
+                    match req.operator_response.ordering {
+                        Some(ordering) => *EventOrder::new_u64(ordering).as_bytes(),
+                        None => [0u8; 12],
+                    },
+                )
+                .encode()?,
             },
         };
 
@@ -257,15 +273,7 @@ impl SubmissionManager {
         self.signing_mnemonic_hd_index_count
             .fetch_max(next_index, std::sync::atomic::Ordering::SeqCst);
 
-        let signature_kind = match self.services.get(&service_id) {
-            // INVARIANT: all workflows that have a submit type must have the same signature kind, so we can just check the first one we find
-            Ok(service) => service.workflows.values().find_map(|w| match &w.submit {
-                Submit::None => None,
-                Submit::Aggregator { signature_kind, .. } => Some(signature_kind.clone()),
-            }),
-            Err(_) => None,
-        }
-        .unwrap_or_else(SignatureKind::evm_default); // if we have no signer, default to evm... won't be used, but better safe than sorry
+        let signature_kind = self.services.get_signature_kind(&service_id)?;
 
         let signer = match signature_kind.algorithm {
             SignatureAlgorithm::Secp256k1 => {

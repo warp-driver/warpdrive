@@ -671,10 +671,10 @@ impl Aggregator {
                                 .await
                         }
                         SubmitAction::Stellar(action) => {
-                            let signing_key = _self.get_stellar_signing_key(&action.chain)?;
+                            let funded_key = _self.get_stellar_signing_key(&action.chain)?;
                             _self
                                 .handle_action_submit_stellar(
-                                    signing_key,
+                                    funded_key,
                                     &service_clone,
                                     &queue,
                                     action,

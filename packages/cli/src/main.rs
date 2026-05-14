@@ -25,6 +25,7 @@ use warpdrive_cli::{
     context::CliContext,
     util::{write_output_file, ComponentInput},
 };
+use warpdrive_types::EvmEnvelope;
 use warpdrive_types::WavsSigner;
 use warpdrive_types::{ChainKeyId, Envelope, IWarpDriveServiceHandler};
 
@@ -268,7 +269,7 @@ async fn main() {
                         );
 
                         // Create envelope from WASM response
-                        let envelope = Envelope {
+                        let evm_envelope = EvmEnvelope {
                             payload: wasm_response.payload.clone().into(),
                             eventId: FixedBytes::new(rand::random()),
                             ordering: match wasm_response.ordering {
@@ -281,6 +282,9 @@ async fn main() {
                                 }
                                 None => FixedBytes::default(),
                             },
+                        };
+                        let envelope = Envelope::Evm {
+                            data: evm_envelope.clone(),
                         };
 
                         // Get EVM client for the chain (for transaction submission)
@@ -344,9 +348,9 @@ async fn main() {
 
                         // Convert to contract types
                         let contract_envelope = IWarpDriveServiceHandler::Envelope {
-                            eventId: envelope.eventId,
-                            ordering: envelope.ordering,
-                            payload: envelope.payload,
+                            eventId: evm_envelope.eventId,
+                            ordering: evm_envelope.ordering,
+                            payload: evm_envelope.payload,
                         };
 
                         // Submit to chain using the original EVM client (as transaction sender)

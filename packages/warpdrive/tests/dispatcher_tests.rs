@@ -14,8 +14,8 @@ use utils::{
 };
 use warpdrive::dispatcher::DispatcherCommand;
 use warpdrive_types::{
-    Component, ComponentSource, Service, ServiceManager, ServiceStatus, SignatureKind, Submit,
-    Workflow, WorkflowId,
+    Component, ComponentSource, Envelope, Service, ServiceManager, ServiceStatus, SignatureKind,
+    Submit, Workflow, WorkflowId,
 };
 mod warpdrive_systems;
 use warpdrive_systems::{
@@ -107,12 +107,23 @@ fn dispatcher_pipeline() {
 
     assert_eq!(processed.len(), 2);
 
-    // eh, just happens to be the order we want
+    let evm_envelope_0 = match &processed[0].envelope {
+        Envelope::Evm { data } => data,
+        Envelope::Stellar { .. } => {
+            panic!("not an evm envelope");
+        }
+    };
+    let evm_envelope_1 = match &processed[1].envelope {
+        Envelope::Evm { data } => data,
+        Envelope::Stellar { .. } => {
+            panic!("not an evm envelope");
+        }
+    };
 
-    let payload_1: DataWithId = DataWithId::abi_decode(&processed[0].envelope.payload).unwrap();
+    let payload_1: DataWithId = DataWithId::abi_decode(&evm_envelope_0.payload).unwrap();
     let data_1: SquareResponse = serde_json::from_slice(&payload_1.data).unwrap();
 
-    let payload_2: DataWithId = DataWithId::abi_decode(&processed[1].envelope.payload).unwrap();
+    let payload_2: DataWithId = DataWithId::abi_decode(&evm_envelope_1.payload).unwrap();
     let data_2: SquareResponse = serde_json::from_slice(&payload_2.data).unwrap();
 
     // Check the payloads

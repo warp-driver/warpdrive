@@ -4,6 +4,7 @@ use crate::{Envelope, EventId, ServiceId, TriggerAction, WasmResponse, WavsSigna
 
 // The data we send from submission to dispatcher
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "snake_case")]
 pub struct Submission {
     pub trigger_action: TriggerAction,
     pub operator_response: WasmResponse,

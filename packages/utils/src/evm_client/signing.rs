@@ -58,6 +58,13 @@ impl EvmSigningClient {
             return Err(EvmClientError::NotContract(service_handler));
         }
 
+        let envelope = match envelope {
+            Envelope::Evm { data } => data,
+            _ => {
+                return Err(EvmClientError::UnsupportedEnvelopeType("Xlm".to_string()));
+            }
+        };
+
         let gas = match max_gas {
             None => {
                 let gas_estimate = self
@@ -160,7 +167,7 @@ mod test {
     use alloy_provider::Provider;
     use alloy_rpc_types_eth::TransactionTrait;
     use alloy_signer_local::{coins_bip39::English, MnemonicBuilder};
-    use warpdrive_types::{Credential, Envelope, VectrSigner, WavsSigner};
+    use warpdrive_types::{Credential, Envelope, EvmEnvelope, VectrSigner, WavsSigner};
 
     use crate::{
         evm_client::{AnyNonceManager, EvmSigningClient, EvmSigningClientConfig},
@@ -227,7 +234,10 @@ mod test {
         // and that it fails if we try the wrong prefix
         let signature = signer.sign_envelope(&envelope).await.unwrap();
         let tampered = match signature {
-            WavsSignature::Secp256k1 { sig, .. } => WavsSignature::Secp256k1 { sig, prefix: None },
+            WavsSignature::Secp256k1 { signature, .. } => WavsSignature::Secp256k1 {
+                signature,
+                prefix: None,
+            },
             other => panic!("expected Secp256k1 variant, got {other:?}"),
         };
 
@@ -243,8 +253,8 @@ mod test {
         // in both directions
         let signature = signer_no_prefix.sign_envelope(&envelope).await.unwrap();
         let tampered = match signature {
-            WavsSignature::Secp256k1 { sig, .. } => WavsSignature::Secp256k1 {
-                sig,
+            WavsSignature::Secp256k1 { signature, .. } => WavsSignature::Secp256k1 {
+                signature,
                 prefix: Some(warpdrive_types::SignaturePrefix::Eip191),
             },
             other => panic!("expected Secp256k1 variant, got {other:?}"),
@@ -279,10 +289,12 @@ mod test {
     }
 
     fn mock_envelope() -> Envelope {
-        Envelope {
-            payload: Bytes::from_static(&[1, 2, 3]),
-            eventId: FixedBytes([1; 20]),
-            ordering: FixedBytes([0; 12]),
+        Envelope::Evm {
+            data: EvmEnvelope {
+                payload: Bytes::from_static(&[1, 2, 3]),
+                eventId: FixedBytes([1; 20]),
+                ordering: FixedBytes([0; 12]),
+            },
         }
     }
 

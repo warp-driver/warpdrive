@@ -39,9 +39,6 @@ pub enum EngineError {
     #[error("Compile error: {0}")]
     Compile(anyhow::Error),
 
-    #[error("Wasm response is malformed: {0}")]
-    WasmResponseMalformed(anyhow::Error),
-
     #[error("Storage error: {0}")]
     StorageError(String),
 

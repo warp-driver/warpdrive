@@ -1,11 +1,11 @@
-pub use crate::solidity_types::Envelope;
 use crate::{
-    ByteArray, ChainAddress, SignatureAlgorithm, SignatureData, SignaturePrefix, SigningError,
-    WavsSignable, WavsSignature,
+    ByteArray, ChainAddress, Envelope, SignatureAlgorithm, SignatureData, SignaturePrefix,
+    SigningError, WavsSignable, WavsSignature,
 };
 use alloy_primitives::FixedBytes;
 use alloy_signer::Signer;
 use alloy_signer_local::PrivateKeySigner;
+use anyhow::bail;
 use async_trait::async_trait;
 use k256::ecdsa::signature::SignerMut;
 
@@ -21,23 +21,32 @@ impl VectrSigner {
         match self {
             VectrSigner::Evm(signer) => {
                 let hash = envelope.prefix_eip191_hash()?;
-                let sig: Vec<u8> = signer.sign_hash(&hash).await?.into();
+                let signature: Vec<u8> = signer.sign_hash(&hash).await?.into();
+                if signature.len() != 65 {
+                    bail!("Recoverable Secp256k1 expects signature length of 65");
+                }
                 Ok(WavsSignature::Secp256k1 {
-                    sig,
+                    signature: signature.try_into()?,
                     prefix: Some(SignaturePrefix::Eip191),
                 })
             }
             VectrSigner::EvmNoPrefix(signer) => {
                 let hash = envelope.unprefixed_hash()?;
-                let sig: Vec<u8> = signer.sign_hash(&hash).await?.into();
-                Ok(WavsSignature::Secp256k1 { sig, prefix: None })
+                let signature: Vec<u8> = signer.sign_hash(&hash).await?.into();
+                if signature.len() != 65 {
+                    bail!("Recoverable Secp256k1 expects signature length of 65");
+                }
+                Ok(WavsSignature::Secp256k1 {
+                    signature: signature.try_into()?,
+                    prefix: None,
+                })
             }
             VectrSigner::Stellar(signer) => {
                 let hash = envelope.prefix_sep53_hash()?;
                 let sig_bytes = signer.sign(hash.as_slice()).to_bytes();
                 let pubkey_bytes = *signer.verifying_key().as_bytes();
                 Ok(WavsSignature::Ed25519 {
-                    sig: ByteArray::new(sig_bytes),
+                    signature: ByteArray::new(sig_bytes),
                     pubkey: ByteArray::new(pubkey_bytes),
                 })
             }
@@ -80,7 +89,9 @@ pub trait WavsSigner: WavsSignable {
                 .into_iter()
                 .map(|sig| {
                     let bytes: alloy_primitives::Bytes = match &sig {
-                        WavsSignature::Secp256k1 { sig: bytes, .. } => bytes.clone().into(),
+                        WavsSignature::Secp256k1 {
+                            signature: bytes, ..
+                        } => bytes.into_inner().to_vec().into(),
                         WavsSignature::Ed25519 { .. } => {
                             return Err(SigningError::WrongAddressKind {
                                 expected: SignatureAlgorithm::Secp256k1,
@@ -126,8 +137,8 @@ impl WavsSignature {
         signable: &T,
     ) -> std::result::Result<ChainAddress, SigningError> {
         match self {
-            WavsSignature::Secp256k1 { sig, prefix } => {
-                let signature = alloy_primitives::Signature::from_raw(sig)
+            WavsSignature::Secp256k1 { signature, prefix } => {
+                let signature = alloy_primitives::Signature::from_raw(&signature.into_inner())
                     .map_err(SigningError::RecoverSignerAddress)?;
                 let prehash = prehash_for(signable, prefix.as_ref())?;
                 let addr = signature
@@ -135,7 +146,7 @@ impl WavsSignature {
                     .map_err(SigningError::RecoverSignerAddress)?;
                 Ok(ChainAddress::Evm(addr))
             }
-            WavsSignature::Ed25519 { sig, pubkey } => {
+            WavsSignature::Ed25519 { signature, pubkey } => {
                 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 
                 let prehash = signable
@@ -143,7 +154,7 @@ impl WavsSignature {
                     .map_err(SigningError::DataHash)?;
                 let vk = VerifyingKey::from_bytes(&pubkey.into_inner())
                     .map_err(|_| SigningError::Ed25519Verify)?;
-                let signature = Signature::from_bytes(&sig.into_inner());
+                let signature = Signature::from_bytes(&signature.into_inner());
                 vk.verify(prehash.as_slice(), &signature)
                     .map_err(|_| SigningError::Ed25519Verify)?;
                 Ok(ChainAddress::StellarPubKey(*pubkey))
@@ -169,7 +180,7 @@ impl WavsSignature {
         use k256::ecdsa::{RecoveryId, Signature as K256Sig, VerifyingKey};
 
         let (sig_bytes, prefix) = match self {
-            WavsSignature::Secp256k1 { sig, prefix } => (sig, prefix),
+            WavsSignature::Secp256k1 { signature, prefix } => (signature.into_inner(), prefix),
             WavsSignature::Ed25519 { .. } => {
                 return Err(SigningError::WrongAddressKind {
                     expected: SignatureAlgorithm::Secp256k1,
@@ -178,11 +189,6 @@ impl WavsSignature {
             }
         };
 
-        if sig_bytes.len() != 65 {
-            return Err(SigningError::RecoverSignerAddress(
-                alloy_primitives::SignatureError::FromBytes("expected 65-byte secp256k1 signature"),
-            ));
-        }
         let r_s: [u8; 64] = sig_bytes[..64]
             .try_into()
             .expect("65-byte slice gives 64-byte head");
@@ -237,25 +243,27 @@ fn prehash_for<T: WavsSignable + ?Sized>(
 #[cfg(test)]
 mod recovery_tests {
     use super::*;
-    use crate::{Envelope, SignaturePrefix};
+    use crate::{Envelope, EvmEnvelope, SignaturePrefix};
     use alloy_primitives::FixedBytes;
     use alloy_signer::SignerSync;
     use alloy_signer_local::PrivateKeySigner;
     use k256::ecdsa::VerifyingKey;
 
     fn sample_envelope() -> Envelope {
-        Envelope {
-            eventId: FixedBytes::from([7u8; 20]),
-            ordering: FixedBytes::from([0u8; 12]),
-            payload: alloy_primitives::Bytes::from(b"hello world".to_vec()),
+        Envelope::Evm {
+            data: EvmEnvelope {
+                eventId: FixedBytes::from([7u8; 20]),
+                ordering: FixedBytes::from([0u8; 12]),
+                payload: alloy_primitives::Bytes::from(b"hello world".to_vec()),
+            },
         }
     }
 
     fn signer_sign(env: &Envelope, signer: &PrivateKeySigner) -> WavsSignature {
         let hash = env.prefix_eip191_hash().expect("eip-191 hash");
-        let sig = signer.sign_hash_sync(&hash).expect("sign");
+        let signature = signer.sign_hash_sync(&hash).expect("sign");
         WavsSignature::Secp256k1 {
-            sig: sig.into(),
+            signature: signature.as_bytes().into(),
             prefix: Some(SignaturePrefix::Eip191),
         }
     }
@@ -298,21 +306,6 @@ mod recovery_tests {
         );
     }
 
-    #[test]
-    fn rejects_wrong_length_signature() {
-        let env = sample_envelope();
-        let bad_sig = WavsSignature::Secp256k1 {
-            sig: vec![0u8; 10], // too short
-            prefix: Some(SignaturePrefix::Eip191),
-        };
-        let err = bad_sig.secp256k1_compressed_pubkey(&env).unwrap_err();
-        let msg = format!("{err:?}");
-        assert!(
-            msg.contains("65-byte"),
-            "expected length-error message, got {msg}"
-        );
-    }
-
     #[tokio::test]
     async fn ed25519_round_trip_recovers_stellar_pubkey() {
         use ed25519_dalek::SigningKey;
@@ -331,7 +324,7 @@ mod recovery_tests {
 
         // tampering invalidates verification
         let WavsSignature::Ed25519 {
-            sig: ed_sig,
+            signature: ed_sig,
             pubkey,
         } = sig
         else {
@@ -340,7 +333,7 @@ mod recovery_tests {
         let mut tampered = ed_sig.into_inner();
         tampered[0] ^= 0x01;
         let bad = WavsSignature::Ed25519 {
-            sig: ByteArray::new(tampered),
+            signature: ByteArray::new(tampered),
             pubkey,
         };
         assert!(matches!(

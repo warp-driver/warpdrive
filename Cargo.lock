@@ -9299,9 +9299,9 @@ dependencies = [
 
 [[package]]
 name = "stellar-xdr"
-version = "26.0.0"
+version = "26.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fea3195594b044ea3a5b05906f81d945480825f00db4e3ae7d77526bf546ff3a"
+checksum = "ea6e29c7e1f071c2767916460d006668197843d5d93f0ec8893a26f72a14f595"
 dependencies = [
  "base64 0.22.1",
  "cfg_eval",
@@ -10963,9 +10963,9 @@ dependencies = [
 
 [[package]]
 name = "warpdrive-client"
-version = "0.2.6"
+version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "917a52f76e5384ccb29c50239cafc16a23a4b5f41fdd863cb9d50a91a5418a78"
+checksum = "efd416b72183d7d9e21f94576d1821a7758d86894f53c4915c8881a810212cda"
 dependencies = [
  "ed25519-dalek",
  "stellar-strkey 0.0.16",

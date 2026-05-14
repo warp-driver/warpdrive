@@ -4,7 +4,7 @@ use utils::{
     init_tracing_tests,
     test_utils::anvil::safe_spawn_anvil,
 };
-use warpdrive_types::{Credential, Envelope};
+use warpdrive_types::{Credential, Envelope, EvmEnvelope};
 
 #[tokio::test]
 async fn client_sign_message() {
@@ -20,10 +20,12 @@ async fn client_sign_message() {
     );
     let client = EvmSigningClient::new(config).await.unwrap();
 
-    let envelope = Envelope {
-        eventId: FixedBytes::new([0u8; 20]),
-        ordering: FixedBytes::new([0u8; 12]),
-        payload: b"hello world".to_vec().into(),
+    let envelope = Envelope::Evm {
+        data: EvmEnvelope {
+            eventId: FixedBytes::new([0u8; 20]),
+            ordering: FixedBytes::new([0u8; 12]),
+            payload: b"hello world".to_vec().into(),
+        },
     };
 
     // client.wallet doesn't itself allow signing messages, but we created the wallet from the signer
