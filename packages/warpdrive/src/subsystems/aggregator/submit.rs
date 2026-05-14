@@ -102,6 +102,9 @@ impl Aggregator {
             .envelope
             .evm_signature_data(signatures, block_height_minus_one)?;
 
+        // The shape of the envelope comes from `service.signature_kind()`
+        // specifically, it's created in `sign_request()` in submission.rs
+        // and we need to get the EVM-shaped data out of it here
         let evm_envelope = match &first.envelope {
             warpdrive_types::Envelope::Evm { data } => data.clone(),
             warpdrive_types::Envelope::Stellar { .. } => {
@@ -223,6 +226,9 @@ impl Aggregator {
             }
         };
 
+        // The shape of the envelope comes from `service.signature_kind()`
+        // specifically, it's created in `sign_request()` in submission.rs
+        // and we need to get the EVM-shaped data out of it here
         let evm_envelope = match &first.envelope {
             warpdrive_types::Envelope::Evm { data } => data.clone(),
             warpdrive_types::Envelope::Stellar { .. } => {
@@ -380,6 +386,11 @@ impl Aggregator {
             chain_kind: "Stellar",
         })?;
         let envelope = first.envelope.clone();
+
+        // Although we will branch on the signature algorithm later,
+        // the data we send to stellar is _some_ byte-encoding of the envelope, not raw EVM structs (unlike cosmos and evm)
+        // so "envelope_bytes" is the same high-level idea of what we need,
+        // regardles of whether we're submitting EVM or XLM style (encode_data() handles the difference internally).
         let envelope_bytes = envelope.encode_data().map_err(|e| {
             AggregatorError::Stellar(format!("failed to encode stellar envelope: {e:?}"))
         })?;
