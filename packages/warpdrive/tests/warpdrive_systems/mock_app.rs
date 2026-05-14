@@ -21,8 +21,8 @@ use warpdrive::{
 };
 use warpdrive_types::{
     ChainKey, ChainKeyError, Component, ComponentSource, Credential, DeleteServicesRequest,
-    ListServicesResponse, Service, ServiceId, ServiceManager, SignatureKind, Submit, WasmResponse,
-    WorkflowId, WorkflowIdError,
+    ListServicesResponse, Service, ServiceId, ServiceManager, Submit, WasmResponse, WorkflowId,
+    WorkflowIdError,
 };
 
 use super::mock_trigger_manager::{mock_evm_event_trigger, mock_real_trigger_action};
@@ -159,7 +159,6 @@ impl MockE2ETestRunner {
         let submit = Submit::Aggregator {
             // just use the same component for submit for simplicity
             component: Box::new(Component::new(component_source.clone())),
-            signature_kind: SignatureKind::evm_default(),
         };
 
         let service = Service::new_simple(

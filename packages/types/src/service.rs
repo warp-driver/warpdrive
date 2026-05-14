@@ -82,6 +82,8 @@ pub struct Service {
     pub status: ServiceStatus,
 
     pub manager: ServiceManager,
+
+    pub signature_kind: SignatureKind,
 }
 
 impl Service {
@@ -93,17 +95,6 @@ impl Service {
 
     pub fn id(&self) -> ServiceId {
         ServiceId::from(&self.manager)
-    }
-
-    pub fn signature_kind(&self) -> SignatureKind {
-        // INVARIANT: all workflows that have a submit type must have the same signature kind, so we can just check the first one we find
-        self.workflows
-            .values()
-            .find_map(|w| match &w.submit {
-                Submit::None => None,
-                Submit::Aggregator { signature_kind, .. } => Some(signature_kind.clone()),
-            })
-            .unwrap_or_else(SignatureKind::evm_default)
     }
 }
 
@@ -208,6 +199,7 @@ impl Service {
             workflows,
             status: ServiceStatus::Active,
             manager,
+            signature_kind: SignatureKind::evm_default(),
         }
     }
 }
@@ -557,7 +549,6 @@ pub enum Submit {
     Aggregator {
         /// component dynamically determines the destination
         component: Box<Component>,
-        signature_kind: SignatureKind,
     },
 }
 
@@ -584,7 +575,7 @@ pub enum Submit {
 ///    breaking changes.
 #[cfg_attr(feature = "ts-bindings", derive(TS))]
 #[cfg_attr(feature = "ts-bindings", ts(export))]
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, ToSchema, Hash)]
+#[derive(Copy, Serialize, Deserialize, Clone, Debug, PartialEq, Eq, ToSchema, Hash)]
 pub struct SignatureKind {
     /// The cryptographic algorithm used for signature generation and verification.
     ///
@@ -611,7 +602,7 @@ impl SignatureKind {
 
 #[cfg_attr(feature = "ts-bindings", derive(TS))]
 #[cfg_attr(feature = "ts-bindings", ts(export))]
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, ToSchema, Hash)]
+#[derive(Copy, Serialize, Deserialize, Clone, Debug, PartialEq, Eq, ToSchema, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum SignatureAlgorithm {
     Secp256k1,
@@ -621,7 +612,7 @@ pub enum SignatureAlgorithm {
 
 #[cfg_attr(feature = "ts-bindings", derive(TS))]
 #[cfg_attr(feature = "ts-bindings", ts(export))]
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, ToSchema, Hash)]
+#[derive(Copy, Serialize, Deserialize, Clone, Debug, PartialEq, Eq, ToSchema, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum SignaturePrefix {
     Eip191,

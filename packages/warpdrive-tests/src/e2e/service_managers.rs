@@ -15,7 +15,8 @@ use utils::test_utils::{
 };
 use warpdrive_cli::command::deploy_service::DeployService;
 use warpdrive_types::{
-    ChainKey, ChainKeyNamespace, Service, ServiceManager, ServiceStatus, SignerResponse,
+    ChainKey, ChainKeyNamespace, Service, ServiceManager, ServiceStatus, SignatureAlgorithm,
+    SignatureKind, SignaturePrefix, SignerResponse,
 };
 
 use crate::{
@@ -327,6 +328,13 @@ impl ServiceManagers {
                 workflows: Default::default(),
                 status: ServiceStatus::Paused,
                 manager: service_manager,
+                signature_kind: match test.stellar_scheme {
+                    Some(SignerScheme::Ed25519) => SignatureKind {
+                        algorithm: SignatureAlgorithm::Ed25519,
+                        prefix: Some(SignaturePrefix::Sep53),
+                    },
+                    _ => SignatureKind::evm_default(),
+                },
             };
 
             // Save the service on WarpDrive endpoint (just a local test thing, real-world would be IPFS or similar)

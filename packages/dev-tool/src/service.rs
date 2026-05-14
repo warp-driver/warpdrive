@@ -78,11 +78,11 @@ pub fn create_service(sleep_ms: Option<u64>) -> Service {
                         config: BTreeMap::new(),
                         env_keys: std::collections::BTreeSet::new(),
                     }),
-                    signature_kind: SignatureKind::evm_default(),
                 },
             },
         )]),
         status: warpdrive_types::ServiceStatus::Active,
         manager: SERVICE_MANAGER.clone(),
+        signature_kind: SignatureKind::evm_default(),
     }
 }

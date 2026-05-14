@@ -85,6 +85,7 @@ fn db_service_store() {
             chain: "evm:anvil".parse().unwrap(),
             address: rand_address_evm(),
         },
+        signature_kind: warpdrive_types::SignatureKind::evm_default(),
     };
 
     storage

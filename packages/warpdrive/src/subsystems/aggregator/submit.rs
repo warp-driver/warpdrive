@@ -458,7 +458,7 @@ impl Aggregator {
             source_account: account,
         };
 
-        match service.signature_kind().algorithm {
+        match service.signature_kind.algorithm {
             SignatureAlgorithm::Secp256k1 => {
                 let mut signers_and_sigs: Vec<([u8; 33], [u8; 65])> =
                     Vec::with_capacity(queue.len());

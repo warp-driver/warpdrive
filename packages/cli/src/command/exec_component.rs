@@ -12,8 +12,8 @@ use warpdrive_engine::{
 };
 use warpdrive_types::{
     AllowedHostPermission, ChainKey, ComponentDigest, ComponentSource, Permissions, ServiceId,
-    Submit, Timestamp, Trigger, TriggerAction, TriggerConfig, TriggerData, WasmResponse, Workflow,
-    WorkflowId,
+    SignatureKind, Submit, Timestamp, Trigger, TriggerAction, TriggerConfig, TriggerData,
+    WasmResponse, Workflow, WorkflowId,
 };
 use wasmtime::{component::Component as WasmtimeComponent, Config as WTConfig, Engine as WTEngine};
 
@@ -148,6 +148,7 @@ impl ExecComponent {
                 chain: chain.clone(),
                 address: Default::default(),
             },
+            signature_kind: SignatureKind::evm_default(),
         };
 
         let data = match simulates_trigger {

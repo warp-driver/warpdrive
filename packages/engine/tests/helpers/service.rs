@@ -41,7 +41,6 @@ pub fn make_service(wasm_digest: ComponentDigest, config: BTreeMap<String, Strin
         component: component.clone(),
         submit: Submit::Aggregator {
             component: Box::new(component),
-            signature_kind: SignatureKind::evm_default(),
         },
     };
 
@@ -53,5 +52,6 @@ pub fn make_service(wasm_digest: ComponentDigest, config: BTreeMap<String, Strin
             chain: "evm:noop".parse().unwrap(),
             address: Default::default(),
         },
+        signature_kind: SignatureKind::evm_default(),
     }
 }

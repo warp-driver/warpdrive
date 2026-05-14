@@ -100,7 +100,6 @@ impl DevTriggersRuntime {
                             config: std::collections::BTreeMap::new(),
                             env_keys: std::collections::BTreeSet::new(),
                         }),
-                        signature_kind: SignatureKind::evm_default(),
                     },
                 },
             )]),
@@ -109,6 +108,7 @@ impl DevTriggersRuntime {
                 chain: "evm:exec".parse().unwrap(),
                 address: Default::default(),
             },
+            signature_kind: SignatureKind::evm_default(),
         };
 
         // Build dispatcher

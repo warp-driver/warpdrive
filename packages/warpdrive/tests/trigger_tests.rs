@@ -208,7 +208,6 @@ async fn block_interval_trigger_is_removed_when_config_is_gone() {
                     component: Box::new(Component::new(ComponentSource::Digest(
                         ComponentDigest::hash([1, 2, 3]),
                     ))),
-                    signature_kind: SignatureKind::evm_default(),
                 },
             },
         )]
@@ -218,6 +217,7 @@ async fn block_interval_trigger_is_removed_when_config_is_gone() {
             chain: chain.clone(),
             address: rand_address_evm(),
         },
+        signature_kind: SignatureKind::evm_default(),
     };
     services
         .save(&service, config.chains.clone())

@@ -182,7 +182,7 @@ impl Services {
     pub fn get_signature_kind(&self, service_id: &ServiceId) -> Result<SignatureKind> {
         self.db_storage
             .services
-            .map_ref(service_id, |service| service.signature_kind())
+            .map_ref(service_id, |service| service.signature_kind)
             .ok_or_else(|| ServicesError::UnknownService(service_id.clone()))
     }
 
