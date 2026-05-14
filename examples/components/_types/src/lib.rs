@@ -135,10 +135,6 @@ pub enum KvStoreResponse {
 
 #[derive(Error, Debug)]
 pub enum KvStoreError {
-    #[error("Key not found: {0}")]
-    KeyNotFound(String),
-    #[error("IoError: {0}")]
-    IoError(#[from] std::io::Error),
     #[error("Failed to open bucket {id}: {reason}")]
     BucketOpen { id: String, reason: String },
     #[error("Failed to read key {key} for bucket {bucket}: {reason}")]

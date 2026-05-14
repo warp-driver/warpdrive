@@ -32,7 +32,6 @@ use std::ops::Bound;
 use std::sync::{Arc, RwLock};
 use thiserror::Error;
 use tracing::instrument;
-use utils::error::EvmClientError;
 use utils::service::fetch_service;
 use utils::stellar_client::STELLAR_QUERY_KEY;
 use utils::storage::fs::FileStorage;
@@ -40,8 +39,7 @@ use utils::telemetry::{DispatcherMetrics, WarpdriveMetrics};
 use warpdrive_types::contracts::cosmwasm::service_manager::ServiceManagerQueryMessages;
 use warpdrive_types::IWarpDriveServiceManager::IWarpDriveServiceManagerInstance;
 use warpdrive_types::{
-    AnyChainConfig, ChainConfigError, ChainConfigs, ChainKey, ComponentDigest, ServiceManager,
-    Submission, Submit, WorkflowIdError,
+    AnyChainConfig, ChainConfigs, ChainKey, ComponentDigest, ServiceManager, Submission, Submit,
 };
 use warpdrive_types::{Service, ServiceError, ServiceId, SignerResponse, TriggerAction};
 
@@ -1099,23 +1097,14 @@ pub enum DispatcherError {
     #[error("Service {0} already registered")]
     ServiceRegistered(ServiceId),
 
-    #[error("Evm: {0}")]
-    EvmClient(#[from] EvmClientError),
-
     #[error("URI creation error: {0}")]
     URICreation(#[from] CreationError<String>),
 
     #[error("{0:?}")]
     UnknownService(#[from] ServicesError),
 
-    #[error("Invalid WorkflowId: {0}")]
-    ID(#[from] WorkflowIdError),
-
     #[error("DB: {0}")]
     DB(#[from] DBError),
-
-    #[error("DB Storage: {0}")]
-    DBStorage(#[source] anyhow::Error),
 
     #[error("DB: {0}")]
     CA(#[from] CAStorageError),
@@ -1132,20 +1121,8 @@ pub enum DispatcherError {
     #[error("Aggregator: {0}")]
     Aggregator(#[from] AggregatorError),
 
-    #[error("Chain config error: {0}")]
-    ChainConfig(#[from] ChainConfigError),
-
     #[error("Alloy contract error: {0}")]
     AlloyContract(#[from] alloy_contract::Error),
-
-    #[error("Serde error: {0}")]
-    Serde(#[from] serde_json::Error),
-
-    #[error("No registry domain provided in configuration")]
-    NoRegistry,
-
-    #[error("Unknown component digest: {0}")]
-    UnknownComponentDigest(ComponentDigest),
 
     #[error("Config error: {0}")]
     Config(String),
@@ -1155,9 +1132,6 @@ pub enum DispatcherError {
         old_id: ServiceId,
         new_id: ServiceId,
     },
-
-    #[error("could not encode EventId {0:?}")]
-    EncodeEventId(anyhow::Error),
 
     #[error("Failed to fetch service: {0}")]
     FetchService(anyhow::Error),

@@ -93,8 +93,6 @@ pub enum WaitError {
     Broadcast,
     #[error("Receive timed out")]
     Receive,
-    #[error("Execute timed out")]
-    Execute,
     #[error("Submit timed out")]
     Submit,
 }

@@ -64,9 +64,6 @@ pub enum AggregatorError {
     #[error("Services: {0}")]
     ServicesError(#[from] ServicesError),
 
-    #[error("Queue is empty: {0:?}")]
-    QueueIsEmpty(QuorumQueueId),
-
     #[error("Signing: {0:?}")]
     Signing(#[from] SigningError),
 
