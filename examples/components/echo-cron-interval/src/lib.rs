@@ -19,10 +19,12 @@ impl Guest for Component {
     fn run(trigger_action: TriggerAction) -> std::result::Result<Vec<WasmResponse>, String> {
         let return_data = b"cron-interval data";
         if let TriggerData::Cron(_data) = trigger_action.data {
+            let service = host::get_service().service;
             Ok(vec![encode_trigger_output(
                 TRIGGER_ID,
                 return_data,
-                host::get_service().service.manager,
+                service.manager,
+                service.signature_kind,
             )])
         } else {
             Err("Invalid trigger data".to_string())

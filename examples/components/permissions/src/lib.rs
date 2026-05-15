@@ -109,7 +109,8 @@ async fn run_one(trigger_action: TriggerAction) -> Result<WasmResponse> {
     Ok(encode_trigger_output(
         trigger_id,
         resp,
-        host::get_service().service.manager,
+        service.manager,
+        service.signature_kind,
     ))
 }
 

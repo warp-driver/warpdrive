@@ -85,10 +85,12 @@ async fn run_one(
         }
     };
 
+    let service = host::get_service().service;
     Ok(encode_trigger_output(
         trigger_id,
         resp,
-        host::get_service().service.manager,
+        service.manager,
+        service.signature_kind,
     ))
 }
 

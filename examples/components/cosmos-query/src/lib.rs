@@ -54,10 +54,12 @@ async fn run_one(
     }?;
 
     let output = serde_json::to_vec(&resp)?;
+    let service = host::get_service().service;
     Ok(encode_trigger_output(
         trigger_id,
         output,
-        host::get_service().service.manager,
+        service.manager,
+        service.signature_kind,
     ))
 }
 

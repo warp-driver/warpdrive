@@ -56,10 +56,12 @@ fn run_maybe_one(
         count,
     };
     let resp = serde_json::to_vec(&resp)?;
+    let service = host::get_service().service;
     Ok(Some(encode_trigger_output(
         TRIGGER_ID,
         resp,
-        host::get_service().service.manager,
+        service.manager,
+        service.signature_kind,
     )))
 }
 

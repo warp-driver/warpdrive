@@ -34,7 +34,9 @@ async fn run_one(
     let (trigger_id, req) = decode_trigger_event(trigger_action.data)?;
     let req: StellarQueryRequest = serde_json::from_slice(&req)?;
 
-    let service_manager = host::get_service().service.manager;
+    let service = host::get_service().service;
+    let signature_kind = service.signature_kind;
+    let service_manager = service.manager;
 
     // Pull the chain key out of the request. All current
     // `StellarQueryRequest` variants carry a `chain` string; this
@@ -111,7 +113,12 @@ async fn run_one(
     };
 
     let output = serde_json::to_vec(&resp)?;
-    Ok(encode_trigger_output(trigger_id, output, service_manager))
+    Ok(encode_trigger_output(
+        trigger_id,
+        output,
+        service_manager,
+        signature_kind,
+    ))
 }
 
 export_layer_trigger_world!(Component);
