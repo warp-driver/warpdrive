@@ -7,8 +7,14 @@ use crate::world::{
     warpdrive::types::events::{TriggerData, TriggerDataEvmContractEvent},
 };
 
-#[tokio::main(flavor = "current_thread")]
-pub async fn is_valid_tx(trigger_data: TriggerData) -> Result<bool, String> {
+// `new_evm_provider` is wstd-backed on wasm32-wasip2; this must run
+// inside `wstd::runtime::block_on`, not tokio (tokio doesn't install
+// the wstd reactor).
+pub fn is_valid_tx(trigger_data: TriggerData) -> Result<bool, String> {
+    wstd::runtime::block_on(is_valid_tx_inner(trigger_data))
+}
+
+async fn is_valid_tx_inner(trigger_data: TriggerData) -> Result<bool, String> {
     match trigger_data {
         TriggerData::EvmContractEvent(TriggerDataEvmContractEvent { chain, log }) => {
             let chain_config = host::get_evm_chain_config(&chain)

@@ -19,8 +19,22 @@ struct GasOracleResult {
     fast_gas_price: String,
 }
 
-#[tokio::main(flavor = "current_thread")]
-pub async fn get_gas_price() -> Result<Option<u128>, String> {
+pub fn get_gas_price() -> Result<Option<u128>, String> {
+    // Skip the runtime install entirely when there's no API key — keeps
+    // the hot path zero-cost. Otherwise drive the wstd-backed HTTP fetch
+    // under `wstd::runtime::block_on`; tokio doesn't install the wstd
+    // reactor that `warpdrive_wasi_utils::http` requires.
+    if std::env::var(ETHERSCAN_API_KEY_ENV)
+        .ok()
+        .filter(|k| !k.is_empty())
+        .is_none()
+    {
+        return Ok(None);
+    }
+    wstd::runtime::block_on(get_gas_price_inner())
+}
+
+async fn get_gas_price_inner() -> Result<Option<u128>, String> {
     let api_key = match std::env::var(ETHERSCAN_API_KEY_ENV) {
         Ok(key) if !key.is_empty() => key,
         _ => return Ok(None),

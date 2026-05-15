@@ -7,4 +7,5 @@ middleware_concurrency = true
 grouping = false
 evm_middleware_type = "poa"   # "eigenlayer" or "poa"
 p2p = "mdns"              # "mdns" (local) or "kademlia" (remote)
-mode = { "isolated" = [{ stellar = "echo_data" }, { stellar = "echo_data_xlm" }, { stellar = "stellar_query" }] }
+# mode = { "isolated" = [{ stellar = "echo_data" }, { stellar = "echo_data_xlm" }, { stellar = "stellar_query" }] }
+mode = "all"

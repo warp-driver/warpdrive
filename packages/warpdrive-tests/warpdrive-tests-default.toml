@@ -7,7 +7,8 @@ middleware_concurrency = true
 grouping = false
 evm_middleware_type = "poa"
 p2p = "mdns"
-mode = { "isolated" = [{ stellar = "echo_data" }, { stellar = "echo_data_xlm" }, { stellar = "stellar_query" }] }
+# mode = { "isolated" = [{ stellar = "echo_data" }, { stellar = "echo_data_xlm" }, { stellar = "stellar_query" }] }
+mode = "all"
 # Uncomment this to run locally on Quickstart instead of on Testnet
 # If you're running on Quickstart, the port here must match the port set in `Taskfile.yml` for the `stellar_quickstart` task
 # stellar_quickstart_port = 9555

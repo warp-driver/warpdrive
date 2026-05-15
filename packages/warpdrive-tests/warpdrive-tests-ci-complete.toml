@@ -7,4 +7,4 @@ middleware_concurrency = true
 grouping = false
 evm_middleware_type = "poa"   # "eigenlayer" or "poa"
 p2p = "kademlia"              # "mdns" (local) or "kademlia" (remote)
-mode = "all_eth"
+mode = "all"

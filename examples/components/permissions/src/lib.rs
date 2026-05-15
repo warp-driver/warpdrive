@@ -26,13 +26,17 @@ struct Component;
 
 impl Guest for Component {
     fn run(trigger_action: TriggerAction) -> std::result::Result<Vec<WasmResponse>, String> {
-        run_one(trigger_action)
+        // wstd::runtime::block_on (not tokio) because `warpdrive_wasi_utils::http`
+        // is built on `wstd::http::Client`, which requires the wstd reactor
+        // (`Reactor::current()`) on the executing thread. Running it under a
+        // tokio runtime panics with "Reactor::current must be called within a
+        // wstd runtime".
+        wstd::runtime::block_on(run_one(trigger_action))
             .map_err(|e: anyhow::Error| format!("{e:?}"))
             .map(|res| vec![res])
     }
 }
 
-#[tokio::main(flavor = "current_thread")]
 async fn run_one(trigger_action: TriggerAction) -> Result<WasmResponse> {
     let (trigger_id, req) = decode_trigger_event(trigger_action.data).context("Decode event")?;
     let input: PermissionsRequest = serde_json::from_slice(&req).context("Parsing request")?;

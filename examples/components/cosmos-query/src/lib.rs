@@ -10,13 +10,15 @@ struct Component;
 
 impl Guest for Component {
     fn run(trigger_action: TriggerAction) -> std::result::Result<Vec<WasmResponse>, String> {
-        run_one(trigger_action)
+        // layer_climb's QueryClient on wasm32-wasip2 is built on
+        // wstd transports; it must run inside `wstd::runtime::block_on`,
+        // not tokio (tokio doesn't install the wstd reactor).
+        wstd::runtime::block_on(run_one(trigger_action))
             .map_err(|e: anyhow::Error| format!("{e:?}"))
             .map(|res| vec![res])
     }
 }
 
-#[tokio::main(flavor = "current_thread")]
 async fn run_one(
     trigger_action: TriggerAction,
 ) -> std::result::Result<WasmResponse, anyhow::Error> {

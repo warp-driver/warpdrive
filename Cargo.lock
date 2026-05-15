@@ -2034,8 +2034,8 @@ dependencies = [
  "anyhow",
  "example-helpers",
  "layer-climb",
- "tokio",
  "warpdrive-wasi-utils",
+ "wstd",
 ]
 
 [[package]]
@@ -2409,7 +2409,7 @@ dependencies = [
  "example-types",
  "layer-climb",
  "serde_json",
- "tokio",
+ "wstd",
 ]
 
 [[package]]
@@ -7157,8 +7157,8 @@ dependencies = [
  "example-types",
  "serde",
  "serde_json",
- "tokio",
  "warpdrive-wasi-utils",
+ "wstd",
 ]
 
 [[package]]
@@ -9103,11 +9103,11 @@ dependencies = [
  "layer-climb-address",
  "serde",
  "stellar-strkey 0.0.16",
- "tokio",
  "warpdrive-types",
  "warpdrive-wasi-utils",
  "wasip2",
  "wit-bindgen 0.53.1",
+ "wstd",
 ]
 
 [[package]]
@@ -9729,10 +9729,10 @@ dependencies = [
  "alloy-provider",
  "example-helpers",
  "example-types",
- "tokio",
  "warpdrive-wasi-utils",
  "wasip2",
  "wit-bindgen 0.53.1",
+ "wstd",
 ]
 
 [[package]]

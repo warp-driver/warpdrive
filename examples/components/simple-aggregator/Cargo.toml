@@ -11,7 +11,7 @@ wit-bindgen = { workspace = true }
 alloy-primitives = { workspace = true }
 serde = { workspace = true }
 warpdrive-wasi-utils = { workspace = true }
-tokio = { workspace = true, features = ["sync", "io-util", "macros", "rt", "time"] }
+wstd = { workspace = true }
 layer-climb-address = { workspace = true }
 stellar-strkey = { workspace = true }
 warpdrive-types = { workspace = true }
