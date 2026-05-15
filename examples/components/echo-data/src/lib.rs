@@ -67,10 +67,12 @@ async fn run_multi(
             let env_var = input_str.split("envvar:").nth(1).unwrap();
             if let Ok(value) = std::env::var(env_var) {
                 if let Some(trigger_id) = maybe_trigger_id {
+                    let service = host::get_service().service;
                     return Ok(vec![encode_trigger_output(
                         trigger_id,
                         value,
-                        host::get_service().service.manager,
+                        service.manager,
+                        service.signature_kind,
                     )]);
                 }
                 return Ok(vec![WasmResponse {
@@ -85,10 +87,12 @@ async fn run_multi(
             let config_var = input_str.split("configvar:").nth(1).unwrap();
             if let Some(value) = host::config_var(config_var) {
                 if let Some(trigger_id) = maybe_trigger_id {
+                    let service = host::get_service().service;
                     return Ok(vec![encode_trigger_output(
                         trigger_id,
                         value,
-                        host::get_service().service.manager,
+                        service.manager,
+                        service.signature_kind,
                     )]);
                 }
                 return Ok(vec![WasmResponse {
@@ -155,10 +159,12 @@ async fn run_multi(
     }
 
     if let Some(trigger_id) = maybe_trigger_id {
+        let service = host::get_service().service;
         return Ok(vec![encode_trigger_output(
             trigger_id,
             data,
-            host::get_service().service.manager,
+            service.manager,
+            service.signature_kind,
         )]);
     }
     Ok(vec![WasmResponse {

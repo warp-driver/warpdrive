@@ -18,10 +18,12 @@ impl Guest for Component {
         let req: SquareRequest = serde_json::from_slice(&req).map_err(|e| e.to_string())?;
         let y = req.x * req.x;
         let resp = serde_json::to_vec(&SquareResponse { y }).map_err(|e| e.to_string())?;
+        let service = host::get_service().service;
         Ok(vec![encode_trigger_output(
             trigger_id,
             resp,
-            host::get_service().service.manager,
+            service.manager,
+            service.signature_kind,
         )])
     }
 }

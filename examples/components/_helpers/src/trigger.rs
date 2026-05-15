@@ -5,7 +5,7 @@ use crate::bindings::world::warpdrive::{
             TriggerDataAtprotoEvent, TriggerDataCosmosContractEvent, TriggerDataEvmContractEvent,
             TriggerDataStellarContractEvent,
         },
-        service::ServiceManager,
+        service::{ServiceManager, SignatureKind, SignatureAlgorithm}
     },
     vectr::{input as component_input, output as component_output},
 };
@@ -117,6 +117,7 @@ pub fn encode_trigger_output(
     trigger_id: u64,
     output: impl AsRef<[u8]>,
     service_manager: ServiceManager,
+    signature_kind: SignatureKind,
 ) -> component_output::WasmResponse {
     match service_manager {
         ServiceManager::Evm(_) => evm_encode_trigger_output(trigger_id, output),
@@ -127,7 +128,10 @@ pub fn encode_trigger_output(
         // byte-for-byte. The aggregator wraps this payload in an
         // ABI-encoded `Envelope { eventId, ordering, payload }` before
         // submitting; the mock_submit's `verify_eth` decodes both layers.
-        ServiceManager::Stellar(_) => evm_encode_trigger_output(trigger_id, output),
+        ServiceManager::Stellar(_) => match signature_kind.algorithm {
+            SignatureAlgorithm::Secp256k1 => evm_encode_trigger_output(trigger_id, output),
+            SignatureAlgorithm::Ed25519 => stellar_encode_trigger_output(trigger_id, output),
+        } 
     }
 }
 

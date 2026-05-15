@@ -72,10 +72,12 @@ fn run_one(trigger_action: TriggerAction) -> Result<WasmResponse, anyhow::Error>
 
     let resp_bytes = serde_json::to_vec(&resp).context("Failed to serialize response")?;
 
+    let service = host::get_service().service;
     Ok(encode_trigger_output(
         trigger_id,
         resp_bytes,
-        host::get_service().service.manager,
+        service.manager,
+        service.signature_kind,
     ))
 }
 
