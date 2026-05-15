@@ -174,9 +174,7 @@ async fn main() {
                                 .with_context(|| format!("chain {chain} not found"))
                                 .unwrap()
                                 .to_stellar_config()
-                                .with_context(|| {
-                                    format!("chain {chain} is not a Stellar chain")
-                                })
+                                .with_context(|| format!("chain {chain} is not a Stellar chain"))
                                 .unwrap()
                         };
                         let env = wasi_soroban_rs::Env::new(wasi_soroban_rs::EnvConfigs {

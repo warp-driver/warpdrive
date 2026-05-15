@@ -1187,9 +1187,11 @@ pub async fn validate_service(
                 }
                 ChainType::Stellar => {
                     let stellar_cfg = {
-                        let chains = ctx.config.chains.read().map_err(|_| {
-                            anyhow!("Chains lock is poisoned")
-                        })?;
+                        let chains = ctx
+                            .config
+                            .chains
+                            .read()
+                            .map_err(|_| anyhow!("Chains lock is poisoned"))?;
                         chains
                             .get_chain(chain)
                             .and_then(|c| c.to_stellar_config().ok())
@@ -1206,10 +1208,7 @@ pub async fn validate_service(
         }
 
         // Validate that referenced contracts exist on-chain
-        if !cosmos_clients.is_empty()
-            || !evm_providers.is_empty()
-            || !stellar_clients.is_empty()
-        {
+        if !cosmos_clients.is_empty() || !evm_providers.is_empty() || !stellar_clients.is_empty() {
             if let Err(err) = validate_contracts_exist(
                 &service.name,
                 triggers,

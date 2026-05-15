@@ -63,6 +63,27 @@ impl VectrSigner {
         }
     }
 
+    /// The operator's public key in the form on-chain registration
+    /// expects, hex-encoded (no `0x` prefix).
+    ///
+    /// - `Evm` / `EvmNoPrefix`: the 33-byte compressed SEC1 secp256k1
+    ///   public key. This is what both an EVM service manager and a
+    ///   Stellar *secp256k1* security contract register against. It is
+    ///   NOT recoverable from the 20-byte EVM address (that's a one-way
+    ///   keccak hash), which is why the address alone is insufficient
+    ///   for Stellar-secp256k1 registration.
+    /// - `Stellar`: the raw 32-byte Ed25519 public key, as the Stellar
+    ///   *ed25519* security contract's `add_signer` expects (the `G...`
+    ///   strkey is an account-id encoding of these same bytes).
+    pub fn registration_pubkey_hex(&self) -> String {
+        match self {
+            VectrSigner::Evm(signer) | VectrSigner::EvmNoPrefix(signer) => {
+                const_hex::encode(signer.credential().verifying_key().to_sec1_bytes())
+            }
+            VectrSigner::Stellar(signer) => const_hex::encode(signer.verifying_key().as_bytes()),
+        }
+    }
+
     // just used in tests
     pub fn as_evm_signer(&self) -> Option<&PrivateKeySigner> {
         match self {
@@ -340,5 +361,49 @@ mod recovery_tests {
             bad.signer_address(&env),
             Err(SigningError::Ed25519Verify)
         ));
+    }
+
+    /// An `Evm` signer's `registration_pubkey_hex` is the 33-byte
+    /// compressed SEC1 secp256k1 pubkey, and it decompresses back to the
+    /// signer's EVM address — i.e. it carries strictly more information
+    /// than `evm_address` (which is a one-way keccak hash).
+    #[test]
+    fn registration_pubkey_hex_evm_is_compressed_secp256k1() {
+        let signer = PrivateKeySigner::random();
+        let expected_address = signer.address();
+
+        let vsigner = VectrSigner::Evm(signer);
+        let hex = vsigner.registration_pubkey_hex();
+        let bytes = const_hex::decode(&hex).expect("valid hex");
+        assert_eq!(bytes.len(), 33, "compressed SEC1 pubkey is 33 bytes");
+
+        let vk = VerifyingKey::from_sec1_bytes(&bytes).expect("decompress sec1 pubkey");
+        let uncompressed = vk.to_encoded_point(false);
+        let xy = &uncompressed.as_bytes()[1..];
+        let digest = alloy_primitives::keccak256(xy);
+        let derived = alloy_primitives::Address::from_slice(&digest[12..]);
+
+        assert_eq!(
+            derived, expected_address,
+            "registration pubkey did not decompress to the signer's EVM address"
+        );
+    }
+
+    /// A `Stellar` signer's `registration_pubkey_hex` is the raw 32-byte
+    /// Ed25519 public key (what the ed25519 security contract expects),
+    /// not the `G...` strkey encoding.
+    #[test]
+    fn registration_pubkey_hex_stellar_is_raw_ed25519() {
+        use ed25519_dalek::SigningKey;
+
+        let signing_key = SigningKey::from_bytes(&[7u8; 32]);
+        let expected = *signing_key.verifying_key().as_bytes();
+
+        let vsigner = VectrSigner::Stellar(signing_key);
+        let hex = vsigner.registration_pubkey_hex();
+        let bytes = const_hex::decode(&hex).expect("valid hex");
+
+        assert_eq!(bytes.len(), 32, "raw ed25519 pubkey is 32 bytes");
+        assert_eq!(bytes, expected.to_vec());
     }
 }

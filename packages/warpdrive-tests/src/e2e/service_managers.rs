@@ -626,6 +626,7 @@ impl ServiceManagers {
                 let SignerResponse::Secp256k1 {
                     evm_address: avs_signer_address,
                     hd_index: wavs_signer_hd_index,
+                    ..
                 } = http_client
                     .get_service_signer(service_manager.clone())
                     .await
