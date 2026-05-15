@@ -255,6 +255,7 @@ impl TryFrom<warpdrive_types::Service> for component_service::Service {
                 .collect::<anyhow::Result<Vec<(String, component_service::Workflow)>>>()?,
             status: src.status.into(),
             manager: src.manager.into(),
+            signature_kind: src.signature_kind.into(),
         })
     }
 }
@@ -331,13 +332,11 @@ impl From<warpdrive_types::Submit> for component_service::Submit {
     fn from(src: warpdrive_types::Submit) -> Self {
         match src {
             warpdrive_types::Submit::None => component_service::Submit::None,
-            warpdrive_types::Submit::Aggregator {
-                component,
-                signature_kind,
-            } => component_service::Submit::Aggregator(component_service::AggregatorSubmit {
-                component: (*component).into(),
-                signature_kind: signature_kind.into(),
-            }),
+            warpdrive_types::Submit::Aggregator { component } => {
+                component_service::Submit::Aggregator(component_service::AggregatorSubmit {
+                    component: (*component).into(),
+                })
+            }
         }
     }
 }
@@ -799,6 +798,7 @@ impl TryFrom<warpdrive_types::Service> for aggregator_service::Service {
                 .collect(),
             status: service.status.into(),
             manager: service.manager.into(),
+            signature_kind: service.signature_kind.into(),
         })
     }
 }
@@ -957,13 +957,11 @@ impl From<warpdrive_types::Submit> for aggregator_service::Submit {
     fn from(submit: warpdrive_types::Submit) -> Self {
         match submit {
             warpdrive_types::Submit::None => aggregator_service::Submit::None,
-            warpdrive_types::Submit::Aggregator {
-                component,
-                signature_kind,
-            } => aggregator_service::Submit::Aggregator(aggregator_service::AggregatorSubmit {
-                component: (*component).into(),
-                signature_kind: signature_kind.into(),
-            }),
+            warpdrive_types::Submit::Aggregator { component } => {
+                aggregator_service::Submit::Aggregator(aggregator_service::AggregatorSubmit {
+                    component: (*component).into(),
+                })
+            }
         }
     }
 }

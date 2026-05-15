@@ -54,7 +54,6 @@ fn dispatcher_pipeline() {
                 trigger: mock_cosmos_event_trigger(),
                 submit: Submit::Aggregator {
                     component: Box::new(Component::new(ComponentSource::Digest(digest))),
-                    signature_kind: SignatureKind::evm_default(),
                 },
             },
         )]
@@ -64,6 +63,7 @@ fn dispatcher_pipeline() {
             chain: "evm:anvil".parse().unwrap(),
             address: rand_address_evm(),
         },
+        signature_kind: SignatureKind::evm_default(),
     };
 
     let contract_address = rand_address_cosmos();

@@ -1,4 +1,4 @@
-package warpdrive:types@2.13.0;
+package warpdrive:types@2.14.0;
 
 interface chain {
   /// A string mostly following the caip-2 format of namespace:reference, e.g. "eip155:1" for Ethereum mainnet or "cosmos:cosmoshub-4" for Cosmos Hub
@@ -328,24 +328,8 @@ interface service {
     manual,
   }
 
-  variant signature-algorithm {
-    secp256k1,
-    ed25519,
-  }
-
-  variant signature-prefix {
-    eip191,
-    sep53,
-  }
-
-  record signature-kind {
-    algorithm: signature-algorithm,
-    prefix: option<signature-prefix>,
-  }
-
   record aggregator-submit {
     component: component,
-    signature-kind: signature-kind,
   }
 
   /// Submit types
@@ -361,12 +345,28 @@ interface service {
     submit: submit,
   }
 
+  variant signature-algorithm {
+    secp256k1,
+    ed25519,
+  }
+
+  variant signature-prefix {
+    eip191,
+    sep53,
+  }
+
+  record signature-kind {
+    algorithm: signature-algorithm,
+    prefix: option<signature-prefix>,
+  }
+
   /// Service types
   record service {
     name: string,
     workflows: list<tuple<workflow-id, workflow>>,
     status: service-status,
     manager: service-manager,
+    signature-kind: signature-kind,
   }
 
   /// Aggregator types

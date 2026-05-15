@@ -236,7 +236,6 @@ fn mock_e2e_same_tx_different_block_hash() {
                 component: Component::new(ComponentSource::Digest(digest.clone())),
                 submit: Submit::Aggregator {
                     component: Box::new(Component::new(ComponentSource::Digest(digest.clone()))),
-                    signature_kind: SignatureKind::evm_default(),
                 },
             },
         )]
@@ -246,6 +245,7 @@ fn mock_e2e_same_tx_different_block_hash() {
             chain: chain.clone(),
             address: rand_address_evm(),
         },
+        signature_kind: SignatureKind::evm_default(),
     };
 
     runner.ctx.rt.block_on({

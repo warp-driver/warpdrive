@@ -135,7 +135,6 @@ impl Runner {
             for test in group_tests.iter() {
                 if let Some(change_service) = test.change_service.clone() {
                     let service = all_services.get(&test.name).cloned().unwrap().service;
-                    let stellar_scheme = test.stellar_scheme;
                     futures.push(async move {
                         let mut service = service;
                         change_service_for_test(
@@ -147,7 +146,6 @@ impl Runner {
                             // No stellar change_service tests today; thread
                             // a real one through if/when one is added.
                             None,
-                            stellar_scheme,
                         )
                         .await;
                         (service, change_service)

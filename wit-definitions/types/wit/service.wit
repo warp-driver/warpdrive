@@ -14,6 +14,7 @@ interface service {
         workflows: list<tuple<workflow-id, workflow>>,
         status: service-status,
         manager: service-manager,
+        signature-kind: signature-kind
     }
 
     variant service-status {
@@ -160,7 +161,6 @@ interface service {
 
     record aggregator-submit {
         component: component,
-        signature-kind: signature-kind
     }
 
     record signature-kind {

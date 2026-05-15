@@ -73,6 +73,13 @@ pub async fn create_service_for_test(
         workflows: BTreeMap::new(),
         status: ServiceStatus::Active,
         manager: service_manager,
+        signature_kind: match test.stellar_scheme {
+            Some(SignerScheme::Ed25519) => SignatureKind {
+                algorithm: SignatureAlgorithm::Ed25519,
+                prefix: Some(SignaturePrefix::Sep53),
+            },
+            _ => SignatureKind::evm_default(),
+        },
     };
 
     let mut submission_handlers = BTreeMap::new();
@@ -86,7 +93,6 @@ pub async fn create_service_for_test(
             component_sources,
             cosmos_code_map.clone(),
             stellar_service_manager.as_ref(),
-            test.stellar_scheme,
         )
         .await;
 
@@ -146,7 +152,6 @@ async fn deploy_workflow(
     component_sources: &ComponentSources,
     cosmos_code_map: CosmosCodeMap,
     stellar_service_manager: Option<&utils::test_utils::middleware::stellar::StellarServiceManager>,
-    stellar_scheme: Option<SignerScheme>,
 ) -> WorkflowDeployment {
     let component = deploy_component(
         component_sources,
@@ -170,7 +175,6 @@ async fn deploy_workflow(
         &workflow_definition.submit,
         &submission_contract,
         Some(component_sources),
-        stellar_scheme,
     )
     .await
     .unwrap();
@@ -327,7 +331,6 @@ pub async fn create_submit_from_config(
     submit_config: &SubmitDefinition,
     submission_contract: &warpdrive_types::ChainAddress,
     component_sources: Option<&ComponentSources>,
-    stellar_scheme: Option<SignerScheme>,
 ) -> Result<Submit> {
     match submit_config {
         SubmitDefinition::Aggregator(aggregator) => match aggregator {
@@ -367,25 +370,8 @@ pub async fn create_submit_from_config(
 
                 let component = deploy_component(sources, component_def, config_vars, env_vars);
 
-                // ed25519 stellar tests sign with `{ Ed25519, Sep53 }`;
-                // everything else (EVM, Cosmos, secp256k1 stellar) keeps
-                // the EVM default `{ Secp256k1, Eip191 }`. WarpDrive's
-                // `add_service_key` reads this `signature_kind` to pick
-                // which `VectrSigner` variant to derive — so setting it
-                // correctly here is what gets WarpDrive to register an
-                // ed25519 signer at the (preserved) hd_index when
-                // `update_services` re-runs `add_service_to_managers`.
-                let signature_kind = match stellar_scheme {
-                    Some(SignerScheme::Ed25519) => SignatureKind {
-                        algorithm: SignatureAlgorithm::Ed25519,
-                        prefix: Some(SignaturePrefix::Sep53),
-                    },
-                    _ => SignatureKind::evm_default(),
-                };
-
                 Ok(Submit::Aggregator {
                     component: Box::new(component),
-                    signature_kind,
                 })
             }
         },
@@ -850,7 +836,6 @@ pub async fn change_service_for_test(
     component_sources: &ComponentSources,
     cosmos_code_map: CosmosCodeMap,
     stellar_service_manager: Option<&utils::test_utils::middleware::stellar::StellarServiceManager>,
-    stellar_scheme: Option<SignerScheme>,
 ) {
     match change_service {
         ChangeServiceDefinition::Component {
@@ -882,7 +867,6 @@ pub async fn change_service_for_test(
                 component_sources,
                 cosmos_code_map,
                 stellar_service_manager,
-                stellar_scheme,
             )
             .await;
 

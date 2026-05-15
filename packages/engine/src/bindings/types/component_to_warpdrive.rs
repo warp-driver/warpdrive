@@ -134,6 +134,7 @@ impl TryFrom<component_service::Service> for warpdrive_types::Service {
                 .collect::<anyhow::Result<BTreeMap<WorkflowId, warpdrive_types::Workflow>>>()?,
             status: src.status.into(),
             manager: src.manager.try_into()?,
+            signature_kind: src.signature_kind.into(),
         })
     }
 }
@@ -270,10 +271,8 @@ impl From<component_service::Submit> for warpdrive_types::Submit {
             component_service::Submit::None => warpdrive_types::Submit::None,
             component_service::Submit::Aggregator(component_service::AggregatorSubmit {
                 component,
-                signature_kind,
             }) => warpdrive_types::Submit::Aggregator {
                 component: Box::new(component.try_into().unwrap()),
-                signature_kind: signature_kind.into(),
             },
         }
     }

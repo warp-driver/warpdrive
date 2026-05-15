@@ -76,6 +76,7 @@ impl EngineSetup {
                 chain: "evm:exec".parse().unwrap(),
                 address: Default::default(),
             },
+            signature_kind: warpdrive_types::SignatureKind::evm_default(),
         };
 
         let chain_configs = ChainConfigs::default();

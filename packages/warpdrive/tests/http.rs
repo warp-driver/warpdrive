@@ -14,7 +14,7 @@ use warpdrive_systems::{
 };
 use warpdrive_types::{
     AnyChainConfig, ChainKey, Component, ComponentDigest, ComponentSource, CosmosChainConfig,
-    EvmChainConfig, SignatureKind, UploadComponentResponse,
+    EvmChainConfig, UploadComponentResponse,
 };
 
 #[test]
@@ -152,7 +152,6 @@ fn http_save_service() {
             component: Box::new(Component::new(ComponentSource::Digest(
                 ComponentDigest::hash([1, 2, 3]),
             ))),
-            signature_kind: SignatureKind::evm_default(),
         },
         warpdrive_types::ServiceManager::Evm {
             chain: "evm:anvil".try_into().unwrap(),

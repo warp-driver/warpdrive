@@ -1651,12 +1651,13 @@ mod tests {
                         component: Box::new(Component::new(ComponentSource::Digest(
                             ComponentDigest::hash([0; 32]),
                         ))),
-                        signature_kind: SignatureKind::evm_default(),
                     },
                 },
             )]
             .into_iter()
             .collect(),
+
+            signature_kind: SignatureKind::evm_default(),
         };
 
         let ctx = utils::context::AppContext::new();

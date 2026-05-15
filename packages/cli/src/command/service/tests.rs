@@ -1176,7 +1176,6 @@ async fn test_service_validation() {
 
     let submit = Submit::Aggregator {
         component: Box::new(component.clone()),
-        signature_kind: SignatureKind::evm_default(),
     };
 
     // Create service manager
@@ -1709,10 +1708,7 @@ async fn test_modify_aggregator_component() {
                 }
             }
         }
-        SubmitBuilder::Submit(Submit::Aggregator {
-            component,
-            signature_kind: _,
-        }) => {
+        SubmitBuilder::Submit(Submit::Aggregator { component }) => {
             // This might be matched first due to enum ordering
             match &component.source {
                 ComponentSource::Digest(digest) => {
@@ -1786,7 +1782,6 @@ fn test_aggregator_validation() {
         ))),
         submit: SubmitBuilder::Submit(Submit::Aggregator {
             component: Box::new(component.clone()),
-            signature_kind: SignatureKind::evm_default(),
         }),
     };
 
@@ -1811,7 +1806,6 @@ fn test_aggregator_validation() {
         ))),
         submit: SubmitBuilder::Submit(Submit::Aggregator {
             component: Box::new(invalid_component),
-            signature_kind: SignatureKind::evm_default(),
         }),
     };
 
@@ -1843,7 +1837,6 @@ fn test_aggregator_validation() {
         ))),
         submit: SubmitBuilder::Submit(Submit::Aggregator {
             component: Box::new(invalid_env_component),
-            signature_kind: SignatureKind::evm_default(),
         }),
     };
 

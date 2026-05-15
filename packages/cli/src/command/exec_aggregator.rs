@@ -40,7 +40,6 @@ fn create_dummy_service(
                 component: component.clone(),
                 submit: Submit::Aggregator {
                     component: Box::new(component),
-                    signature_kind: SignatureKind::evm_default(),
                 },
             },
         )]
@@ -50,6 +49,7 @@ fn create_dummy_service(
             chain: "evm:dummy".parse().unwrap(),
             address: alloy_primitives::Address::ZERO,
         },
+        signature_kind: SignatureKind::evm_default(),
     }
 }
 fn create_dummy_input(service: &Service) -> AggregatorInput {
@@ -255,7 +255,6 @@ mod test {
                     component: component.clone(),
                     submit: Submit::Aggregator {
                         component: Box::new(component),
-                        signature_kind: SignatureKind::evm_default(),
                     },
                 },
             )]
@@ -265,6 +264,7 @@ mod test {
                 chain: "evm:anvil".parse().unwrap(),
                 address: alloy_primitives::Address::ZERO,
             },
+            signature_kind: SignatureKind::evm_default(),
         }
     }
 

@@ -561,7 +561,7 @@ pub mod tests {
         test_utils::address::rand_address_evm,
     };
     use warpdrive_types::{
-        ServiceId, Submit, Trigger, TriggerConfig, TriggerData, Workflow, WorkflowId,
+        ServiceId, SignatureKind, Submit, Trigger, TriggerConfig, TriggerData, Workflow, WorkflowId,
     };
 
     use utils::test_utils::{
@@ -683,6 +683,7 @@ pub mod tests {
                 chain: "evm:anvil".parse().unwrap(),
                 address: Default::default(),
             },
+            signature_kind: SignatureKind::evm_default(),
         };
 
         let service_id = service.id();
@@ -746,6 +747,7 @@ pub mod tests {
                 chain: "evm:anvil".parse().unwrap(),
                 address: Default::default(),
             },
+            signature_kind: SignatureKind::evm_default(),
         };
 
         let service_id = service.id();
@@ -846,6 +848,7 @@ pub mod tests {
                 chain: "evm:anvil".parse().unwrap(),
                 address: Default::default(),
             },
+            signature_kind: SignatureKind::evm_default(),
         };
 
         let service_id = service.id();
@@ -913,6 +916,7 @@ pub mod tests {
                 chain: "evm:anvil".parse().unwrap(),
                 address: Default::default(),
             },
+            signature_kind: SignatureKind::evm_default(),
         };
 
         let service_id = service.id();
@@ -996,6 +1000,7 @@ pub mod tests {
                 chain: "evm:anvil".parse().unwrap(),
                 address: Default::default(),
             },
+            signature_kind: SignatureKind::evm_default(),
         };
 
         let service_id = service.id();
@@ -1122,6 +1127,7 @@ pub mod tests {
                 chain: "evm:anvil".parse().unwrap(),
                 address: Default::default(),
             },
+            signature_kind: SignatureKind::evm_default(),
         };
 
         let service_id = service.id();
@@ -1160,6 +1166,7 @@ pub mod tests {
                 chain: "evm:anvil".parse().unwrap(),
                 address: Default::default(),
             },
+            signature_kind: SignatureKind::evm_default(),
         };
 
         let service_id = service.id();
@@ -1198,6 +1205,7 @@ pub mod tests {
                 chain: "evm:anvil".parse().unwrap(),
                 address: Default::default(),
             },
+            signature_kind: SignatureKind::evm_default(),
         };
 
         let service_id = service.id();
@@ -1241,6 +1249,7 @@ pub mod tests {
                 chain: "evm:anvil".parse().unwrap(),
                 address: Default::default(),
             },
+            signature_kind: SignatureKind::evm_default(),
         };
 
         let service_id = service.id();

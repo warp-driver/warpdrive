@@ -142,7 +142,7 @@ impl WavsSignature {
         match self {
             WavsSignature::Secp256k1 { prefix, .. } => SignatureKind {
                 algorithm: SignatureAlgorithm::Secp256k1,
-                prefix: prefix.clone(),
+                prefix: *prefix,
             },
             WavsSignature::Ed25519 { .. } => SignatureKind {
                 algorithm: SignatureAlgorithm::Ed25519,

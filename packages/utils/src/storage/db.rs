@@ -187,6 +187,7 @@ pub type DBError = anyhow::Error;
 mod tests {
     use super::*;
     use serde::{Deserialize, Serialize};
+    use warpdrive_types::SignatureKind;
 
     #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
     struct TestStruct {
@@ -290,6 +291,7 @@ mod tests {
                 chain: "evm:anvil".parse().unwrap(),
                 address: alloy_primitives::Address::ZERO,
             },
+            signature_kind: SignatureKind::evm_default(),
         };
 
         assert!(db.services.get_cloned(&service_id).is_none());

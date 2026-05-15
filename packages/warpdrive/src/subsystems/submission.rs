@@ -154,7 +154,7 @@ impl SubmissionManager {
 
         let event_id = req.event_id().map_err(SubmissionError::EncodeEventId)?;
 
-        let envelope = match req.service.signature_kind().algorithm {
+        let envelope = match req.service.signature_kind.algorithm {
             SignatureAlgorithm::Secp256k1 => Envelope::Evm {
                 data: EvmEnvelope {
                     // a bit of a heavy clone, but we need it
