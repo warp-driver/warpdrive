@@ -46,11 +46,19 @@ use crate::contracts::cosmwasm::{
 ///
 /// This allows WarpDrive to call your contract with the `ServiceManager` messages,
 /// without needing to know your full `QueryMsg` or `ExecuteMsg` types
+// NOTE on `#[serde(rename = "wavs_*")]` and `rename = "operator_address"`:
+// the on-wire JSON tags must remain the pre-rename `wavs_*` form (and the
+// corresponding `operator_*` field name) because deployed `lay3rlabs/cw-middleware`
+// contracts were built before the WAVS→WarpDrive rename and only understand
+// those keys. The Rust names follow the new convention; serde keeps the wire
+// format stable.
 #[cw_serde]
 pub enum ServiceManagerExecuteMessages {
     /// Set the service URI for the WarpDrive service manager
+    #[serde(rename = "wavs_set_service_uri")]
     WarpDriveSetServiceUri { service_uri: String },
     /// Update quorum threshold
+    #[serde(rename = "wavs_set_quorum_threshold")]
     WarpDriveSetQuorumThreshold {
         numerator: Uint256,
         denominator: Uint256,
@@ -62,10 +70,15 @@ pub enum ServiceManagerExecuteMessages {
 pub enum ServiceManagerQueryMessages {
     /// Get the given vector's current weight
     #[returns(cosmwasm_std::Uint256)]
-    WarpDriveOperatorWeight { vector_address: EvmAddr },
+    #[serde(rename = "wavs_operator_weight")]
+    WarpDriveOperatorWeight {
+        #[serde(rename = "operator_address")]
+        vector_address: EvmAddr,
+    },
 
     /// Validate a signed envelope
     #[returns(WarpDriveValidateResult)]
+    #[serde(rename = "wavs_validate")]
     WarpDriveValidate {
         envelope: WarpDriveEnvelope,
         signature_data: WarpDriveSignatureData,
@@ -73,14 +86,17 @@ pub enum ServiceManagerQueryMessages {
 
     /// Get the service URI
     #[returns(String)]
+    #[serde(rename = "wavs_service_uri")]
     WarpDriveServiceUri {},
 
     /// Get the latest vector address for a given signing key address
     #[returns(Option<EvmAddr>)]
+    #[serde(rename = "wavs_latest_operator_for_signing_key")]
     WarpDriveLatestOperatorForSigningKey { signing_key_addr: EvmAddr },
 
     /// Get the current quorum threshold
     #[returns(QuorumThreshold)]
+    #[serde(rename = "wavs_quorum_threshold")]
     WarpDriveQuorumThreshold {},
 }
 
@@ -157,7 +173,7 @@ mod tests {
             },
         );
         let expected_msg_1 =
-            format!(r#"{{"warp_drive_set_service_uri":{{"service_uri":"{service_uri}"}}}}"#);
+            format!(r#"{{"wavs_set_service_uri":{{"service_uri":"{service_uri}"}}}}"#);
 
         let msg_2 = ExampleServiceManagerExecuteMsg::MyCustomMessage {
             my_field: "Hello".to_string(),
@@ -221,7 +237,7 @@ mod tests {
                 signature_data: signature_data.into(),
             },
         );
-        const EXPECTED_MSG_1_STR:&str = "{\"warp_drive_validate\":{\"envelope\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwECAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"signature_data\":{\"signers\":[\"0x2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a\",\"0x0101010101010101010101010101010101010101\"],\"signatures\":[\"010203\",\"040506\"],\"reference_block\":12345}}}";
+        const EXPECTED_MSG_1_STR:&str = "{\"wavs_validate\":{\"envelope\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwECAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"signature_data\":{\"signers\":[\"0x2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a\",\"0x0101010101010101010101010101010101010101\"],\"signatures\":[\"010203\",\"040506\"],\"reference_block\":12345}}}";
 
         let msg_2 = ExampleServiceManagerQueryMsg::MyCustomMessage {
             my_field: "Hello".to_string(),
