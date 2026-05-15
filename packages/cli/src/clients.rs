@@ -108,6 +108,20 @@ impl HttpClient {
                     self.cosmos_set_service_url(client, address.clone(), service_uri.to_string())
                         .await?;
                 }
+                SetServiceUriArgs::Stellar {
+                    env,
+                    account,
+                    service_uri,
+                } => {
+                    let ServiceManager::Stellar { address, .. } = &service_manager else {
+                        anyhow::bail!(
+                            "SetServiceUriArgs::Stellar requires a Stellar service manager, got {:?}",
+                            service_manager
+                        );
+                    };
+                    self.stellar_set_service_url(env, account, *address, service_uri.to_string())
+                        .await?;
+                }
             }
         }
 
@@ -177,6 +191,29 @@ impl HttpClient {
             )
             .await?;
 
+        Ok(())
+    }
+
+    pub async fn stellar_set_service_url(
+        &self,
+        env: wasi_soroban_rs::Env,
+        account: wasi_soroban_rs::Account,
+        project_root: stellar_strkey::Contract,
+        service_uri: String,
+    ) -> Result<()> {
+        let mut client = warpdrive_client::project_root::ProjectRootClient::new(
+            wasi_soroban_rs::ClientContractConfigs {
+                contract_id: project_root,
+                env,
+                source_account: account,
+            },
+        );
+        client
+            .update_project_spec_repo(service_uri)
+            .await
+            .with_context(|| {
+                format!("ProjectRoot::update_project_spec_repo on {project_root} failed")
+            })?;
         Ok(())
     }
 

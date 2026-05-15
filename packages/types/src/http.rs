@@ -16,12 +16,21 @@ pub enum SignerResponse {
         hd_index: u32,
         /// The evm-style address ("0x" prefixed hex string) derived from the key
         evm_address: String,
+        /// The 33-byte compressed SEC1 secp256k1 public key, hex-encoded
+        /// (no `0x` prefix). This is the key an operator registers on a
+        /// Stellar *secp256k1* security contract — it cannot be derived
+        /// from `evm_address`, so it is provided explicitly here.
+        secp256k1_compressed_pubkey: String,
     },
     Ed25519 {
         /// The derivation index used to create this key from the mnemonic
         hd_index: u32,
         /// The Stellar `G...` strkey for the operator's signing key
         stellar_pubkey: String,
+        /// The raw 32-byte Ed25519 public key, hex-encoded (no `0x`
+        /// prefix), as the Stellar *ed25519* security contract's
+        /// `add_signer` expects (no strkey decoding required).
+        ed25519_pubkey: String,
     },
 }
 

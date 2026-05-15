@@ -263,3 +263,9 @@ dev_endpoints_enabled = true
 # Credential (private key or mnemonic) for submitting transactions on EVM chains.
 # Env var: WARPDRIVE_CLI_EVM_CREDENTIAL
 # evm_credential = "0x..."
+
+# BIP-39 mnemonic for signing transactions on Stellar chains. Raw private-key
+# credentials are not supported — Stellar uses Ed25519, which can't reuse a
+# secp256k1 secret.
+# Env var: WARPDRIVE_CLI_STELLAR_CREDENTIAL
+# stellar_credential = "word1 word2 ... word24"

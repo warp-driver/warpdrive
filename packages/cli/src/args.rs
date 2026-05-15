@@ -192,6 +192,13 @@ pub enum ServiceCommand {
     },
     /// Validates the service JSON
     Validate {},
+    /// Fetch this service's operator signing key from a running WarpDrive
+    /// node, including the public key to register on-chain.
+    ///
+    /// The service manager must be set in the service JSON (see
+    /// `service manager`). Requires a reachable WarpDrive node that has
+    /// already created the signer for this service.
+    Signer {},
 }
 
 /// Commands for managing components
@@ -508,6 +515,13 @@ pub struct CliArgs {
     #[arg(long)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cosmos_mnemonic: Option<Credential>,
+
+    /// Stellar BIP-39 mnemonic for signing transactions (raw private-key
+    /// credentials are not supported). Usually leave this as None and
+    /// override in env (WARPDRIVE_CLI_STELLAR_CREDENTIAL).
+    #[arg(long)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stellar_credential: Option<Credential>,
 
     /// Save the deployment (default is true)
     #[arg(long)]

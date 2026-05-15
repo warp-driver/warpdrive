@@ -1,5 +1,5 @@
 use alloy_provider::{Provider, RootProvider};
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use layer_climb::{prelude::CosmosAddr, querier::QueryClient as CosmosQueryClient};
 use reqwest::Client;
 use std::collections::HashMap;
@@ -98,11 +98,13 @@ pub async fn validate_contracts_exist(
     service_manager: Option<&ServiceManager>,
     evm_providers: &HashMap<ChainKey, RootProvider>,
     cosmos_clients: &HashMap<ChainKey, CosmosQueryClient>,
+    stellar_clients: &HashMap<ChainKey, wasi_stellar_rpc_client::Client>,
     errors: &mut Vec<String>,
 ) -> Result<()> {
     // Track which contracts we've already checked to avoid duplicate checks
     let mut checked_evm_contracts = HashMap::new();
     let mut checked_cosmos_contracts = HashMap::new();
+    let mut checked_stellar_contracts = HashMap::new();
 
     // Check all trigger contracts
     for (workflow_id, trigger) in triggers {
@@ -169,13 +171,44 @@ pub async fn validate_contracts_exist(
             Trigger::StellarContractEvent {
                 chain,
                 contract_id,
-                topic_segments,
+                topic_segments: _,
             } => {
-                // TODO
-                errors.push(format!(
-                    "TODO: check Stellar contract for workflow {} on chain {} with contract ID {} and topic segments {:?}",
-                    workflow_id, chain, contract_id, topic_segments
-                ));
+                let parsed = match contract_id.parse::<stellar_strkey::Contract>() {
+                    Ok(c) => c,
+                    Err(err) => {
+                        errors.push(format!(
+                            "Workflow '{}' has an invalid Stellar contract id '{}' on chain {}: {}",
+                            workflow_id, contract_id, chain, err
+                        ));
+                        continue;
+                    }
+                };
+                if let Some(client) = stellar_clients.get(chain) {
+                    let key = (contract_id.clone(), chain.to_string());
+                    if let std::collections::hash_map::Entry::Vacant(e) =
+                        checked_stellar_contracts.entry(key)
+                    {
+                        let context =
+                            format!("Service {} workflow {} trigger", service_name, workflow_id);
+                        match check_stellar_contract_exists(&parsed, client, errors, &context).await
+                        {
+                            Ok(exists) => {
+                                e.insert(exists);
+                            }
+                            Err(err) => {
+                                errors.push(format!(
+                                    "Error checking Stellar contract for workflow {}: {}",
+                                    workflow_id, err
+                                ));
+                            }
+                        }
+                    }
+                } else {
+                    errors.push(format!(
+                        "Cannot check Stellar contract for workflow {} - no client configured for chain {}",
+                        workflow_id, chain
+                    ));
+                }
             }
             // Other trigger types don't need contract validation
             Trigger::Cron { .. }
@@ -213,11 +246,32 @@ pub async fn validate_contracts_exist(
                     ));
                 }
             }
-            ServiceManager::Stellar {
-                chain: _,
-                address: _,
-            } => {
-                // TODO: Stellar service manager contract existence check is not yet implemented
+            ServiceManager::Stellar { chain, address } => {
+                if let Some(client) = stellar_clients.get(chain) {
+                    let key = (format!("{address}"), chain.to_string());
+                    if let std::collections::hash_map::Entry::Vacant(e) =
+                        checked_stellar_contracts.entry(key)
+                    {
+                        let context = format!("Service {} manager", service_name);
+                        match check_stellar_contract_exists(address, client, errors, &context).await
+                        {
+                            Ok(exists) => {
+                                e.insert(exists);
+                            }
+                            Err(err) => {
+                                errors.push(format!(
+                                    "Error checking Stellar contract for service manager: {}",
+                                    err
+                                ));
+                            }
+                        }
+                    }
+                } else {
+                    errors.push(format!(
+                        "Cannot check service manager contract - no client configured for chain {}",
+                        chain
+                    ));
+                }
             }
             ServiceManager::Cosmos { chain, address } => match cosmos_clients.get(chain) {
                 Some(client) => {
@@ -304,6 +358,37 @@ pub async fn check_cosmos_contract_exists(
                 context, address, err
             ));
             Err(err)
+        }
+    }
+}
+
+/// Check if a Stellar contract exists at the specified C-address.
+///
+/// Reads the `LedgerKeyContractInstance` entry via Soroban RPC's
+/// `getLedgerEntries`. A missing entry surfaces as
+/// `wasi_stellar_rpc_client::Error::NotFound` and is reported as a
+/// non-existence error (not a network failure).
+pub async fn check_stellar_contract_exists(
+    address: &stellar_strkey::Contract,
+    rpc_client: &wasi_stellar_rpc_client::Client,
+    errors: &mut Vec<String>,
+    context: &str,
+) -> Result<bool> {
+    match rpc_client.get_contract_data(&address.0).await {
+        Ok(_) => Ok(true),
+        Err(wasi_stellar_rpc_client::Error::NotFound(_, _)) => {
+            errors.push(format!(
+                "{}: Stellar address {} has no contract instance on chain",
+                context, address
+            ));
+            Ok(false)
+        }
+        Err(err) => {
+            errors.push(format!(
+                "{}: Failed to check Stellar contract at {}: {} (RPC connection issue)",
+                context, address, err
+            ));
+            Err(anyhow!("{err}"))
         }
     }
 }

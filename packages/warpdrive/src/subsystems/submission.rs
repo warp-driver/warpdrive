@@ -52,6 +52,12 @@ struct SignerInfo {
     /// the synchronous `get_service_signer` path skip locking the
     /// RwLock — important because we need to get the address in sync code, not just async
     address: warpdrive_types::ChainAddress,
+    /// Cached on-chain registration public key (hex), captured when the
+    /// signer is built — same rationale as `address`. This is the key an
+    /// operator registers on the service-manager / security contracts
+    /// (compressed secp256k1 or raw ed25519); see
+    /// `VectrSigner::registration_pubkey_hex`.
+    registration_pubkey_hex: String,
     hd_index: u32,
 }
 
@@ -302,6 +308,7 @@ impl SubmissionManager {
         };
 
         let address = signer.address();
+        let registration_pubkey_hex = signer.registration_pubkey_hex();
         tracing::info!(
             "Created new signing client for service {} -> {}",
             service_id,
@@ -313,6 +320,7 @@ impl SubmissionManager {
             SignerInfo {
                 signer: Arc::new(tokio::sync::RwLock::new(signer)),
                 address,
+                registration_pubkey_hex,
                 hd_index,
             },
         );
@@ -340,11 +348,15 @@ impl SubmissionManager {
             })
             .map(
                 |SignerInfo {
-                     address, hd_index, ..
+                     address,
+                     hd_index,
+                     registration_pubkey_hex,
+                     ..
                  }| match address {
                     warpdrive_types::ChainAddress::Evm(addr) => SignerResponse::Secp256k1 {
                         hd_index: *hd_index,
                         evm_address: addr.to_string(),
+                        secp256k1_compressed_pubkey: registration_pubkey_hex.clone(),
                     },
                     warpdrive_types::ChainAddress::StellarPubKey(pubkey) => {
                         SignerResponse::Ed25519 {
@@ -353,6 +365,7 @@ impl SubmissionManager {
                                 "{}",
                                 stellar_strkey::ed25519::PublicKey(pubkey.into_inner())
                             ),
+                            ed25519_pubkey: registration_pubkey_hex.clone(),
                         }
                     }
                     // Cosmos and StellarContract addresses can't come out
@@ -361,6 +374,7 @@ impl SubmissionManager {
                     other => SignerResponse::Secp256k1 {
                         hd_index: *hd_index,
                         evm_address: other.to_string(),
+                        secp256k1_compressed_pubkey: registration_pubkey_hex.clone(),
                     },
                 },
             )?;

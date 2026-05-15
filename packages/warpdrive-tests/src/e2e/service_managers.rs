@@ -482,80 +482,44 @@ impl ServiceManagers {
                 // Unlike EVM/Cosmos, Stellar `add-signer` is signed by the
                 // middleware container's admin key, not by the operator
                 // itself, so per-test unique HD indexes aren't needed to
-                // avoid nonce collisions. Each vector reuses the same
-                // mnemonic at the WarpDrive instance's reported hd_index.
-                let operator_mnemonic = &self.configs.mnemonics.vectors[operator_offset];
-
-                // WarpDrive's `add_service_key` picks the signer's
-                // algorithm by reading the service's workflow
-                // `signature_kind` — but at this point in bootstrap the
-                // service has only the empty-workflow placeholder
-                // (`set_initial_service_uris`), so it always falls back
-                // to `SignatureKind::evm_default()` (secp256k1) even on
-                // ed25519 stacks. The signer is re-derived at the right
-                // hd_index once the real workflows arrive via
-                // `update_services`, so here we just need the hd_index
-                // and we derive the on-chain key from the operator's
-                // mnemonic ourselves.
+                // avoid nonce collisions.
                 let pubkey_hex = match *scheme {
                     SignerScheme::Secp256k1 => {
-                        let hd_index = signer.hd_index();
-                        let signing_signer = utils::evm_client::signing::make_signer(
-                            operator_mnemonic,
-                            Some(hd_index),
-                        )
-                        .unwrap();
-                        if let SignerResponse::Secp256k1 {
-                            evm_address: avs_signer_address,
-                            ..
-                        } = &signer
-                        {
-                            assert_eq!(
-                                signing_signer.address().to_string().to_lowercase(),
-                                avs_signer_address.to_lowercase(),
-                                "Derived signing address doesn't match WarpDrive signer address \
-                                 for vector {operator_offset}"
-                            );
+                        // The node now returns the 33-byte compressed SEC1
+                        // secp256k1 pubkey that `secp256k1_security`
+                        // registers, so use it directly rather than
+                        // re-deriving from the operator mnemonic.
+                        match &signer {
+                            SignerResponse::Secp256k1 {
+                                secp256k1_compressed_pubkey,
+                                ..
+                            } => secp256k1_compressed_pubkey.clone(),
+                            SignerResponse::Ed25519 { .. } => panic!(
+                                "secp256k1 stellar stack but the node returned an ed25519 \
+                                 signer for vector {operator_offset}"
+                            ),
                         }
-                        // Stellar's `secp256k1_security` contract keys on
-                        // the compressed sec1 pubkey (0x02/0x03 || x).
-                        let secret_bytes = signing_signer.to_bytes();
-                        let secp_key = k256::ecdsa::SigningKey::from_slice(secret_bytes.as_slice())
-                            .expect("operator signing key not a valid secp256k1 key");
-                        const_hex::encode(secp_key.verifying_key().to_sec1_bytes())
                     }
                     SignerScheme::Ed25519 => {
-                        let hd_index = signer.hd_index();
-                        // SLIP-0010 / SEP-0005 derivation, same path the
-                        // WarpDrive instance uses for its signing key
-                        // once it picks up an ed25519 workflow.
+                        // BOOTSTRAP ORDERING CAVEAT: registration runs
+                        // before the real ed25519 workflow is loaded, so
+                        // WarpDrive's `add_service_key` is still on the
+                        // secp256k1 bootstrap default (`set_initial_service_uris`
+                        // leaves only an empty-workflow placeholder, so
+                        // `get_signature_kind` falls back to
+                        // `SignatureKind::evm_default()`). The node has
+                        // therefore NOT created an ed25519 signer yet and
+                        // the response can't supply the ed25519 pubkey at
+                        // this point. Derive it from the operator mnemonic
+                        // at the node-reported hd_index — the same
+                        // SLIP-0010 / SEP-0005 path WarpDrive uses once
+                        // `update_services` loads the ed25519 workflow.
+                        let operator_mnemonic = &self.configs.mnemonics.vectors[operator_offset];
                         let signing_key = utils::stellar_client::make_stellar_signer(
                             operator_mnemonic,
-                            Some(hd_index),
+                            Some(signer.hd_index()),
                         )
                         .unwrap();
-                        // Only sanity-check the strkey match if WarpDrive
-                        // already reports the matching algorithm. Until
-                        // `update_services` runs with an ed25519 workflow
-                        // it'll still be returning the bootstrap-default
-                        // secp256k1 response, which we accept here.
-                        if let SignerResponse::Ed25519 {
-                            stellar_pubkey: avs_stellar_pubkey,
-                            ..
-                        } = &signer
-                        {
-                            let derived_strkey = format!(
-                                "{}",
-                                stellar_strkey::ed25519::PublicKey(
-                                    *signing_key.verifying_key().as_bytes(),
-                                )
-                            );
-                            assert_eq!(
-                                derived_strkey, *avs_stellar_pubkey,
-                                "Derived stellar pubkey doesn't match WarpDrive signer pubkey \
-                                 for vector {operator_offset}"
-                            );
-                        }
                         // `ed25519_security` contract takes the raw
                         // 32-byte BytesN<32> public key.
                         const_hex::encode(signing_key.verifying_key().as_bytes())
@@ -626,6 +590,7 @@ impl ServiceManagers {
                 let SignerResponse::Secp256k1 {
                     evm_address: avs_signer_address,
                     hd_index: wavs_signer_hd_index,
+                    ..
                 } = http_client
                     .get_service_signer(service_manager.clone())
                     .await

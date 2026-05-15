@@ -166,8 +166,45 @@ async fn main() {
                         let client = new_cosmos_client(&ctx, chain.id.clone()).await.unwrap();
                         Some(SetServiceUriArgs::new_cosmos(client, service_uri.clone()))
                     }
-                    warpdrive_types::ServiceManager::Stellar { .. } => {
-                        unimplemented!("Stellar set-service-uri not yet wired up")
+                    warpdrive_types::ServiceManager::Stellar { ref chain, .. } => {
+                        let stellar_chain_config = {
+                            let chains = ctx.config.chains.read().unwrap();
+                            chains
+                                .get_chain(chain)
+                                .with_context(|| format!("chain {chain} not found"))
+                                .unwrap()
+                                .to_stellar_config()
+                                .with_context(|| format!("chain {chain} is not a Stellar chain"))
+                                .unwrap()
+                        };
+                        let env = wasi_soroban_rs::Env::new(wasi_soroban_rs::EnvConfigs {
+                            rpc_url: stellar_chain_config.rpc_url.clone(),
+                            network_passphrase: stellar_chain_config.network_passphrase.clone(),
+                        })
+                        .context("building soroban env")
+                        .unwrap();
+                        let credential = ctx
+                            .config
+                            .stellar_credential
+                            .as_ref()
+                            .context(
+                                "missing stellar_credential (set \
+                                 WARPDRIVE_CLI_STELLAR_CREDENTIAL or the \
+                                 stellar_credential config field to a BIP-39 mnemonic)",
+                            )
+                            .unwrap();
+                        let signing_key =
+                            utils::stellar_client::make_stellar_signer(credential, None)
+                                .context("deriving stellar signing key")
+                                .unwrap();
+                        let account = wasi_soroban_rs::Account::single(
+                            wasi_soroban_rs::Signer::new(signing_key),
+                        );
+                        Some(SetServiceUriArgs::new_stellar(
+                            env,
+                            account,
+                            service_uri.clone(),
+                        ))
                     }
                 }
             } else {

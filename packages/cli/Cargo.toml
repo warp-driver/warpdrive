@@ -34,6 +34,9 @@ alloy-provider = { workspace = true }
 alloy-json-abi = { workspace = true }
 stellar-xdr = { workspace = true }
 stellar-strkey = { workspace = true }
+wasi-soroban-rs = { workspace = true }
+wasi-stellar-rpc-client = { workspace = true }
+warpdrive-client = { workspace = true }
 cron = { workspace = true }
 rand = { workspace = true }
 opentelemetry = { workspace = true }
