@@ -10950,6 +10950,7 @@ dependencies = [
  "warpdrive-engine",
  "warpdrive-types",
  "wasi-soroban-rs",
+ "wasi-stellar-rpc-client",
  "wasm-pkg-client",
  "wasmtime",
 ]

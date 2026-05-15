@@ -10,8 +10,8 @@ pub use types::{
     WorkflowDeleteResult, WorkflowSetSubmitNoneResult, WorkflowTriggerResult,
 };
 pub use validate::{
-    check_cosmos_contract_exists, check_evm_contract_exists, validate_contracts_exist,
-    validate_registry_availability, validate_workflow_trigger,
+    check_cosmos_contract_exists, check_evm_contract_exists, check_stellar_contract_exists,
+    validate_contracts_exist, validate_registry_availability, validate_workflow_trigger,
 };
 
 use alloy_json_abi::Event;
@@ -1170,6 +1170,7 @@ pub async fn validate_service(
         // Build maps of clients for chains actually used
         let mut cosmos_clients = HashMap::new();
         let mut evm_providers = HashMap::new();
+        let mut stellar_clients = HashMap::new();
 
         // Only get clients for chains actually used in triggers or submits
         for (chain, chain_type) in chains_to_validate.iter() {
@@ -1185,19 +1186,37 @@ pub async fn validate_service(
                     }
                 }
                 ChainType::Stellar => {
-                    // TODO: Stellar contract validation client wiring
+                    let stellar_cfg = {
+                        let chains = ctx.config.chains.read().map_err(|_| {
+                            anyhow!("Chains lock is poisoned")
+                        })?;
+                        chains
+                            .get_chain(chain)
+                            .and_then(|c| c.to_stellar_config().ok())
+                    };
+                    if let Some(stellar_cfg) = stellar_cfg {
+                        if let Ok(client) =
+                            wasi_stellar_rpc_client::Client::new(&stellar_cfg.rpc_url)
+                        {
+                            stellar_clients.insert(chain.clone(), client);
+                        }
+                    }
                 }
             }
         }
 
         // Validate that referenced contracts exist on-chain
-        if !cosmos_clients.is_empty() || !evm_providers.is_empty() {
+        if !cosmos_clients.is_empty()
+            || !evm_providers.is_empty()
+            || !stellar_clients.is_empty()
+        {
             if let Err(err) = validate_contracts_exist(
                 &service.name,
                 triggers,
                 service_manager,
                 &evm_providers,
                 &cosmos_clients,
+                &stellar_clients,
                 &mut errors,
             )
             .await
