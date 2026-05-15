@@ -5,7 +5,7 @@ use crate::bindings::world::warpdrive::{
             TriggerDataAtprotoEvent, TriggerDataCosmosContractEvent, TriggerDataEvmContractEvent,
             TriggerDataStellarContractEvent,
         },
-        service::{ServiceManager, SignatureKind, SignatureAlgorithm}
+        service::{ServiceManager, SignatureAlgorithm, SignatureKind},
     },
     vectr::{input as component_input, output as component_output},
 };
@@ -131,7 +131,7 @@ pub fn encode_trigger_output(
         ServiceManager::Stellar(_) => match signature_kind.algorithm {
             SignatureAlgorithm::Secp256k1 => evm_encode_trigger_output(trigger_id, output),
             SignatureAlgorithm::Ed25519 => stellar_encode_trigger_output(trigger_id, output),
-        } 
+        },
     }
 }
 
@@ -168,7 +168,7 @@ fn cosmos_encode_trigger_output(
     }
 }
 
-pub fn stellar_encode_trigger_output(
+fn stellar_encode_trigger_output(
     trigger_id: u64,
     output: impl AsRef<[u8]>,
 ) -> component_output::WasmResponse {

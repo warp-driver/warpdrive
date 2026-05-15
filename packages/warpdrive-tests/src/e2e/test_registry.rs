@@ -234,11 +234,9 @@ impl TestRegistry {
             let scheme = service.scheme();
 
             match service {
-                StellarService::EchoData => {
+                // These two run the same component but different schemes
+                StellarService::EchoData | StellarService::EchoDataXlm => {
                     registry.register_stellar_echo_data_test(stellar, stellar, scheme);
-                }
-                StellarService::EchoDataXlm => {
-                    registry.register_stellar_echo_data_xlm_test(stellar, stellar, scheme);
                 }
                 StellarService::BlockInterval | StellarService::BlockIntervalStartStop => {
                     tracing::warn!("Stellar interval tests are not yet registered in e2e");
@@ -295,11 +293,15 @@ impl TestRegistry {
         submit_chain: &ChainKey,
         scheme: SignerScheme,
     ) -> &mut Self {
+        // This is called twice with different schemes, so use unique names and workflows for each
+        let name = format!("stellar_echo_data_{}", scheme.as_str());
+        let data = format!("Secret {} data", scheme.as_str());
+
         self.register(
-            TestBuilder::new("stellar_echo_data")
+            TestBuilder::new(&name)
                 .with_description("Tests the EchoData component on Stellar testnet")
                 .add_workflow(
-                    WorkflowId::new("stellar_echo_data").unwrap(),
+                    WorkflowId::new(&name).unwrap(),
                     WorkflowBuilder::new()
                         .with_operator_component(VectorComponent::EchoData)
                         .with_aggregator_component(AggregatorComponent::SimpleAggregator)
@@ -311,52 +313,8 @@ impl TestRegistry {
                         .with_submit(SubmitDefinition::Aggregator(Self::simple_aggregator(
                             submit_chain,
                         )))
-                        .with_input_data(InputData::Text("The times".to_string()))
-                        .with_expected_output(ExpectedOutput::Text("The times".to_string()))
-                        .with_timeout(Duration::from_secs(90))
-                        .build(),
-                )
-                .with_service_manager_chain(submit_chain)
-                .with_stellar_scheme(scheme)
-                .build(),
-        )
-    }
-
-    /// First ed25519 (`--variant stellar`) Stellar test. Mirrors
-    /// `register_stellar_echo_data_test` but drives the
-    /// `echo-data-xlm` component, which encodes via
-    /// `stellar_encode_trigger_output` (raw payload bytes, no
-    /// `trigger_id` wrapper). The aggregator wraps that payload in an
-    /// XDR `XlmEnvelope` and the test stack's `mock_submit_xlm`
-    /// handler stores the inner bytes raw, keyed by 20-byte
-    /// `event_id`. The read path lives in the `Ed25519` arm of
-    /// `stellar_wait_for_task_to_land`.
-    fn register_stellar_echo_data_xlm_test(
-        &mut self,
-        trigger_chain: &ChainKey,
-        submit_chain: &ChainKey,
-        scheme: SignerScheme,
-    ) -> &mut Self {
-        self.register(
-            TestBuilder::new("stellar_echo_data_xlm")
-                .with_description(
-                    "Tests the EchoDataXlm component on Stellar testnet (ed25519 path)",
-                )
-                .add_workflow(
-                    WorkflowId::new("stellar_echo_data_xlm").unwrap(),
-                    WorkflowBuilder::new()
-                        .with_operator_component(VectorComponent::EchoDataXlm)
-                        .with_aggregator_component(AggregatorComponent::SimpleAggregator)
-                        .with_trigger(TriggerDefinition::NewStellarContract(
-                            StellarTriggerDefinition::SimpleContractEvent {
-                                chain: trigger_chain.clone(),
-                            },
-                        ))
-                        .with_submit(SubmitDefinition::Aggregator(Self::simple_aggregator(
-                            submit_chain,
-                        )))
-                        .with_input_data(InputData::Text("The times".to_string()))
-                        .with_expected_output(ExpectedOutput::Text("The times".to_string()))
+                        .with_input_data(InputData::Text(data.clone()))
+                        .with_expected_output(ExpectedOutput::Text(data))
                         .with_timeout(Duration::from_secs(90))
                         .build(),
                 )

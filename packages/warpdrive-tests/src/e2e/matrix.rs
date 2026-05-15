@@ -299,7 +299,7 @@ impl From<StellarService> for Vec<ComponentName> {
         match service {
             StellarService::EchoData => vec![ComponentName::Vector(VectorComponent::EchoData)],
             StellarService::EchoDataXlm => {
-                vec![ComponentName::Vector(VectorComponent::EchoDataXlm)]
+                vec![ComponentName::Vector(VectorComponent::EchoData)]
             }
             StellarService::BlockInterval => {
                 vec![ComponentName::Vector(VectorComponent::EchoBlockInterval)]
