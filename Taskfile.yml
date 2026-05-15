@@ -80,7 +80,7 @@ tasks:
       - cmd: |
           set -euo pipefail
 
-          IMAGE_NAME="ghcr.io/lay3rlabs/wasi-builder:{{.TAG}}"
+          IMAGE_NAME="ghcr.io/warp-driver/wasi-builder:{{.TAG}}"
 
           if [ "{{.TAG}}" != "local" ]; then
             docker pull $IMAGE_NAME
