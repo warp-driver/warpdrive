@@ -113,6 +113,16 @@ fn parse_stellar_scval_xdr(raw: &str) -> Result<stellar_xdr::curr::ScVal> {
     stellar_xdr::curr::ScVal::from_xdr_base64(raw, Limits::none()).map_err(Into::into)
 }
 
+/// Encode a component's output into the payload shape the destination
+/// ServiceHandler contract expects, dispatching on the service manager
+/// (and, for Stellar, on the signature algorithm).
+///
+/// - EVM: ABI-encoded `DataWithId`.
+/// - Cosmos: serialized `MessageWithId`.
+/// - Stellar: a Stellar service can be secured by either Ethereum-style
+///   secp256k1 signatures or native ed25519 signatures. The on-chain
+///   handler decodes a different payload shape in each case, so we pick the
+///   encoding from `signature_kind.algorithm` (see the match arms below).
 pub fn encode_trigger_output(
     trigger_id: u64,
     output: impl AsRef<[u8]>,
@@ -122,14 +132,17 @@ pub fn encode_trigger_output(
     match service_manager {
         ServiceManager::Evm(_) => evm_encode_trigger_output(trigger_id, output),
         ServiceManager::Cosmos(_) => cosmos_encode_trigger_output(trigger_id, output),
-        // Stellar uses the same ABI-encoded `DataWithId` payload as EVM —
-        // the mock_submit Soroban contract decodes the envelope's payload
-        // bytes via alloy_sol_types and matches the EVM SimpleSubmit shape
-        // byte-for-byte. The aggregator wraps this payload in an
-        // ABI-encoded `Envelope { eventId, ordering, payload }` before
-        // submitting; the mock_submit's `verify_eth` decodes both layers.
         ServiceManager::Stellar(_) => match signature_kind.algorithm {
+            // secp256k1: the mock_submit Soroban contract verifies
+            // Ethereum-style and decodes the envelope payload via
+            // `alloy_sol_types`, matching the EVM SimpleSubmit shape
+            // byte-for-byte, so we emit the same ABI-encoded `DataWithId`
+            // as EVM. The aggregator wraps it in an ABI-encoded
+            // `Envelope { eventId, ordering, payload }`; the contract's
+            // `verify_eth` decodes both layers.
             SignatureAlgorithm::Secp256k1 => evm_encode_trigger_output(trigger_id, output),
+            // ed25519: native Stellar path — emit XDR-encoded
+            // `MessageWithId` that the stellar-handler decodes directly.
             SignatureAlgorithm::Ed25519 => stellar_encode_trigger_output(trigger_id, output),
         },
     }
