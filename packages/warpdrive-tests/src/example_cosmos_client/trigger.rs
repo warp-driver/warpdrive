@@ -26,8 +26,22 @@ impl SimpleCosmosTriggerClient {
         code_id: u64,
         label: &str,
     ) -> Result<Self> {
+        // instantiate2 with a random salt — see the matching comment in
+        // `example_cosmos_client/submit.rs`. Classic instantiate's
+        // instanceID-counter-based address can race under concurrent
+        // simulates and produce `ErrDuplicate` at simulate time.
+        let salt = uuid::Uuid::now_v7().as_bytes().to_vec();
         let (addr, _) = signing_client
-            .contract_instantiate(None, code_id, label, &Empty {}, Vec::new(), None)
+            .contract_instantiate2(
+                None,
+                code_id,
+                label,
+                &Empty {},
+                Vec::new(),
+                salt,
+                false,
+                None,
+            )
             .await?;
 
         Ok(Self::new(signing_client, addr))
