@@ -27,8 +27,9 @@
 //! - **Stellar**: strict historical via
 //!   `Secp256k1VerificationClient::check_one(env, sig, pubkey, Some(ref_block))`.
 //! - **EVM**: strict historical via alloy's `.block(BlockId::Number(N))`
-//!   on `IWarpDriveServiceManager::getOperatorWeight(addr)`. No
-//!   contract changes needed; the EVM RPC just reads chain state at N.
+//!   on `IWarpDriveServiceManager::getLatestOperatorForSigningKey`
+//!   followed by `getOperatorWeight`. No contract changes needed; the
+//!   EVM RPC just reads chain state at N.
 //! - **Cosmos**: current-block only — `layer_climb`'s `contract_smart`
 //!   doesn't expose a height parameter, so we query
 //!   `WarpDriveOperatorWeight` against the current chain state.
@@ -357,13 +358,41 @@ impl Aggregator {
 
         // The one-liner historical-state win: alloy's
         // `.block(BlockId::Number(N))` makes `eth_call` read state at
-        // block N. The contract's `getOperatorWeight(addr)` returns
-        // `operatorWeights[addr]` from chain state at N — so we get
-        // historical accuracy without any contract changes.
+        // block N. We do the operator-set lookup as a two-step at
+        // block N: first map the recovered signing-key address to its
+        // operator, then read that operator's weight. Production
+        // service managers (e.g. POAStakeRegistry) key
+        // `operatorWeights` by operator address — not by signing-key
+        // address — so calling `getOperatorWeight(signer_addr)`
+        // directly always returns zero. The local mock
+        // `SimpleServiceManager` papers over this by returning the
+        // input from `getLatestOperatorForSigningKey`, so this
+        // two-step works for both.
         let service_manager =
             IWarpDriveServiceManagerInstance::new(manager_address, query_client.provider.clone());
+
+        let operator_addr = service_manager
+            .getLatestOperatorForSigningKey(signer_addr)
+            .block(BlockId::Number(ref_block.into()))
+            .call()
+            .await
+            .map_err(|e| AggregatorError::ReceiveValidationChainQuery {
+                chain: chain.clone(),
+                detail: format!(
+                    "getLatestOperatorForSigningKey at block {ref_block}: {e:?}"
+                ),
+            })?;
+
+        if operator_addr == alloy_primitives::Address::ZERO {
+            return Err(AggregatorError::SignerUnregisteredAtReceive {
+                chain: chain.clone(),
+                signer_pubkey_hex: format!("{signer_addr:?}"),
+                block: ref_block,
+            });
+        }
+
         let weight = service_manager
-            .getOperatorWeight(signer_addr)
+            .getOperatorWeight(operator_addr)
             .block(BlockId::Number(ref_block.into()))
             .call()
             .await
