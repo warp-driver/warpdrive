@@ -44,6 +44,11 @@ pub enum SetServiceUriArgs {
         client: SigningClient,
         service_uri: UriString,
     },
+    Stellar {
+        env: wasi_soroban_rs::Env,
+        account: wasi_soroban_rs::Account,
+        service_uri: UriString,
+    },
 }
 
 impl SetServiceUriArgs {
@@ -61,10 +66,23 @@ impl SetServiceUriArgs {
         }
     }
 
+    pub fn new_stellar(
+        env: wasi_soroban_rs::Env,
+        account: wasi_soroban_rs::Account,
+        service_uri: UriString,
+    ) -> Self {
+        Self::Stellar {
+            env,
+            account,
+            service_uri,
+        }
+    }
+
     pub fn service_uri(&self) -> &UriString {
         match self {
             SetServiceUriArgs::Evm { service_uri, .. } => service_uri,
             SetServiceUriArgs::Cosmos { service_uri, .. } => service_uri,
+            SetServiceUriArgs::Stellar { service_uri, .. } => service_uri,
         }
     }
 }

@@ -33,6 +33,11 @@ pub struct Config {
     /// The credential to use for submitting transactions on evm chains (mnemonic or private key)
     pub evm_credential: Option<Credential>,
 
+    /// The BIP-39 mnemonic to use for signing transactions on Stellar chains
+    /// (raw private-key credentials are not supported — Stellar uses Ed25519,
+    /// which can't reuse a secp256k1 secret).
+    pub stellar_credential: Option<Credential>,
+
     /// The IPFS gateway URL used to access IPFS content over HTTP.
     pub ipfs_gateway: String,
 }
@@ -58,6 +63,7 @@ impl Default for Config {
             chains: Arc::new(RwLock::new(ChainConfigs::default())),
             cosmos_mnemonic: None,
             evm_credential: None,
+            stellar_credential: None,
             ipfs_gateway: DEFAULT_IPFS_GATEWAY.to_string(),
         }
     }

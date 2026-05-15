@@ -10946,8 +10946,10 @@ dependencies = [
  "tracing-subscriber",
  "utils",
  "uuid",
+ "warpdrive-client",
  "warpdrive-engine",
  "warpdrive-types",
+ "wasi-soroban-rs",
  "wasm-pkg-client",
  "wasmtime",
 ]

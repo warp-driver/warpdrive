@@ -509,6 +509,13 @@ pub struct CliArgs {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cosmos_mnemonic: Option<Credential>,
 
+    /// Stellar BIP-39 mnemonic for signing transactions (raw private-key
+    /// credentials are not supported). Usually leave this as None and
+    /// override in env (WARPDRIVE_CLI_STELLAR_CREDENTIAL).
+    #[arg(long)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stellar_credential: Option<Credential>,
+
     /// Save the deployment (default is true)
     #[arg(long)]
     #[serde(skip_serializing_if = "Option::is_none")]
