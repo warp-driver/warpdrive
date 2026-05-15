@@ -229,10 +229,7 @@ impl EigenlayerMiddleware {
                     "-e",
                     &format!("RPC_URL={}", service_manager.rpc_url),
                     "-e",
-                    &format!(
-                        "WAVS_SERVICE_MANAGER_ADDRESS={}",
-                        service_manager.address
-                    ),
+                    &format!("WAVS_SERVICE_MANAGER_ADDRESS={}", service_manager.address),
                     "-e",
                     &format!("FUNDED_KEY={}", service_manager.deployer_key_hex),
                     "-e",

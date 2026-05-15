@@ -378,9 +378,7 @@ impl Aggregator {
             .await
             .map_err(|e| AggregatorError::ReceiveValidationChainQuery {
                 chain: chain.clone(),
-                detail: format!(
-                    "getLatestOperatorForSigningKey at block {ref_block}: {e:?}"
-                ),
+                detail: format!("getLatestOperatorForSigningKey at block {ref_block}: {e:?}"),
             })?;
 
         if operator_addr == alloy_primitives::Address::ZERO {
