@@ -192,6 +192,13 @@ pub enum ServiceCommand {
     },
     /// Validates the service JSON
     Validate {},
+    /// Fetch this service's operator signing key from a running WarpDrive
+    /// node, including the public key to register on-chain.
+    ///
+    /// The service manager must be set in the service JSON (see
+    /// `service manager`). Requires a reachable WarpDrive node that has
+    /// already created the signer for this service.
+    Signer {},
 }
 
 /// Commands for managing components

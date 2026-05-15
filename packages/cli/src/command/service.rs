@@ -6,8 +6,8 @@ mod tests;
 
 pub use types::{
     ChainType, ComponentContext, ComponentOperationResult, EvmManagerResult, ServiceInitResult,
-    ServiceValidationResult, StellarManagerResult, UpdateStatusResult, WorkflowAddResult,
-    WorkflowDeleteResult, WorkflowSetSubmitNoneResult, WorkflowTriggerResult,
+    ServiceSignerResult, ServiceValidationResult, StellarManagerResult, UpdateStatusResult,
+    WorkflowAddResult, WorkflowDeleteResult, WorkflowSetSubmitNoneResult, WorkflowTriggerResult,
 };
 pub use validate::{
     check_cosmos_contract_exists, check_evm_contract_exists, check_stellar_contract_exists,
@@ -41,6 +41,7 @@ use crate::{
         ComponentCommand, ManagerCommand, ServiceCommand, SubmitCommand, TriggerCommand,
         WorkflowCommand,
     },
+    clients::HttpClient,
     command::service::types::WorkflowSetSubmitAggregatorResult,
     context::CliContext,
     service_json::{
@@ -172,6 +173,10 @@ pub async fn handle_service_command(
         }
         ServiceCommand::Validate {} => {
             let result = validate_service(&file, Some(ctx)).await?;
+            display_result(ctx, result, json)?;
+        }
+        ServiceCommand::Signer {} => {
+            let result = fetch_service_signer(ctx, &file).await?;
             display_result(ctx, result, json)?;
         }
     }
@@ -1229,6 +1234,42 @@ pub async fn validate_service(
         service_name: service.name,
         errors,
     })
+}
+
+/// Fetch this service's operator signer from a running WarpDrive node.
+///
+/// Reads the service manager from the service JSON, asks the node for
+/// the signer it created for that service, and returns the response —
+/// which now includes the public key to register on-chain (compressed
+/// secp256k1 or raw ed25519), so callers no longer need to re-derive it
+/// from a mnemonic.
+pub async fn fetch_service_signer(
+    ctx: &CliContext,
+    file_path: &Path,
+) -> Result<ServiceSignerResult> {
+    let service_json = std::fs::read_to_string(file_path)?;
+    let service: ServiceBuilder = serde_json::from_str(&service_json)?;
+
+    let ServiceManagerBuilder::Manager(service_manager) = &service.manager else {
+        anyhow::bail!(
+            "Service manager is not set in {}. Set it first with `service manager` \
+             (set-evm / set-stellar).",
+            file_path.display()
+        );
+    };
+
+    let http_client = HttpClient::new(ctx.config.wavs_endpoint.clone());
+    let signer = http_client
+        .get_service_signer(service_manager.clone())
+        .await
+        .with_context(|| {
+            format!(
+                "Failed to fetch signer from WarpDrive node at {}",
+                ctx.config.wavs_endpoint
+            )
+        })?;
+
+    Ok(ServiceSignerResult { signer })
 }
 
 /// Set an Aggregator submit for a workflow

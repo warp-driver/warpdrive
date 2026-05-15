@@ -4,7 +4,8 @@ use std::{
     path::PathBuf,
 };
 use warpdrive_types::{
-    ChainKey, ComponentDigest, Permissions, ServiceBuilder, ServiceStatus, Trigger, WorkflowId,
+    ChainKey, ComponentDigest, Permissions, ServiceBuilder, ServiceStatus, SignerResponse, Trigger,
+    WorkflowId,
 };
 use wasm_pkg_client::{PackageRef, Version};
 
@@ -266,6 +267,51 @@ impl std::fmt::Display for UpdateStatusResult {
         writeln!(f, "Status updated successfully!")?;
         writeln!(f, "  Status:        {:#?}", self.status)?;
         writeln!(f, "  Updated:      {}", self.file_path.display())
+    }
+}
+
+/// Result of fetching a service's operator signer from a WarpDrive node
+#[derive(Debug, Clone, Serialize)]
+pub struct ServiceSignerResult {
+    /// The signer returned by the node, including the on-chain
+    /// registration public key.
+    pub signer: SignerResponse,
+}
+
+impl std::fmt::Display for ServiceSignerResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.signer {
+            SignerResponse::Secp256k1 {
+                hd_index,
+                evm_address,
+                secp256k1_compressed_pubkey,
+            } => {
+                writeln!(f, "Operator signer (secp256k1)")?;
+                writeln!(f, "  HD index:           {hd_index}")?;
+                writeln!(f, "  EVM address:        {evm_address}")?;
+                writeln!(f, "  Register this key:  {secp256k1_compressed_pubkey}")?;
+                writeln!(
+                    f,
+                    "  (33-byte compressed SEC1 secp256k1 public key — use for EVM \
+                     service-manager and Stellar secp256k1 registration)"
+                )
+            }
+            SignerResponse::Ed25519 {
+                hd_index,
+                stellar_pubkey,
+                ed25519_pubkey,
+            } => {
+                writeln!(f, "Operator signer (ed25519)")?;
+                writeln!(f, "  HD index:           {hd_index}")?;
+                writeln!(f, "  Stellar pubkey:     {stellar_pubkey}")?;
+                writeln!(f, "  Register this key:  {ed25519_pubkey}")?;
+                writeln!(
+                    f,
+                    "  (raw 32-byte Ed25519 public key — use for Stellar ed25519 \
+                     registration)"
+                )
+            }
+        }
     }
 }
 
