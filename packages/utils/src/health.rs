@@ -154,12 +154,29 @@ pub async fn check_evm_chain_endpoint_health_query(
 
 async fn check_stellar_chain_health_query(
     key: ChainKey,
-    _config: StellarChainConfig,
+    config: StellarChainConfig,
 ) -> Result<(), HealthCheckError> {
-    Err(HealthCheckError::StellarClientError(
-        key,
-        StellarClientError::NotImplemented,
-    ))
+    let client = wasi_stellar_rpc_client::Client::new(&config.rpc_url)
+        .map_err(|e| HealthCheckError::StellarClientError(key.clone(), e.into()))?;
+
+    let health = client
+        .get_health()
+        .await
+        .map_err(|e| HealthCheckError::StellarClientError(key.clone(), e.into()))?;
+
+    if !health.status.eq_ignore_ascii_case("healthy") {
+        return Err(HealthCheckError::StellarClientError(
+            key,
+            StellarClientError::UnhealthyStatus(health.status),
+        ));
+    }
+
+    client
+        .verify_network_passphrase(Some(&config.network_passphrase))
+        .await
+        .map_err(|e| HealthCheckError::StellarClientError(key.clone(), e.into()))?;
+
+    Ok(())
 }
 
 #[derive(Error, Debug)]

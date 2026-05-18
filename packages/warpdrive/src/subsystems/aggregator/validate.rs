@@ -257,17 +257,24 @@ impl Aggregator {
                 (res, const_hex::encode(pubkey))
             }
             WavsSignature::Ed25519 { signature, pubkey } => {
+                let envelope_hex = const_hex::encode(&envelope_bytes);
+                let sig_inner = signature.into_inner();
+                let pub_inner = pubkey.into_inner();
+                tracing::warn!(
+                    verification_contract = %verification_contract,
+                    ref_block,
+                    envelope_len = envelope_bytes.len(),
+                    envelope_hex = %envelope_hex,
+                    signature_hex = %const_hex::encode(sig_inner),
+                    pubkey_hex = %const_hex::encode(pub_inner),
+                    "ED25519 RECEIVE-VALIDATION CHECK_ONE ARGS"
+                );
                 let res = Ed25519VerificationClient::new(wasi_soroban_rs::ClientContractConfigs {
                     contract_id: stellar_strkey::Contract(verification_contract.0.into()),
                     env,
                     source_account: account,
                 })
-                .check_one(
-                    envelope_bytes,
-                    signature.into_inner(),
-                    pubkey.into_inner(),
-                    Some(ref_block as u32),
-                )
+                .check_one(envelope_bytes, sig_inner, pub_inner, Some(ref_block as u32))
                 .await;
 
                 (res, const_hex::encode(pubkey.as_slice()))
