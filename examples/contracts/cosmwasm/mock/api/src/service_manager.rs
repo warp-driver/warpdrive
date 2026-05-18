@@ -12,6 +12,9 @@ pub type InstantiateMsg = Empty;
 pub enum ExecuteMsg {
     /// Mock contracts get superpowers
     SetSigningKey {
+        // wire name kept as `operator` for compatibility with the pre-rename
+        // mock service-manager contract bundled in `lay3rlabs/cw-middleware`.
+        #[serde(rename = "operator")]
         vector: EvmAddr,
         signing_key: EvmAddr,
         weight: Uint256,

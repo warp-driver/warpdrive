@@ -52,7 +52,7 @@ impl EigenlayerMiddleware {
                     &format!("{}:/root/.nodes", self.nodes_dir.path().display()),
                     "-v",
                     &format!(
-                        "{}:/warpdrive/contracts/deployments",
+                        "{}:/wavs/contracts/deployments",
                         self.config_dir.path().display()
                     ),
                     EVM_EIGENLAYER_MIDDLEWARE_IMAGE,
@@ -229,10 +229,7 @@ impl EigenlayerMiddleware {
                     "-e",
                     &format!("RPC_URL={}", service_manager.rpc_url),
                     "-e",
-                    &format!(
-                        "WARPDRIVE_SERVICE_MANAGER_ADDRESS={}",
-                        service_manager.address
-                    ),
+                    &format!("WAVS_SERVICE_MANAGER_ADDRESS={}", service_manager.address),
                     "-e",
                     &format!("FUNDED_KEY={}", service_manager.deployer_key_hex),
                     "-e",

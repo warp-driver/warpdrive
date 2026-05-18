@@ -541,13 +541,14 @@ mod test {
         // if we try to check against meaningful env vars, we may conflict with other tests and/or user settings
         // so just check for a dummy value since this test only cares about the dotenv file itself
         // coverage of environment var overrides is in other tests with temp_env scopes
-        assert_eq!(
-            std::env::var(format!("{}_RANDOM_TEST_VALUE", TestCliEnv::ENV_VAR_PREFIX)).unwrap(),
-            "hello world"
+        let var_name = format!(
+            "{}_RANDOM_TEST_VALUE",
+            TestCliEnv::ENV_VAR_PREFIX.to_uppercase()
         );
+        assert_eq!(std::env::var(&var_name).unwrap(), "hello world");
 
         // unset the value, just to play nice, though this could be a race condition (see docs on remove_var)
-        std::env::remove_var(format!("{}_RANDOM_TEST_VALUE", TestCliEnv::ENV_VAR_PREFIX))
+        std::env::remove_var(&var_name)
     }
 
     #[test]

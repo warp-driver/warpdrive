@@ -82,7 +82,9 @@ impl CosmosMiddlewareInner {
         kind: CosmosMiddlewareKind,
         mnemonic: String,
     ) -> Result<Self> {
-        // Write a pseudo warpdrive.toml file to a temp dir for our network
+        // Write a pseudo wavs.toml file to a temp dir for our network
+        // NOTE: filename, env var, and mount path use the legacy "WAVS"/"wavs" naming
+        // because the external `cw-middleware` Docker image still expects them.
         let mut chain_configs = ChainConfigs::default();
 
         let chain_config_clone = chain_config.clone();
@@ -114,7 +116,7 @@ impl CosmosMiddlewareInner {
         };
 
         let config_dir = TempDir::new()?;
-        let config_path = config_dir.path().join("warpdrive.toml");
+        let config_path = config_dir.path().join("wavs.toml");
         std::fs::write(&config_path, toml::to_string(&config)?)?;
 
         let env_dir = TempDir::new()?;
@@ -128,7 +130,7 @@ impl CosmosMiddlewareInner {
                 .chains
                 .chain_keys(ChainKeyNamespace::COSMOS.parse()?)[0]
         )?;
-        writeln!(env_file, "WARPDRIVE_HOME=/warpdrive-home")?;
+        writeln!(env_file, "WAVS_HOME=/wavs-home")?;
         writeln!(env_file, "CLI_MNEMONIC={}", mnemonic)?;
 
         let key_signer = KeySigner::new_mnemonic_str(&mnemonic, None)?;
@@ -184,7 +186,7 @@ impl CosmosMiddlewareInner {
                     "--env-file",
                     self.env_path().as_str(),
                     "-v",
-                    &format!("{}:/warpdrive-home", self.config_dir.path().display()),
+                    &format!("{}:/wavs-home", self.config_dir.path().display()),
                     DOCKER_IMAGE,
                     "service-manager",
                     "set-service-uri",
@@ -251,7 +253,7 @@ impl CosmosMiddlewareInner {
                     "--env-file",
                     self.env_path().as_str(),
                     "-v",
-                    &format!("{}:/warpdrive-home", self.config_dir.path().display()),
+                    &format!("{}:/wavs-home", self.config_dir.path().display()),
                     "-v",
                     &format!("{}:/output", output_dir.path().display()),
                     DOCKER_IMAGE,
@@ -313,7 +315,7 @@ impl CosmosMiddlewareInner {
                     "--env-file",
                     self.env_path().as_str(),
                     "-v",
-                    &format!("{}:/warpdrive-home", self.config_dir.path().display()),
+                    &format!("{}:/wavs-home", self.config_dir.path().display()),
                     "-v",
                     &format!("{}:/output", output_dir.path().display()),
                     DOCKER_IMAGE,

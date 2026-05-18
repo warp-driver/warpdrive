@@ -61,10 +61,20 @@ pub struct TestMnemonics {
     pub aggregator_cosmos: Credential,
     pub cosmos_middleware: Vec<Credential>,
     /// Stellar deployer secret in "S..." strkey form. Set when any stellar
-    /// chain is enabled. The same key is passed to the stellar middleware
-    /// container as BYOK and used in-process via warpdrive-client to call
-    /// admin-only contract methods.
+    /// chain is enabled. Passed to the stellar middleware container as BYOK
+    /// and used in-process via warpdrive-client to call admin-only contract
+    /// methods. Distinct from `stellar_aggregator` — the deployer key is
+    /// shared (admin role); aggregator submissions need their own per-vector
+    /// keys so concurrent verify_xlm/verify_eth txs from different vectors
+    /// don't race on Stellar's per-account sequence number.
     pub stellar_middleware: Option<Credential>,
+    /// Per-vector ed25519 secret keys (`S...` strkey) used as
+    /// `aggregator_stellar_credential` for each WarpDrive instance. One
+    /// key per vector so concurrent Stellar submissions across the multi-
+    /// vector quorum don't share the same account-sequence counter and
+    /// produce `TxBadSeq`. Populated alongside `stellar_middleware` in
+    /// `ensure_stellar_middleware`.
+    pub stellar_aggregator: Vec<Credential>,
 }
 
 impl TestMnemonics {
@@ -110,32 +120,46 @@ impl TestMnemonics {
             ),
             cosmos_middleware: vec![],
             stellar_middleware: None,
+            stellar_aggregator: Vec::new(),
         }
     }
 
     pub async fn fund(&self, chain_configs: &ChainConfigs) {
-        // Friendbot-fund the stellar deployer if a stellar chain is enabled
-        // and a deployer key was generated.
+        // Friendbot-fund every stellar key we hand out: the deployer/admin
+        // key plus each per-vector aggregator key. Without the per-vector
+        // funding the aggregator's `verify_xlm` would fail on `TxNoAccount`
+        // before it ever gets the chance to race the sequence counter.
+        async fn friendbot_fund(label: &str, secret_str: &str, friendbot_url: &str) {
+            let secret = stellar_strkey::ed25519::PrivateKey::from_string(secret_str)
+                .expect("stellar secret is not a valid S... strkey");
+            let signing = ed25519_dalek::SigningKey::from_bytes(&secret.0);
+            let public =
+                stellar_strkey::ed25519::PublicKey(signing.verifying_key().to_bytes()).to_string();
+            let url = format!("{}?addr={}", friendbot_url.trim_end_matches('/'), public);
+            tracing::info!("Friendbot-funding stellar {label} {public} via {url}");
+            let resp = reqwest::get(&url).await.unwrap();
+            let status = resp.status();
+            if !status.is_success() && status.as_u16() != 400 {
+                // 400 means "account already exists" — fine on reruns.
+                let body = resp.text().await.unwrap_or_default();
+                panic!("friendbot funding failed ({status}): {body}");
+            }
+        }
+
         if let Some(deployer_secret) = &self.stellar_middleware {
             tracing::info!("Stellar deployer secret configured, funding via friendbot");
             for chain_config in chain_configs.stellar_iter() {
                 let Some(friendbot_url) = chain_config.friendbot_url.as_ref() else {
                     continue;
                 };
-                let secret =
-                    stellar_strkey::ed25519::PrivateKey::from_string(deployer_secret.as_str())
-                        .expect("stellar deployer secret is not a valid S... strkey");
-                let signing = ed25519_dalek::SigningKey::from_bytes(&secret.0);
-                let public = stellar_strkey::ed25519::PublicKey(signing.verifying_key().to_bytes())
-                    .to_string();
-                let url = format!("{}?addr={}", friendbot_url.trim_end_matches('/'), public);
-                tracing::info!("Friendbot-funding stellar deployer {public} via {url}");
-                let resp = reqwest::get(&url).await.unwrap();
-                let status = resp.status();
-                if !status.is_success() && status.as_u16() != 400 {
-                    // 400 means "account already exists" — fine on reruns.
-                    let body = resp.text().await.unwrap_or_default();
-                    panic!("friendbot funding failed ({status}): {body}");
+                friendbot_fund("deployer", deployer_secret.as_str(), friendbot_url).await;
+                for (i, aggregator_secret) in self.stellar_aggregator.iter().enumerate() {
+                    friendbot_fund(
+                        &format!("aggregator[vector={i}]"),
+                        aggregator_secret.as_str(),
+                        friendbot_url,
+                    )
+                    .await;
                 }
             }
             tracing::info!("Successfully funded via friendbot");
@@ -180,19 +204,27 @@ impl TestMnemonics {
         self.cosmos_middleware.push(Credential::new(mnemonic));
     }
 
-    /// Generate a fresh ed25519 deployer key for the stellar middleware.
+    /// Generate a fresh ed25519 deployer key for the stellar middleware,
+    /// plus one ed25519 key per vector for `aggregator_stellar_credential`.
     /// Called once when any stellar chain is enabled.
-    pub fn ensure_stellar_middleware(&mut self) {
-        if self.stellar_middleware.is_some() {
-            return;
+    pub fn ensure_stellar_middleware(&mut self, num_vectors: usize) {
+        fn gen_secret() -> String {
+            let mut bytes = [0u8; 32];
+            rand::RngCore::fill_bytes(&mut rand::rng(), &mut bytes);
+            // `format!` instead of `.to_string()`: stellar-strkey 0.0.16
+            // added an inherent `to_string()` returning `heapless::String`
+            // for no_std consumers, which shadows the `ToString` trait impl.
+            format!("{}", stellar_strkey::ed25519::PrivateKey(bytes))
         }
-        let mut bytes = [0u8; 32];
-        rand::RngCore::fill_bytes(&mut rand::rng(), &mut bytes);
-        // `format!` instead of `.to_string()`: stellar-strkey 0.0.16
-        // added an inherent `to_string()` returning `heapless::String`
-        // for no_std consumers, which shadows the `ToString` trait impl.
-        let secret = format!("{}", stellar_strkey::ed25519::PrivateKey(bytes));
-        self.stellar_middleware = Some(Credential::new(secret));
+
+        if self.stellar_middleware.is_none() {
+            self.stellar_middleware = Some(Credential::new(gen_secret()));
+        }
+        // Mint enough per-vector aggregator keys. Idempotent: top up only
+        // if a previous call generated fewer keys than `num_vectors`.
+        while self.stellar_aggregator.len() < num_vectors {
+            self.stellar_aggregator.push(Credential::new(gen_secret()));
+        }
     }
 }
 
@@ -307,7 +339,7 @@ impl From<TestConfig> for Configs {
                     );
                 }
             }
-            mnemonics.ensure_stellar_middleware();
+            mnemonics.ensure_stellar_middleware(num_vectors);
         }
 
         // Create WarpDrive configs for each vector
@@ -330,7 +362,17 @@ impl From<TestConfig> for Configs {
             warpdrive_config.aggregator_cosmos_credential =
                 Some(mnemonics.aggregator_cosmos.clone());
             warpdrive_config.aggregator_evm_credential = Some(mnemonics.aggregator_evm.clone());
-            warpdrive_config.aggregator_stellar_credential = mnemonics.stellar_middleware.clone();
+            // Per-vector aggregator key — distinct from the shared
+            // deployer/admin key in `stellar_middleware` — so concurrent
+            // verify_xlm/verify_eth submissions from different vectors
+            // don't race on Stellar's per-account sequence counter
+            // (TxBadSeq). Falls back to the deployer key if `stellar_aggregator`
+            // is empty (no stellar chain enabled).
+            warpdrive_config.aggregator_stellar_credential = mnemonics
+                .stellar_aggregator
+                .get(vector_index)
+                .cloned()
+                .or_else(|| mnemonics.stellar_middleware.clone());
             warpdrive_config.dev_endpoints_enabled = true;
             warpdrive_config.port = DEFAULT_WARPDRIVE_BASE_PORT + vector_index as u32;
 

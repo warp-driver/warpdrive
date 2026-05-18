@@ -37,8 +37,14 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 ///
 /// This allows WarpDrive to call your contract with the `ServiceHandler` messages,
 /// without needing to know your full `QueryMsg` or `ExecuteMsg` types
+// NOTE on `#[serde(rename = "wavs_*")]`: same rationale as the matching
+// note in `service_manager.rs` — deployed `lay3rlabs/cw-middleware`
+// service-handler contracts were built before the WAVS→WarpDrive rename
+// and only understand the `wavs_*` wire keys. The Rust names follow the
+// new convention; serde keeps the wire format stable.
 #[cw_serde]
 pub enum ServiceHandlerExecuteMessages {
+    #[serde(rename = "wavs_handle_signed_envelope")]
     WarpDriveHandleSignedEnvelope {
         envelope: WarpDriveEnvelope,
         signature_data: WarpDriveSignatureData,
@@ -50,6 +56,7 @@ pub enum ServiceHandlerExecuteMessages {
 pub enum ServiceHandlerQueryMessages {
     /// Get the service manager address
     #[returns(cosmwasm_std::Addr)]
+    #[serde(rename = "wavs_service_manager")]
     WarpDriveServiceManager {},
 }
 
@@ -173,7 +180,7 @@ mod tests {
                 signature_data: signature_data.into(),
             },
         );
-        const EXPECTED_MSG_1_STR:&str = "{\"warp_drive_handle_signed_envelope\":{\"envelope\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwECAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"signature_data\":{\"signers\":[\"0x2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a\",\"0x0101010101010101010101010101010101010101\"],\"signatures\":[\"010203\",\"040506\"],\"reference_block\":12345}}}";
+        const EXPECTED_MSG_1_STR:&str = "{\"wavs_handle_signed_envelope\":{\"envelope\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwECAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"signature_data\":{\"signers\":[\"0x2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a\",\"0x0101010101010101010101010101010101010101\"],\"signatures\":[\"010203\",\"040506\"],\"reference_block\":12345}}}";
 
         let msg_2 = ExampleServiceHandlerExecuteMsg::MyCustomMessage {
             my_field: "Hello".to_string(),
