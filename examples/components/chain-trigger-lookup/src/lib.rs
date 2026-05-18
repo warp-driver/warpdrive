@@ -24,13 +24,14 @@ struct Component;
 
 impl Guest for Component {
     fn run(trigger_action: TriggerAction) -> std::result::Result<Vec<WasmResponse>, String> {
-        run_one(trigger_action)
+        // layer_climb + warpdrive_wasi_utils::evm both use wstd transports
+        // on wasm32-wasip2; this must run under wstd's reactor, not tokio.
+        wstd::runtime::block_on(run_one(trigger_action))
             .map_err(|e| format!("{e:?}"))
             .map(|res| vec![res])
     }
 }
 
-#[tokio::main(flavor = "current_thread")]
 async fn run_one(
     trigger_action: TriggerAction,
 ) -> std::result::Result<WasmResponse, anyhow::Error> {

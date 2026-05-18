@@ -469,11 +469,40 @@ impl Aggregator {
             }
         };
 
+        // Two-step at current state, mirroring the EVM path: cosmwasm
+        // service managers (e.g. the `cw-middleware` mock manager) key
+        // `operator_weight` by operator address and maintain a
+        // separate signing-key→operator map, so calling
+        // `WarpDriveOperatorWeight` with the recovered signing-key
+        // address directly returns zero. Look up the operator first.
+        let manager_contract: layer_climb::prelude::Address = manager_address.into();
+
+        let operator_addr: Option<ClimbEvmAddr> = query_client
+            .contract_smart(
+                &manager_contract,
+                &ServiceManagerQueryMessages::WarpDriveLatestOperatorForSigningKey {
+                    signing_key_addr: climb_signer_addr,
+                },
+            )
+            .await
+            .map_err(|e| AggregatorError::ReceiveValidationChainQuery {
+                chain: chain.clone(),
+                detail: format!("WarpDriveLatestOperatorForSigningKey: {e:?}"),
+            })?;
+
+        let Some(operator_addr) = operator_addr else {
+            return Err(AggregatorError::SignerUnregisteredAtReceive {
+                chain: chain.clone(),
+                signer_pubkey_hex: format!("{signer_addr:?}"),
+                block: ref_block,
+            });
+        };
+
         let weight: cosmwasm_std::Uint256 = query_client
             .contract_smart(
-                &manager_address.into(),
+                &manager_contract,
                 &ServiceManagerQueryMessages::WarpDriveOperatorWeight {
-                    vector_address: climb_signer_addr,
+                    vector_address: operator_addr,
                 },
             )
             .await

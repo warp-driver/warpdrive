@@ -25,8 +25,19 @@ impl SimpleCosmosSubmitClient {
         service_manager: &CosmosAddr,
         label: &str,
     ) -> Result<Self> {
+        // Use `instantiate2` with a random salt so the predicted contract
+        // address is guaranteed unique per call. `contract_instantiate` (the
+        // classic message) derives the address from a global `instanceID`
+        // counter, which can race under concurrent test execution: two
+        // simulates from the chain's pre-commit state may both read the
+        // same stale `instanceID`, predict the same address, and the
+        // second simulate then fails with `ErrDuplicate` ("contract address
+        // already exists, try a different combination of creator, checksum
+        // and salt"). instantiate2 sidesteps this entirely because the
+        // address is `keccak(creator || code_hash || salt)`.
+        let salt = uuid::Uuid::now_v7().as_bytes().to_vec();
         let (addr, _) = signing_client
-            .contract_instantiate(
+            .contract_instantiate2(
                 None,
                 code_id,
                 label,
@@ -34,6 +45,8 @@ impl SimpleCosmosSubmitClient {
                     service_manager: service_manager.to_string(),
                 },
                 Vec::new(),
+                salt,
+                false,
                 None,
             )
             .await?;
