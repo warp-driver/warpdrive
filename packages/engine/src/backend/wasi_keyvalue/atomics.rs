@@ -54,10 +54,41 @@ impl atomics::Host for KeyValueState<'_> {
     }
 
     fn swap(&mut self, cas: Resource<KeyValueCas>, value: Vec<u8>) -> CasResult<()> {
-        let cas = self
-            .get_cas_atomics(&cas)
+        // Snapshot from when this CAS was created (HostCas::new).
+        let snapshot = {
+            let entry = self
+                .get_cas_atomics(&cas)
+                .map_err(atomics::CasError::StoreError)?;
+            entry.snapshot.clone()
+        };
+        let key = {
+            let entry = self
+                .get_cas_atomics(&cas)
+                .map_err(atomics::CasError::StoreError)?;
+            entry.key.clone()
+        };
+
+        let current = self
+            .get_store_value(&key)
             .map_err(atomics::CasError::StoreError)?;
-        self.set_store_value(&cas.key, value)
+
+        if current != snapshot {
+            // Another writer modified the key since we snapshotted. Hand the
+            // caller a fresh CAS pinned to the new value so they can retry.
+            let new_cas = KeyValueCas {
+                key,
+                snapshot: current,
+            };
+            let new_resource = self.resource_table.push(new_cas).map_err(|e| {
+                atomics::CasError::StoreError(atomics::Error::Other(format!(
+                    "Failed to create replacement keyvalue cas: {}",
+                    e
+                )))
+            })?;
+            return Err(atomics::CasError::CasFailed(new_resource));
+        }
+
+        self.set_store_value(&key, value)
             .map_err(atomics::CasError::StoreError)
     }
 }
@@ -69,7 +100,10 @@ impl atomics::HostCas for KeyValueState<'_> {
         key_id: String,
     ) -> AtomicsResult<Resource<KeyValueCas>> {
         let key = self.get_key_atomics(&bucket, key_id)?;
-        let cas = KeyValueCas { key };
+        let snapshot = self
+            .get_store_value(&key)
+            .map_err(|e| atomics::Error::Other(e.to_string()))?;
+        let cas = KeyValueCas { key, snapshot };
         self.resource_table
             .push(cas)
             .map_err(|e| atomics::Error::Other(format!("Failed to create keyvalue cas: {}", e)))
@@ -77,8 +111,7 @@ impl atomics::HostCas for KeyValueState<'_> {
 
     fn current(&mut self, cas: Resource<KeyValueCas>) -> AtomicsResult<Option<Vec<u8>>> {
         let cas = self.get_cas_atomics(&cas)?;
-        self.get_store_value(&cas.key)
-            .map_err(|e| atomics::Error::Other(e.to_string()))
+        Ok(cas.snapshot.clone())
     }
 
     fn drop(&mut self, cas: Resource<KeyValueCas>) -> std::result::Result<(), wasmtime::Error> {
@@ -89,4 +122,7 @@ impl atomics::HostCas for KeyValueState<'_> {
 
 pub struct KeyValueCas {
     pub key: Key,
+    /// Value of `key` at the time `Cas::new` (or the last fresh CAS handed
+    /// back by `swap`'s `CasFailed`) was called.
+    pub snapshot: Option<Vec<u8>>,
 }
