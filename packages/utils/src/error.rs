@@ -38,6 +38,9 @@ pub enum StellarClientError {
     #[error("Not implemented")]
     NotImplemented,
 
+    #[error("RPC reported unhealthy status: {0}")]
+    UnhealthyStatus(String),
+
     #[error("RPC error: {0}")]
     Rpc(#[from] wasi_stellar_rpc_client::Error),
 
