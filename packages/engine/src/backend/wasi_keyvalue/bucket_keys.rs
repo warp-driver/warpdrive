@@ -62,6 +62,7 @@ impl std::fmt::Display for KeyPrefix {
     }
 }
 
+#[derive(Clone)]
 pub struct Key {
     prefix: KeyPrefix,
     key: String,
