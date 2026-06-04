@@ -9267,16 +9267,6 @@ dependencies = [
 
 [[package]]
 name = "stellar-strkey"
-version = "0.0.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97e1a364048067bfcd24e6f1a93bba43eeb79c16b854596c841c3e8bab0bfa0c"
-dependencies = [
- "crate-git-revision",
- "data-encoding",
-]
-
-[[package]]
-name = "stellar-strkey"
 version = "0.0.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "084afcb0d458c3d5d5baa2d294b18f881e62cc258ef539d8fdf68be7dbe45520"
@@ -10957,9 +10947,9 @@ dependencies = [
 
 [[package]]
 name = "warpdrive-client"
-version = "0.2.7"
+version = "0.3.0-rc.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "efd416b72183d7d9e21f94576d1821a7758d86894f53c4915c8881a810212cda"
+checksum = "650eb48f5ade696ef5d01d51ff1d1b62a4b237f4bd161e0349fc6bb0e5f3567b"
 dependencies = [
  "ed25519-dalek",
  "stellar-strkey 0.0.16",
@@ -11200,9 +11190,9 @@ dependencies = [
 
 [[package]]
 name = "wasi-soroban-rs"
-version = "0.2.7"
+version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e951fa3e245d1cc8a5f289704b504a63c93684e1e2ebcac287e0c2066e674e1a"
+checksum = "28a4d2bdb461a54458cedeb7c6b41b767c60a26f9e2cf60f097e9ba88de0aa3e"
 dependencies = [
  "async-trait",
  "ed25519-dalek",
@@ -11218,9 +11208,9 @@ dependencies = [
 
 [[package]]
 name = "wasi-soroban-rs-macros"
-version = "0.2.7"
+version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8749f46bf5e7aa74652084b241ba0ceaafe05fd3058cc0767e44a5adabf27154"
+checksum = "fe560718e870352fc214bf4e8fc76c1c6a0c7eb332263be0c1bc7019d295904d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -11229,9 +11219,9 @@ dependencies = [
 
 [[package]]
 name = "wasi-stellar-rpc-client"
-version = "26.0.0-rc.3"
+version = "26.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "569b46e67678e046dbce17dcc215b08568e6a6d1ad1a9659d25e96d77c99fbf0"
+checksum = "9a63b65dabfe20f15252a77250eaa3d03eb9cf0548b78874153f44ab71a7b7cc"
 dependencies = [
  "clap 4.6.0",
  "hex",
@@ -11241,7 +11231,7 @@ dependencies = [
  "serde_json",
  "serde_with",
  "sha2 0.10.9",
- "stellar-strkey 0.0.15",
+ "stellar-strkey 0.0.16",
  "stellar-xdr",
  "termcolor",
  "termcolor_output",
