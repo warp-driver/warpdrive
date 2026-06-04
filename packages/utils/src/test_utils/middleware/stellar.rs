@@ -12,7 +12,8 @@ use crate::test_utils::middleware::evm::validate_docker_container_id;
 
 /// Pinned image tag for the Warpdrive Stellar middleware.
 /// Bump in lockstep with the warpdrive-contracts repo.
-pub const STELLAR_MIDDLEWARE_IMAGE: &str = "ghcr.io/warp-driver/warpdrive-stellar-middleware:0.2.5";
+pub const STELLAR_MIDDLEWARE_IMAGE: &str =
+    "ghcr.io/warp-driver/warpdrive-stellar-middleware:0.3.0-rc.1";
 
 /// Long-lived container that wraps the warpdrive-stellar-middleware image.
 /// One container per test run; each `deploy_service_manager` call shells in
@@ -144,6 +145,7 @@ impl StellarMiddleware {
         let weight = weight.to_string();
         self.cli_exec(&[
             "add-signer",
+            "--via-project-root",
             "--scheme",
             scheme.as_str(),
             "--key",
@@ -169,6 +171,7 @@ impl StellarMiddleware {
         let denominator = denominator.to_string();
         self.cli_exec(&[
             "set-threshold",
+            "--via-project-root",
             "--scheme",
             scheme.as_str(),
             "--numerator",
@@ -181,10 +184,10 @@ impl StellarMiddleware {
         .await
     }
 
-    /// Run `/warpdrive/cli.sh <args>` inside the long-lived container.
+    /// Run `warpdrive-deployer <args>` inside the long-lived container.
     async fn cli_exec(&self, args: &[&str]) -> Result<()> {
         let mut docker_args: Vec<&str> =
-            vec!["exec", &self.inner.container_id, "/warpdrive/cli.sh"];
+            vec!["exec", &self.inner.container_id, "warpdrive-deployer"];
         docker_args.extend_from_slice(args);
         let res = tokio::time::timeout(
             Self::RUNTIME_CALL_TIMEOUT,
@@ -196,9 +199,9 @@ impl StellarMiddleware {
                 .wait(),
         )
         .await
-        .with_context(|| format!("timed out running cli.sh {:?}", args))??;
+        .with_context(|| format!("timed out running warpdrive-deployer {:?}", args))??;
         if !res.success() {
-            bail!("cli.sh {:?} failed (exit {res})", args);
+            bail!("warpdrive-deployer {:?} failed (exit {res})", args);
         }
         Ok(())
     }
@@ -219,7 +222,7 @@ impl StellarMiddleware {
                 .args([
                     "exec",
                     &self.inner.container_id,
-                    "/warpdrive/cli.sh",
+                    "warpdrive-deployer",
                     "deploy",
                     "--variant",
                     scheme.deploy_variant(),
